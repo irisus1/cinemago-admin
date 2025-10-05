@@ -107,7 +107,7 @@ export default function Sidebar({
         <button
           onClick={() => {
             logout();
-            router.push("/admin/auth");
+            router.push("/login");
           }}
           className="flex items-center w-full p-3 rounded-lg text-gray-700 hover:bg-gray-100"
         >

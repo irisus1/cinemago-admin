@@ -8,6 +8,7 @@ const RESOURCES: Record<string, string> = {
   movies: "Phim",
   theaters: "Rạp",
   users: "Người dùng",
+  genres: "Thể loại",
   // thêm ở đây: categories: "Danh mục", showtimes: "Suất chiếu", ...
 };
 
