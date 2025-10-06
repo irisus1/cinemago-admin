@@ -1,6 +1,6 @@
 import {
   FiFilm,
-  FiTrello,
+  FiChrome,
   FiCalendar,
   FiPackage,
   FiList,
@@ -15,13 +15,13 @@ import { RxDashboard } from "react-icons/rx";
 export const adminTabs = [
   {
     name: "Quản lý phim",
-    path: "/admin/film-management",
+    path: "/admin/movies",
     icon: <FiFilm className="w-6 h-6" />,
   },
   {
-    name: "Danh sách suất phim",
-    path: "/admin/film-show-management/list",
-    icon: <FiTrello className="w-6 h-6" />,
+    name: "Quản lý thể loại phim",
+    path: "/admin/genres",
+    icon: <FiChrome className="w-6 h-6" />,
   },
   {
     name: "Biểu đồ suất phim",

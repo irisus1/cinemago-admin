@@ -1,39 +1,26 @@
-// app/(admin)/admin/movies/page.tsx
+// app/(admin)/admin/genres/page.tsx
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import Table from "@/components/Table";
 import { FiEdit2, FiTrash2 } from "react-icons/fi";
 import { BiRefresh } from "react-icons/bi";
 import Dialog from "@/components/ConfirmDialog";
 import SuccessDialog from "@/components/SuccessDialog";
 import RefreshLoader from "@/components/Loading";
+import GenreModal from "@/components/GenreModal";
 import {
-  getAllMovies,
-  deleteMovie,
-  restoreMovie,
+  getAllGenres,
+  deleteGenre,
+  restoreGenre,
 } from "@/services/MovieService";
-import { log } from "console";
 
 // ===== Types =====
-type movie = {
+type Genre = {
   id: string;
-  title: string;
+  name: string;
   description: string;
-  duration: number;
-  rating: number;
-  genres: { id: number; name: string }[];
-  trailerUrl: string;
-  thumbnail: string;
-  releaseDate: string; // ISO date string
-  isActive?: boolean;
-};
-
-type AgeTag = {
-  id: number;
-  symbol: string;
-  description: string;
+  isActive: boolean;
 };
 
 type Column<T> = {
@@ -42,65 +29,43 @@ type Column<T> = {
   render?: (value: T[keyof T], row: T) => React.ReactNode;
 };
 
-const moviesListPage: React.FC = () => {
-  const router = useRouter();
-
-  const [movies, setmovies] = useState<movie[]>([]);
+const GenresListPage: React.FC = () => {
+  // Data & filters
+  const [genres, setGenres] = useState<Genre[]>([]);
   const [queryName, setQueryName] = useState("");
+  const itemsPerPage = 7;
 
+  // UI state
   const [currentPage, setCurrentPage] = useState(1);
+  const [loading, setLoading] = useState(false);
 
-  const [selectedmovie, setSelectedmovie] = useState<movie | null>(null); //
+  // Modal (create/edit)
+  const [open, setOpen] = useState(false);
+  const [editGenre, setEditGenre] = useState<Genre | null>(null);
 
+  // Confirm/Success dialogs
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
   const [dialogTitle, setDialogTitle] = useState("");
   const [dialogMessage, setDialogMessage] = useState<React.ReactNode>("");
-
-  const [loading, setLoading] = useState(false);
   const [onConfirm, setOnConfirm] = useState<() => void>(() => () => {});
 
-  const itemsPerPage = 7;
-
   // ===== Data fetching =====
-  const fetchmovies = async () => {
+  const fetchGenres = async () => {
     try {
       setLoading(true);
-
-      //   const [activeRes, deletedRes] = await Promise.all([
-      //     getAllMovies(),
-      //     getAllmoviesDeleted(),
-      //   ]);
-
-      //   const activemovies: movie[] =
-      //     activeRes?.data?._embedded?.movieResponseDtoList?.map((f: movie) => ({
-      //       ...f,
-      //       deleted: false,
-      //     })) ?? [];
-
-      //   const deletedmovies: movie[] =
-      //     deletedRes?.data?._embedded?.movieResponseDtoList?.map((f: movie) => ({
-      //       ...f,
-      //       deleted: true,
-      //     })) ?? [];
-
-      //   setmovies([...activemovies, ...deletedmovies]);
-      const res = await getAllMovies();
-      const { data: movies, pagination } = res.data;
-
-      console.log(movies); // <-- lúc này mới là Array<movie>
-      console.log(pagination);
-
-      setmovies(movies ?? []);
+      const res = await getAllGenres();
+      const { data } = res.data; // tuỳ payload của bạn
+      setGenres(data ?? []);
     } catch (err) {
-      console.error("Error fetching movies:", err);
+      console.error("Error fetching genres:", err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchmovies();
+    fetchGenres();
   }, []);
 
   useEffect(() => {
@@ -108,18 +73,19 @@ const moviesListPage: React.FC = () => {
   }, [queryName]);
 
   // ===== Handlers =====
-  const handleAddNavigate = () => {
-    router.push("/admin/movies/new");
+  const handleAddOpen = () => {
+    setEditGenre(null);
+    setOpen(true);
   };
 
-  const handleEditNavigate = (movie: movie) => {
-    setSelectedmovie(movie);
-    router.push(`/admin/movies/${movie.id}/edit`);
+  const handleEditOpen = (g: Genre) => {
+    setEditGenre(g);
+    setOpen(true);
   };
 
   const handleRefresh = async () => {
     setLoading(true);
-    await fetchmovies();
+    await fetchGenres();
     setLoading(false);
   };
 
@@ -134,21 +100,21 @@ const moviesListPage: React.FC = () => {
     setIsConfirmDialogOpen(true);
   };
 
-  const handleDelete = (movie: movie) => {
+  const handleDelete = (g: Genre) => {
     openConfirm(
       "Xác nhận xóa",
       <>
-        Bạn có chắc chắn muốn xóa phim này không?
+        Bạn có chắc chắn muốn xóa thể loại này không?
         <br />
-        Việc này không thể trở lại.
+        Việc này không thể hoàn tác.
       </>,
       async () => {
         setIsConfirmDialogOpen(false);
         try {
-          await deleteMovie(movie.id);
-          await fetchmovies();
+          await deleteGenre(g.id);
+          await fetchGenres();
           setDialogTitle("Thành công");
-          setDialogMessage("Xóa phim thành công");
+          setDialogMessage("Xóa thể loại thành công");
           setIsSuccessDialogOpen(true);
         } catch (err) {
           alert("Thao tác thất bại: " + err);
@@ -157,17 +123,17 @@ const moviesListPage: React.FC = () => {
     );
   };
 
-  const handleRestore = (movie: movie) => {
+  const handleRestore = (g: Genre) => {
     openConfirm(
       "Xác nhận khôi phục",
-      <>Bạn có chắc chắn muốn khôi phục phim này không?</>,
+      <>Khôi phục thể loại này?</>,
       async () => {
         setIsConfirmDialogOpen(false);
         try {
-          await restoreMovie(movie.id);
-          await fetchmovies();
+          await restoreGenre(g.id);
+          await fetchGenres();
           setDialogTitle("Thành công");
-          setDialogMessage("Khôi phục phim thành công");
+          setDialogMessage("Khôi phục thể loại thành công");
           setIsSuccessDialogOpen(true);
         } catch (err) {
           alert("Thao tác thất bại: " + err);
@@ -176,60 +142,35 @@ const moviesListPage: React.FC = () => {
     );
   };
 
-  const clearFilters = () => {
-    setQueryName("");
-  };
+  const clearFilters = () => setQueryName("");
 
   // ===== Filtering & pagination =====
-  const filteredmovies = useMemo(() => {
-    return movies.filter((f) => {
-      const matchName = queryName
-        ? f.title.toLowerCase().includes(queryName.toLowerCase())
-        : true;
+  const filteredGenres = useMemo(() => {
+    return genres.filter((f) =>
+      queryName ? f.name.toLowerCase().includes(queryName.toLowerCase()) : true
+    );
+  }, [genres, queryName]);
 
-      return matchName;
-    });
-  }, [movies, queryName]);
-
-  const totalPages = Math.ceil(filteredmovies.length / itemsPerPage) || 1;
-  const paginatedmovies = useMemo(() => {
+  const totalPages = Math.ceil(filteredGenres.length / itemsPerPage) || 1;
+  const paginatedGenres = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
-    return filteredmovies.slice(start, start + itemsPerPage);
-  }, [filteredmovies, currentPage]);
+    return filteredGenres.slice(start, start + itemsPerPage);
+  }, [filteredGenres, currentPage]);
 
   // ===== Table columns =====
-  const columns: Column<movie>[] = [
-    { header: "Tên phim", key: "title" },
-    { header: "Thời lượng", key: "duration" },
-    {
-      header: "Công chiếu",
-      key: "releaseDate",
-      render: (_, row) =>
-        Intl.DateTimeFormat("en-GB", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-        })
-          .format(new Date(row.releaseDate))
-          .replace(/\//g, "-"),
-    },
-
-    {
-      header: "Thể loại",
-      key: "genres",
-      render: (_: any, row: any) =>
-        (row.genres ?? []).map((g: any) => g.name).join(", ") || "—",
-    },
+  const columns: Column<Genre>[] = [
+    { header: "Tên thể loại", key: "name" },
+    { header: "Mô tả", key: "description" },
     {
       header: "Hành động",
       key: "actions",
-      render: (_, row) => (
+      render: (_: any, row) => (
         <div className="flex space-x-3">
           {row.isActive ? (
             <>
               <button
                 className="text-blue-600 hover:text-blue-800"
-                onClick={() => handleEditNavigate(row)}
+                onClick={() => handleEditOpen(row)}
                 title="Chỉnh sửa"
               >
                 <FiEdit2 className="w-4 h-4" />
@@ -261,7 +202,7 @@ const moviesListPage: React.FC = () => {
     <div>
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-800 mb-3">
-          Danh sách phim
+          Danh sách thể loại
         </h2>
 
         <div className="flex items-center justify-between w-full">
@@ -284,7 +225,7 @@ const moviesListPage: React.FC = () => {
             <div className="w-[280px]">
               <input
                 type="text"
-                placeholder="Tên phim…"
+                placeholder="Tên thể loại…"
                 value={queryName}
                 onChange={(e) => setQueryName(e.target.value)}
                 className="w-full px-4 py-2 rounded-lg focus:outline-none border"
@@ -301,18 +242,18 @@ const moviesListPage: React.FC = () => {
             </button>
             <button
               className="px-4 py-2 bg-black text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
-              onClick={handleAddNavigate}
+              onClick={handleAddOpen}
             >
-              Thêm phim +
+              Thêm thể loại +
             </button>
           </div>
         </div>
       </div>
 
       <div className="bg-white rounded-lg shadow-sm overflow-x-auto">
-        <Table columns={columns as any} data={paginatedmovies} />
+        <Table columns={columns as any} data={paginatedGenres} />
 
-        {filteredmovies.length > 0 && (
+        {filteredGenres.length > 0 && (
           <div className="flex items-center justify-between px-6 py-4 bg-gray-50">
             <button
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
@@ -335,6 +276,7 @@ const moviesListPage: React.FC = () => {
         )}
       </div>
 
+      {/* Confirm & Success */}
       <Dialog
         isOpen={isConfirmDialogOpen}
         onClose={() => setIsConfirmDialogOpen(false)}
@@ -342,7 +284,6 @@ const moviesListPage: React.FC = () => {
         title={dialogTitle}
         message={dialogMessage}
       />
-
       <SuccessDialog
         isOpen={isSuccessDialogOpen}
         onClose={() => setIsSuccessDialogOpen(false)}
@@ -350,9 +291,22 @@ const moviesListPage: React.FC = () => {
         message={dialogMessage}
       />
 
+      {/* Modal Thêm/Sửa */}
+      <GenreModal
+        open={open}
+        onClose={() => setOpen(false)}
+        mode={editGenre ? "edit" : "create"}
+        genre={editGenre ?? undefined}
+        onSuccess={async () => {
+          setOpen(false);
+          setEditGenre(null);
+          await fetchGenres(); // reload list
+        }}
+      />
+
       <RefreshLoader isOpen={loading} />
     </div>
   );
 };
 
-export default moviesListPage;
+export default GenresListPage;

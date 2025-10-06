@@ -17,14 +17,19 @@ export const updateMovie = (id: string, data: FormData) =>
   });
 // Xoá phim
 export const deleteMovie = (id: string) => api.put(`/movies/archive/${id}`);
+// Khôi phục phim
+export const restoreMovie = (id: string) => api.put(`/movies/restore/${id}`);
 
 // Lấy danh sách thể loại
 export const getAllGenres = () => api.get("/genres/public");
 // Thêm thể loại
-export const addGenre = (data: { name: string }) => api.post("/genres", data);
+export const addGenre = (data: { name: string; description: string }) =>
+  api.post("/genres", data);
 // Cập nhật thể loại
-export const updateGenre = (id: string, data: { name: string }) =>
-  api.put(`/genres/${id}`, data);
+export const updateGenre = (
+  id: string,
+  data: { name: string; description: string }
+) => api.put(`/genres/${id}`, data);
 // Xoá thể loại
 export const deleteGenre = (id: string) => api.put(`/genres/archive/${id}`);
 // Khôi phục thể loại
