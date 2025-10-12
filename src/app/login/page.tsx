@@ -10,8 +10,7 @@ import {
 } from "react-icons/fa";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import api from "@/config/api"; // bạn phải có file api.ts trong src/config
-import Image from "next/image";
+import { toast } from "sonner";
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({
@@ -19,7 +18,6 @@ export default function LoginPage() {
     password: "",
   });
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<any>({});
   const [showPassword, setShowPassword] = useState(false);
 
   const { login } = useAuth();
@@ -27,7 +25,7 @@ export default function LoginPage() {
 
   const validateForm = () => {
     if (!formData.username || !formData.password) {
-      alert("Không được để trống!");
+      toast.warning("Không được để trống!");
       return false;
     }
     return true;
@@ -39,13 +37,13 @@ export default function LoginPage() {
 
     try {
       setLoading(true);
-      const res = await login(formData.username, formData.password);
-      alert("Đăng nhập thành công!");
+      await login(formData.username, formData.password);
+      toast.success("Đăng nhập thành công!");
 
       router.replace("/admin/movies");
       // router.push("/admin"); // chuyển trang
-    } catch (err: any) {
-      alert(err.response?.data?.msg || "Đăng nhập thất bại!");
+    } catch {
+      toast.error("Đăng nhập thất bại!");
     } finally {
       setLoading(false);
     }

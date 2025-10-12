@@ -1,340 +1,510 @@
 "use client";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { CalendarIcon, X, Check, ChevronsUpDown, Plus } from "lucide-react";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
+import { getAllGenres } from "@/services/MovieService";
+import SuccessDialog from "./SuccessDialog";
+import ConfirmDialog from "./ConfirmDialog";
+import FailedDialog from "./FailedDialog";
+import { addMovie, updateMovie } from "@/services/MovieService";
+import RefreshLoader from "./Loading";
 
-import { useEffect, useMemo, useState } from "react";
-import { Combobox } from "@headlessui/react";
-import { FiSearch, FiX } from "react-icons/fi";
-import slugify from "slugify";
-import slugifyOption from "@/utils/slugifyOption";
-import ConfirmDialog from "@/components/ConfirmDialog";
-import SuccessDialog from "@/components/SuccessDialog";
-import RefreshLoader from "@/components/Loading";
-import { addMovie, getAllGenres } from "@/services/MovieService";
-
-type Genre = { id: string; name: string };
-type Film = {
+export type Genre = { id: string; name: string; [k: string]: unknown };
+export type Movie = {
   id?: string;
   title: string;
   description: string;
   duration: number;
-  releaseDate: string; // ISO
-  genres?: Genre[];
-  thumbnail?: string;
-  trailerUrl?: string;
+  rating?: number;
+  genres: Genre[];
+  trailerUrl?: string; // URL hiện có
+  thumbnail?: string; // URL hiện có
+  releaseDate?: string; // ISO
+  isActive?: boolean;
 };
 
-export default function FilmForm({
+export default function MovieForm({
   mode,
   film,
   onSuccess,
 }: {
   mode: "create" | "edit";
-  film?: Film;
+  film?: Movie;
   onSuccess?: () => void;
 }) {
-  // ======== Genres ========
+  // =============== State từ props (sync lại nếu props đổi) ===============
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [duration, setDuration] = useState<string>("");
+  const [releaseDate, setReleaseDate] = useState<Date | undefined>(undefined);
   const [genres, setGenres] = useState<Genre[]>([]);
-  const [selectedGenres, setSelectedGenres] = useState<Genre[]>(
-    film?.genres ?? []
-  );
-  const [query, setQuery] = useState("");
+  const [openGenreBox, setOpenGenreBox] = useState(false);
+  const [trailerUrl, setTrailerUrl] = useState<string>("");
+  const [thumbUrl, setThumbUrl] = useState<string | undefined>(undefined);
+  const [thumbFile, setThumbFile] = useState<File | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
+  const [trailerFile, setTrailerFile] = useState<File | null>(null);
+  const [trailerMode, setTrailerMode] = useState<"file" | "url">(
+    trailerFile ? "file" : trailerUrl ? "url" : "file"
+  );
+
+  const isValidUrl = (s: string) => {
+    try {
+      new URL(s);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const [allGenres, setAllGenres] = useState<Genre[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [failOpen, setFailOpen] = useState(false);
+  const [successOpen, setSuccessOpen] = useState(false);
+  const [dialogTitle, setDialogTitle] = useState("");
+  const [dialogMsg, setDialogMsg] = useState<React.ReactNode>("");
+
+  // đổ dữ liệu khi film đổi
+  useEffect(() => {
+    if (!film) return;
+    setTitle(film.title ?? "");
+    setDescription(film.description ?? "");
+    setDuration(film.duration ?? "");
+    setReleaseDate(film.releaseDate ? new Date(film.releaseDate) : undefined);
+    // setIsActive(Boolean(film.isActive));
+    setGenres(film.genres ?? []);
+    setTrailerUrl(film.trailerUrl ?? "");
+    setThumbUrl(film.thumbnail ?? undefined);
+  }, [film]);
+
+  // ======== fetch genres bên trong component ========
   useEffect(() => {
     (async () => {
       try {
         const res = await getAllGenres();
         const list: Genre[] = res?.data?.data ?? res?.data ?? [];
-        setGenres(list);
+        setAllGenres(list);
       } catch (e) {
         console.error("getAllGenres error", e);
       }
     })();
   }, []);
 
-  const filteredGenres =
-    query === ""
-      ? genres
-      : genres.filter((g) =>
-          slugify(g.name, slugifyOption).includes(slugify(query, slugifyOption))
-        );
+  // ======== thumbnail ========
+  const thumbPreview = useMemo(() => {
+    if (thumbFile) return URL.createObjectURL(thumbFile);
+    if (thumbUrl) return thumbUrl;
+    return "";
+  }, [thumbFile, thumbUrl]);
 
-  const addGenre = (g: Genre | null) => {
-    if (!g) return;
-    setSelectedGenres((prev) =>
+  const onPickThumb = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0] ?? null;
+    setThumbFile(f);
+    if (f) setThumbUrl(undefined); // tuỳ bạn: xoá URL cũ khi có file mới
+  };
+
+  // ======== trailer ========
+  const trailerPreview = useMemo(() => {
+    if (trailerFile) return URL.createObjectURL(trailerFile);
+    if (trailerUrl) return trailerUrl;
+    return "";
+  }, [trailerFile, trailerUrl]);
+
+  const onPickTrailer = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0] ?? null;
+    setTrailerFile(f);
+    if (f) {
+      setTrailerMode("file");
+      setTrailerUrl("");
+    } // chỉ 1 trong 2
+  };
+
+  const onChangeTrailerUrl = (v: string) => {
+    setTrailerUrl(v);
+    if (v.trim()) {
+      setTrailerMode("url");
+      setTrailerFile(null);
+    } // chỉ 1 trong 2
+  };
+
+  // ======== genre handlers ========
+  const addGenre = (g: Genre) =>
+    setGenres((prev) =>
       prev.some((x) => x.id === g.id) ? prev : [...prev, g]
     );
-  };
-  const removeGenre = (g: Genre) =>
-    setSelectedGenres((prev) => prev.filter((x) => x.id !== g.id));
+  const removeGenre = (id: string) =>
+    setGenres((prev) => prev.filter((g) => g.id !== id));
 
-  const genreIdsCsv = useMemo(
-    () => selectedGenres.map((g) => String(g.id)).join(","),
-    [selectedGenres]
-  );
+  // ======== validation ========
+  const baseValid =
+    !!title && !!description && !!duration && !!releaseDate && !!genres;
 
-  // ======== Form state ========
-  const [title, setTitle] = useState(film?.title ?? "");
-  const [description, setDescription] = useState(film?.description ?? "");
-  const [duration, setDuration] = useState(
-    film?.duration ? String(film.duration) : ""
-  );
-  const [releaseDate, setReleaseDate] = useState(
-    film?.releaseDate?.slice(0, 10) ?? "" // yyyy-mm-dd cho <input type="date">
-  );
-
-  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
-  const [trailerFile, setTrailerFile] = useState<File | null>(null);
-
-  const [thumbnailPreview, setThumbnailPreview] = useState<string>(
-    film?.thumbnail ?? ""
-  );
-  const [trailerPreview, setTrailerPreview] = useState<string>(
-    film?.trailerUrl ?? ""
-  );
+  const hasTrailer =
+    trailerMode === "file"
+      ? !!trailerFile
+      : !!trailerUrl && isValidUrl(trailerUrl);
 
   const isValid =
-    !!title &&
-    !!description &&
-    !!duration &&
-    !!releaseDate &&
-    !!genreIdsCsv &&
-    (mode === "edit" ? true : !!thumbnailFile && !!trailerFile);
+    mode === "create" ? baseValid && !!thumbFile && hasTrailer : baseValid;
 
-  // ======== Dialog / Loading ========
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [successOpen, setSuccessOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [dialogTitle, setDialogTitle] = useState("");
-  const [dialogMsg, setDialogMsg] = useState<React.ReactNode>("");
+  // ======== submit ========
+  const handleSubmit = async () => {
+    setConfirmOpen(false);
+    setLoading(true);
+    const fd = new FormData();
 
-  async function handleSubmit() {
+    fd.append("title", title);
+    fd.append("description", description);
+    fd.append("duration", String(Number(duration)));
+    if (releaseDate) {
+      const dateStr = format(releaseDate, "yyyy-MM-dd"); // "2025-10-08"
+      fd.append("releaseDate", dateStr);
+    }
+    fd.append("genres", JSON.stringify(genres.map((g) => g.id)));
+    // media
+    if (thumbFile) fd.append("thumbnail", thumbFile);
+    else if (thumbUrl) fd.append("thumbnailUrl", thumbUrl);
+    if (trailerFile) fd.append("trailer", trailerFile);
+    else if (trailerUrl) fd.append("trailerUrl", trailerUrl);
+
+    console.log(fd.get("duration"));
+
     try {
-      setConfirmOpen(false);
-      setLoading(true);
-
-      const fd = new FormData();
-      fd.append("title", title);
-      fd.append("description", description);
-      fd.append("duration", String(Number(duration)));
-      fd.append("releaseDate", releaseDate);
-      fd.append("genresIds", genreIdsCsv);
-      if (thumbnailFile) fd.append("thumbnail", thumbnailFile);
-      if (trailerFile) fd.append("trailer", trailerFile);
-
-      console.log(
-        fd.get("title"),
-        fd.get("description"),
-        fd.get("duration"),
-        fd.get("releaseDate"),
-        fd.get("genresIds"),
-        fd.get("thumbnail"),
-        fd.get("trailer")
-      );
-
-      await addMovie(fd);
-
-      setDialogTitle("Thành công");
-      setDialogMsg(
-        mode === "create" ? "Thêm phim thành công" : "Cập nhật thành công"
-      );
+      if (mode === "edit") {
+        await updateMovie(film?.id || "", fd);
+        setDialogTitle("Thành công");
+        setDialogMsg("Cập nhật thành công");
+      } else {
+        await addMovie(fd);
+        setDialogTitle("Thành công");
+        setDialogMsg("Tạo phim thành công");
+      }
       setSuccessOpen(true);
       onSuccess?.();
-    } catch (e: any) {
-      console.error(e);
+    } catch {
       setDialogTitle("Lỗi");
-      setDialogMsg(e?.response?.data?.message ?? "Thao tác thất bại.");
-      setSuccessOpen(true);
+      setDialogMsg("Thao tác thất bại.");
+      setFailOpen(true);
     } finally {
       setLoading(false);
     }
-  }
+  };
 
+  // =============== UI ===============
   return (
-    <div className="w-full min-h-screen px-4 md:px-6 py-6">
-      <h2 className="text-2xl font-bold mb-6">
-        {mode === "create" ? "Thêm mới phim" : "Chỉnh sửa phim"}
-      </h2>
-
-      {/* GRID 12 cột: Thumbnail dọc (4) | Trailer (4) | Thông tin (4) */}
-      <div className="grid grid-cols-12 gap-6">
-        {/* Thumbnail (vertical) */}
-        <div className="col-span-12 lg:col-span-4 space-y-3">
-          <label className="block text-sm font-medium">Thumbnail (file)</label>
-          <div className="w-full h-[540px] rounded-lg bg-gray-100 overflow-hidden border">
-            {thumbnailPreview ? (
-              <img
-                src={thumbnailPreview}
-                alt="thumbnail"
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-gray-400">
-                Xem trước thumbnail
-              </div>
-            )}
-          </div>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(e) => {
-              const f = e.target.files?.[0] ?? null;
-              setThumbnailFile(f);
-              setThumbnailPreview(
-                f ? URL.createObjectURL(f) : thumbnailPreview
-              );
-            }}
-            className="file:px-4 file:py-2 file:bg-gray-600 file:text-white file:rounded hover:file:bg-blue-700"
-          />
-        </div>
-
-        {/* Trailer */}
-        <div className="col-span-12 lg:col-span-4 space-y-3">
-          <label className="block text-sm font-medium">Trailer (file)</label>
-          <div className="w-full h-[320px] rounded-lg bg-gray-100 overflow-hidden border">
-            {trailerPreview ? (
-              <video src={trailerPreview} controls className="w-full h-full" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-gray-400">
-                Xem trước trailer
-              </div>
-            )}
-          </div>
-          <input
-            type="file"
-            accept="video/*"
-            onChange={(e) => {
-              const f = e.target.files?.[0] ?? null;
-              setTrailerFile(f);
-              setTrailerPreview(f ? URL.createObjectURL(f) : trailerPreview);
-            }}
-            className="file:px-4 file:py-2 file:bg-gray-600 file:text-white file:rounded hover:file:bg-blue-700"
-          />
-        </div>
-
-        {/* Thông tin */}
-        <div className="col-span-12 lg:col-span-4 space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Tiêu đề</label>
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg"
-              placeholder="VD: Thám tử lừng danh Conan"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Mô tả</label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={6}
-              className="w-full px-3 py-2 border rounded-lg"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Thời lượng (phút)
-              </label>
-              <input
-                inputMode="numeric"
-                value={duration}
-                onChange={(e) => setDuration(e.target.value)}
-                className="w-full px-3 py-2 border rounded-lg"
-                placeholder="95"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Ngày phát hành
-              </label>
-              <input
-                type="date"
-                lang="vi"
-                value={releaseDate}
-                onChange={(e) => setReleaseDate(e.target.value)}
-                className="w-full px-3 py-2 border rounded-lg"
-              />
-            </div>
-          </div>
-
-          {/* Genres multi-select */}
-          <div>
-            <label className="block text-sm font-medium mb-1">Thể loại</label>
-            <Combobox value={null} onChange={addGenre}>
-              <div className="relative">
-                <div className="relative w-full overflow-hidden rounded-lg bg-white text-left border focus-within:ring-2 focus-within:ring-blue-500">
-                  <Combobox.Input
-                    className="w-full border-none py-2 pl-3 pr-10 text-sm leading-5 text-gray-900 focus:outline-none"
-                    onChange={(e) => setQuery(e.target.value)}
-                    displayValue={() => ""}
-                    placeholder="Tìm thể loại…"
-                  />
-                  <Combobox.Button className="absolute inset-y-0 right-0 flex items-center pr-2">
-                    <FiSearch className="h-5 w-5 text-gray-400" />
-                  </Combobox.Button>
-                </div>
-                <Combobox.Options className="absolute mt-1 max-h-56 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black/5 focus:outline-none sm:text-sm z-10">
-                  {filteredGenres.length === 0 && query !== "" ? (
-                    <div className="cursor-default select-none py-2 px-4 text-gray-700">
-                      Không tìm thấy kết quả
-                    </div>
-                  ) : (
-                    filteredGenres.map((g) => (
-                      <Combobox.Option
-                        key={g.id}
-                        className={({ active }) =>
-                          `cursor-default select-none py-2 pl-10 pr-4 ${
-                            active ? "bg-blue-600 text-white" : "text-gray-900"
-                          }`
-                        }
-                        value={g}
-                      >
-                        {g.name}
-                      </Combobox.Option>
-                    ))
-                  )}
-                </Combobox.Options>
-              </div>
-            </Combobox>
-
-            <div className="mt-2 flex flex-wrap gap-2">
-              {selectedGenres.map((g) => (
-                <span
-                  key={g.id}
-                  className="inline-flex items-center bg-blue-100 text-blue-800 rounded-full px-3 py-1 text-sm"
-                >
-                  {g.name}
-                  <button
-                    onClick={() => removeGenre(g)}
-                    className="ml-2 text-blue-600 hover:text-blue-800"
-                    type="button"
-                  >
-                    <FiX className="w-4 h-4" />
-                  </button>
-                </span>
-              ))}
-            </div>
-
-            <p className="text-xs text-gray-500 mt-1">
-              Sẽ gửi: <code>genresIds="{genreIdsCsv}"</code>
-            </p>
-          </div>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {mode === "edit" ? "Chỉnh sửa phim" : "Thêm phim"}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Cập nhật poster, trailer và thông tin chi tiết.
+          </p>
         </div>
       </div>
 
-      {/* Actions */}
-      <div className="flex justify-end gap-3 mt-8">
-        <button
-          type="button"
-          onClick={() => history.back()}
-          className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
-        >
-          Hủy
-        </button>
-        <button
-          type="button"
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Left */}
+        <div className="lg:col-span-4 space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Thumbnail</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {/* 1) Ẩn input file */}
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={onPickThumb}
+              />
+
+              {/* 2) Ảnh đóng vai trò nút chọn file */}
+              <div
+                role="button"
+                tabIndex={0}
+                aria-label="Chọn/đổi ảnh thumbnail"
+                onClick={() => fileRef.current?.click()}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    fileRef.current?.click();
+                  }
+                }}
+                className="relative aspect-[3/4] overflow-hidden rounded-2xl border bg-muted cursor-pointer group"
+                title="Bấm để đổi ảnh"
+              >
+                {thumbPreview ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={thumbPreview}
+                    alt="Thumbnail"
+                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                  />
+                ) : (
+                  <div className="h-full w-full grid place-items-center text-muted-foreground">
+                    Bấm để chọn ảnh
+                  </div>
+                )}
+
+                {/* overlay nhắc người dùng */}
+                <div className="pointer-events-none absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                <div
+                  className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2
+                      rounded-full bg-white/90 px-3 py-1 text-xs font-medium shadow
+                      opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  Đổi ảnh
+                </div>
+              </div>
+
+              {/* 3) Nút xoá (tuỳ chọn) */}
+              {(thumbFile || thumbUrl) && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    setThumbFile(null);
+                    setThumbUrl(undefined);
+                    fileRef.current && (fileRef.current.value = "");
+                  }}
+                >
+                  Xoá ảnh
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right */}
+
+        <div className="lg:col-span-8 space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Thông tin</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xl">
+              <div className="md:col-span-2 space-y-2">
+                <Label>Tiêu đề</Label>
+                <Input
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                />
+              </div>
+
+              <div className="md:col-span-2 space-y-2">
+                <Label>Mô tả</Label>
+                <Textarea
+                  rows={5}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Thời lượng (phút)</Label>
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  value={duration}
+                  onChange={(e) => setDuration(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Ngày phát hành</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start",
+                        !releaseDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {releaseDate
+                        ? format(releaseDate, "dd/MM/yyyy")
+                        : "Chọn ngày"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={releaseDate}
+                      onSelect={(d) => setReleaseDate(d)}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="md:col-span-2">
+                <Label className="mb-2 inline-block">Thể loại</Label>
+
+                {/* các tag đã chọn */}
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {genres.map((g) => (
+                    <Badge
+                      key={g.id}
+                      variant="secondary"
+                      className="px-2 py-1 rounded-full"
+                    >
+                      {g.name}
+                      <button
+                        className="ml-2 opacity-70 hover:opacity-100"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          removeGenre(g.id);
+                        }}
+                        title="Bỏ chọn"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+
+                {/* Combobox tìm & chọn từ toàn bộ thể loại */}
+                <Popover open={openGenreBox} onOpenChange={setOpenGenreBox}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={openGenreBox}
+                      className="w-full justify-between"
+                    >
+                      {/* {genres.length
+                        ? `${genres.length} thể loại đã chọn`
+                        : "Tìm thể loại…"} */}
+                      Chọn thể loại
+                      <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+
+                  {/* chiều rộng = đúng chiều rộng trigger */}
+                  <PopoverContent
+                    align="start"
+                    className="p-0 w-[var(--radix-popover-trigger-width)]"
+                  >
+                    <Command>
+                      <CommandInput placeholder="Nhập từ khóa…" />
+                      <CommandList className="max-h-60 overflow-auto">
+                        <CommandEmpty>
+                          {genres.length === allGenres.length
+                            ? "Bạn đã chọn tất cả thể loại"
+                            : "Không tìm thấy thể loại"}
+                        </CommandEmpty>
+                        <CommandGroup heading="Thể loại">
+                          {allGenres
+                            .filter(
+                              (opt) => !genres.some((g) => g.id === opt.id)
+                            ) // loại trùng
+                            .map((opt) => (
+                              <CommandItem
+                                key={opt.id}
+                                value={opt.name}
+                                onSelect={() => {
+                                  addGenre(opt);
+                                  setOpenGenreBox(false); // đóng sau khi chọn
+                                }}
+                              >
+                                <Plus className="mr-2 h-4 w-4" />
+                                {opt.name}
+                              </CommandItem>
+                            ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Trailer </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="rounded-2xl overflow-hidden border bg-black">
+                {trailerPreview ? (
+                  // eslint-disable-next-line jsx-a11y/media-has-caption
+                  <video src={trailerPreview} controls className="w-full" />
+                ) : (
+                  <div className="aspect-video grid place-items-center text-muted-foreground">
+                    Chưa có trailer
+                  </div>
+                )}
+              </div>
+
+              {/* Upload file */}
+              <div className="flex items-center gap-3">
+                <Input
+                  type="file"
+                  accept="video/*"
+                  onChange={onPickTrailer}
+                  disabled={trailerMode === "url" && !!trailerUrl} // khóa khi đang nhập URL
+                />
+                {trailerFile && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => {
+                      setTrailerFile(null);
+                    }}
+                  >
+                    Xoá file
+                  </Button>
+                )}
+              </div>
+
+              {/* Hoặc dán URL */}
+              <div>
+                <Label className="mb-1 inline-block">Hoặc dán URL</Label>
+                <Input
+                  placeholder="https://…"
+                  value={trailerUrl}
+                  onChange={(e) => onChangeTrailerUrl(e.target.value)}
+                  disabled={trailerMode === "file" && !!trailerFile} // khóa khi đã chọn file
+                />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-end gap-2">
+        <Button variant="outline" onClick={() => history.back()}>
+          Huỷ
+        </Button>
+
+        <Button
           disabled={!isValid}
           onClick={() => {
             setDialogTitle(
@@ -345,14 +515,12 @@ export default function FilmForm({
             );
             setConfirmOpen(true);
           }}
-          className={`px-4 py-2 rounded-lg text-white ${
-            isValid
-              ? "bg-blue-600 hover:bg-blue-700"
-              : "bg-gray-400 cursor-not-allowed"
-          }`}
+          variant={isValid ? "default" : "ghost"}
+          title={isValid ? "" : "Điền đủ thông tin để lưu"}
         >
-          {mode === "create" ? "Thêm phim" : "Lưu"}
-        </button>
+          <Check className="mr-2 h-4 w-4" />
+          {mode === "edit" ? "Lưu thay đổi" : "Tạo phim"}
+        </Button>
       </div>
 
       <ConfirmDialog
@@ -365,6 +533,12 @@ export default function FilmForm({
       <SuccessDialog
         isOpen={successOpen}
         onClose={() => setSuccessOpen(false)}
+        title={dialogTitle}
+        message={dialogMsg}
+      />
+      <FailedDialog
+        isOpen={failOpen}
+        onClose={() => setFailOpen(false)}
         title={dialogTitle}
         message={dialogMsg}
       />
