@@ -2,13 +2,16 @@
 
 import { createContext, useContext, useState, ReactNode } from "react";
 import api from "@/config/api";
+import { getCookie, setCookie, deleteCookie } from "@/utils/auth";
 import { log } from "console";
+import { isAbsolute } from "path";
 
 interface User {
   id: string;
-  name: string;
+  fullname: string;
   email: string;
   role: string;
+  isActive: boolean;
 }
 
 interface AuthContextType {
@@ -40,8 +43,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setAccessToken(res.data.accessToken);
     setRefreshToken(res.data.refreshToken);
     localStorage.setItem("accessToken", res.data.accessToken);
-    localStorage.setItem("refreshToken", res.data.refreshToken);
-    document.cookie = `accessToken=${res.data.accessToken}; path=/; samesite=lax`;
+
+    setCookie("refreshToken", res.data.refreshToken, { path: "/" });
 
     // // Lưu vào localStorage nếu muốn giữ login sau reload
     // localStorage.setItem("accessToken", res.data.accessToken);
@@ -61,7 +64,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setRefreshToken(null);
     setUserDetail(null);
     localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
+    deleteCookie("refreshToken");
     localStorage.removeItem("resetEmail");
   };
 
@@ -86,7 +89,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         Authorization: `Bearer ${accessToken}`,
       },
     });
-    setUserDetail(res.data);
+    setUserDetail(res.data.data);
   };
 
   return (

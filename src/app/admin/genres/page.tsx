@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import Table from "@/components/Table";
+import Table, { Column } from "@/components/Table";
 import { FiEdit2, FiTrash2 } from "react-icons/fi";
 import { BiRefresh } from "react-icons/bi";
 import Dialog from "@/components/ConfirmDialog";
@@ -21,12 +21,6 @@ type Genre = {
   name: string;
   description: string;
   isActive: boolean;
-};
-
-type Column<T> = {
-  header: string;
-  key: keyof T | "actions";
-  render?: (value: T[keyof T], row: T) => React.ReactNode;
 };
 
 const GenresListPage: React.FC = () => {
@@ -164,7 +158,7 @@ const GenresListPage: React.FC = () => {
     {
       header: "Hành động",
       key: "actions",
-      render: (_: any, row) => (
+      render: (_: unknown, row: Genre) => (
         <div className="flex space-x-3">
           {row.isActive ? (
             <>
@@ -251,7 +245,13 @@ const GenresListPage: React.FC = () => {
       </div>
 
       <div className="bg-white rounded-lg shadow-sm overflow-x-auto">
-        <Table columns={columns as any} data={paginatedGenres} />
+        {/* <Table columns={columns as any} data={paginatedGenres} /> */}
+
+        <Table<Genre>
+          columns={columns}
+          data={paginatedGenres}
+          getRowKey={(r) => r.id}
+        />
 
         {filteredGenres.length > 0 && (
           <div className="flex items-center justify-between px-6 py-4 bg-gray-50">

@@ -36,7 +36,7 @@ const Navbar = () => {
     >
       <div className="flex items-center w-2/3">
         <p>
-          Xin chào {userDetail?.name || "Admin"}. Hôm nay là:{" "}
+          Xin chào {userDetail?.fullname || "Admin"}. Hôm nay là:{" "}
           {formatDateTime(time)}
         </p>
       </div>
