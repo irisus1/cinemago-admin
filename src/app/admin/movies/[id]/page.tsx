@@ -1,0 +1,45 @@
+"use client";
+
+import React, { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+import MovieForm from "@/components/MovieForm";
+import { getMovieById } from "@/services/MovieService";
+import type { Movie } from "@/lib/types";
+import ShowtimesCard from "./ShowTimeCard";
+
+export default function MovieDetailPage() {
+  const { id } = useParams<{ id: string }>();
+  const [movie, setMovie] = useState<Movie | null>(null);
+  const [loadingMovie, setLoadingMovie] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        setLoadingMovie(true);
+        const res = await getMovieById(id);
+        const data = res.data?.data as Movie;
+        if (!cancelled) setMovie(data);
+      } finally {
+        if (!cancelled) setLoadingMovie(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  return (
+    <div className="space-y-6">
+      <div>
+        {loadingMovie && (
+          <div className="text-sm text-gray-500">Đang tải chi tiết phim…</div>
+        )}
+        {movie && <MovieForm mode="view" readOnly film={movie} />}
+      </div>
+
+      {/* Suất chiếu (đã tách thành component riêng) */}
+      <ShowtimesCard movieId={id} />
+    </div>
+  );
+}
