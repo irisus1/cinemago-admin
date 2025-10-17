@@ -18,6 +18,7 @@ import {
   updateMovieStatus,
 } from "@/services/MovieService";
 import GenreMultiSelect from "@/components/GenreMultiSelect";
+import { Modal } from "@/components/Modal";
 
 // ===== Types =====
 type movie = {
@@ -48,7 +49,7 @@ const MoviesListPage: React.FC = () => {
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
   const [dialogTitle, setDialogTitle] = useState("");
   const [dialogMessage, setDialogMessage] = useState<React.ReactNode>("");
-  const [onConfirm, setOnConfirm] = useState<() => void>(() => () => {});
+  const [onConfirm, setOnConfirm] = useState<() => void>(() => () => { });
   const [globalLoading, setGlobalLoading] = useState(false);
   const [allGenres, setAllGenres] = useState<Genre[]>([]);
 
@@ -501,8 +502,8 @@ const MoviesListPage: React.FC = () => {
         const list = Array.isArray(value)
           ? (value as Genre[])
           : Array.isArray(row.genres)
-          ? row.genres
-          : undefined;
+            ? row.genres
+            : undefined;
         return list?.map((g) => g.name).join(", ") ?? "—";
       },
     },
@@ -559,11 +560,10 @@ const MoviesListPage: React.FC = () => {
               title="Làm mới"
             >
               <BiRefresh
-                className={`text-3xl ${
-                  globalLoading
-                    ? "animate-spin"
-                    : "hover:rotate-180 transition-transform duration-300"
-                }`}
+                className={`text-3xl ${globalLoading
+                  ? "animate-spin"
+                  : "hover:rotate-180 transition-transform duration-300"
+                  }`}
               />
             </button>
 
@@ -733,19 +733,36 @@ const MoviesListPage: React.FC = () => {
         )}
       </div>
 
-      <Dialog
+      {/* <Dialog
         isOpen={isConfirmDialogOpen}
         onClose={() => setIsConfirmDialogOpen(false)}
         onConfirm={onConfirm}
         title={dialogTitle}
         message={dialogMessage}
+      /> */}
+      <Modal
+        isOpen={isConfirmDialogOpen}
+        onClose={() =>setIsConfirmDialogOpen(false)}
+        type="info"
+        title={dialogTitle}
+        message={dialogMessage}
+        confirmText="Đóng"
       />
 
-      <SuccessDialog
+      {/* <SuccessDialog
         isOpen={isSuccessDialogOpen}
         onClose={() => setIsSuccessDialogOpen(false)}
         title={dialogTitle}
         message={dialogMessage}
+      /> */}
+
+      <Modal
+        isOpen={isSuccessDialogOpen}
+        onClose={() =>setIsSuccessDialogOpen(false)}
+        type="success"
+        title={dialogTitle}
+        message={dialogMessage}
+        confirmText="Đóng"
       />
 
       <RefreshLoader isOpen={globalLoading} />
