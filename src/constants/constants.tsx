@@ -10,6 +10,8 @@ import {
   FiUser,
   FiLock,
 } from "react-icons/fi";
+import { TbTheater } from "react-icons/tb";
+
 import { RxDashboard } from "react-icons/rx";
 
 export const adminTabs = [
@@ -24,9 +26,9 @@ export const adminTabs = [
     icon: <FiChrome className="w-6 h-6" />,
   },
   {
-    name: "Biểu đồ suất phim",
-    path: "/admin/film-show-management/chart",
-    icon: <FiCalendar className="w-6 h-6" />,
+    name: "Quản lý rạp chiếu phim",
+    path: "/admin/cinema",
+    icon: <TbTheater className="w-6 h-6" />,
   },
   {
     name: "Duyệt vé",
