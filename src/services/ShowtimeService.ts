@@ -14,3 +14,30 @@ export const getAllShowTimeByMovieId = (
   movieId: string,
   params?: { page?: number; limit?: number }
 ) => api.get(`/showtimes/by-movie/${movieId}`, { params });
+
+export const getShowTimeById = (id: string) => api.get(`/showtimes/${id}`);
+
+export const createShowTime = (data: {
+  movieId: string;
+  cinemaId: string;
+  roomId: string;
+  startTime: Date;
+  endTime: Date;
+}) => api.post("/showtimes", data);
+
+export const updateShowTime = (
+  id: string,
+  data: {
+    movieId: string;
+    cinemaId: string;
+    roomId: string;
+    startTime: Date;
+    endTime: Date;
+  }
+) => api.put(`/showtimes/${id}`, data);
+
+export const deleteShowTime = (id: string) =>
+  api.put(`/showtimes/archive/${id}`);
+
+export const restoreShowTime = (id: string) =>
+  api.put(`/showtimes/restore/${id}`);

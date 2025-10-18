@@ -1,18 +1,18 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import Table, { Column } from "@/components/Table";
-import { FiEdit2, FiTrash2 } from "react-icons/fi";
+import { FiEdit2, FiTrash2, FiEye } from "react-icons/fi";
 import { BiRefresh } from "react-icons/bi";
 import Dialog from "@/components/ConfirmDialog";
 import SuccessDialog from "@/components/SuccessDialog";
 import RefreshLoader from "@/components/Loading";
 import CinemaModal from "@/components/CinemaModal";
 import {
-  getAllCinema,
+  getAllCinemas,
   deleteCinema,
   restoreCinema,
-  getCinemaById,
 } from "@/services/CinemaService";
 
 // ===== Types =====
@@ -28,6 +28,7 @@ type Cinema = {
 };
 
 const GenresListPage: React.FC = () => {
+  const router = useRouter();
   // Data & filters
   const [cinemas, setCinemas] = useState<Cinema[]>([]);
   const [queryName, setQueryName] = useState("");
@@ -52,7 +53,7 @@ const GenresListPage: React.FC = () => {
   const fetchCinemas = async () => {
     try {
       setLoading(true);
-      const res = await getAllCinema();
+      const res = await getAllCinemas();
       const { data } = res.data; // tuỳ payload của bạn
       setCinemas(data ?? []);
     } catch (err) {
@@ -79,6 +80,10 @@ const GenresListPage: React.FC = () => {
   const handleEditOpen = (g: Cinema) => {
     setEditCinema(g);
     setOpen(true);
+  };
+
+  const handleViewNavigate = (g: Cinema) => {
+    router.push(`/admin/cinema/${g.id}`);
   };
 
   const handleRefresh = async () => {
@@ -177,6 +182,13 @@ const GenresListPage: React.FC = () => {
         <div className="flex space-x-3">
           {row.isActive ? (
             <>
+              <button
+                className="text-green-600 hover:text-green-800"
+                onClick={() => handleViewNavigate(row)}
+                title="Xem chi tiết"
+              >
+                <FiEye className="w-4 h-4" />
+              </button>
               <button
                 className="text-blue-600 hover:text-blue-800"
                 onClick={() => handleEditOpen(row)}

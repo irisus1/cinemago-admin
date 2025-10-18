@@ -19,6 +19,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { BiArrowBack } from "react-icons/bi";
 import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon, X, Check, ChevronsUpDown, Plus } from "lucide-react";
 import { format } from "date-fns";
@@ -47,9 +48,11 @@ export type Movie = {
 export default function MovieForm({
   mode,
   film,
+  readOnly = false,
   onSuccess,
 }: {
-  mode: "create" | "edit";
+  mode: "create" | "edit" | "view";
+  readOnly?: boolean;
   film?: Movie;
   onSuccess?: () => void;
 }) {
@@ -92,7 +95,7 @@ export default function MovieForm({
     if (!film) return;
     setTitle(film.title ?? "");
     setDescription(film.description ?? "");
-    setDuration(film.duration ?? "");
+    setDuration(film.duration ? String(film.duration) : "");
     setReleaseDate(film.releaseDate ? new Date(film.releaseDate) : undefined);
     // setIsActive(Boolean(film.isActive));
     setGenres(film.genres ?? []);
@@ -219,14 +222,26 @@ export default function MovieForm({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">
-            {mode === "edit" ? "Chỉnh sửa phim" : "Thêm phim"}
+            {mode === "edit"
+              ? "Chỉnh sửa phim"
+              : mode === "create"
+              ? "Thêm phim"
+              : "Xem chi tiết phim"}
           </h1>
-          <p className="text-sm text-muted-foreground">
-            Cập nhật poster, trailer và thông tin chi tiết.
-          </p>
         </div>
       </div>
-
+      {readOnly && (
+        <button
+          type="button"
+          onClick={() => history.back()}
+          className="inline-flex items-center gap-2 h-10 px-4 rounded-lg border hover:bg-gray-50 bg-white"
+          aria-label="Quay lại"
+          title="Quay lại"
+        >
+          <BiArrowBack className="text-xl" />
+          Quay lại
+        </button>
+      )}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left */}
         <div className="lg:col-span-4 space-y-6">
@@ -242,6 +257,7 @@ export default function MovieForm({
                 accept="image/*"
                 className="hidden"
                 onChange={onPickThumb}
+                disabled={readOnly}
               />
 
               {/* 2) Ảnh đóng vai trò nút chọn file */}
@@ -313,6 +329,7 @@ export default function MovieForm({
                 <Label>Tiêu đề</Label>
                 <Input
                   value={title}
+                  disabled={readOnly}
                   onChange={(e) => setTitle(e.target.value)}
                 />
               </div>
@@ -321,6 +338,7 @@ export default function MovieForm({
                 <Label>Mô tả</Label>
                 <Textarea
                   rows={5}
+                  disabled={readOnly}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                 />
@@ -332,6 +350,7 @@ export default function MovieForm({
                   type="number"
                   inputMode="numeric"
                   min={1}
+                  disabled={readOnly}
                   value={duration}
                   onChange={(e) => setDuration(e.target.value)}
                 />
@@ -343,6 +362,7 @@ export default function MovieForm({
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
+                      disabled={readOnly}
                       className={cn(
                         "w-full justify-start",
                         !releaseDate && "text-muted-foreground"
@@ -383,6 +403,7 @@ export default function MovieForm({
                           e.preventDefault();
                           removeGenre(g.id);
                         }}
+                        disabled={readOnly}
                         title="Bỏ chọn"
                       >
                         <X className="h-3 w-3" />
@@ -398,6 +419,7 @@ export default function MovieForm({
                       variant="outline"
                       role="combobox"
                       aria-expanded={openGenreBox}
+                      disabled={readOnly}
                       className="w-full justify-between"
                     >
                       {/* {genres.length
@@ -469,7 +491,7 @@ export default function MovieForm({
                   type="file"
                   accept="video/*"
                   onChange={onPickTrailer}
-                  disabled={trailerMode === "url" && !!trailerUrl} // khóa khi đang nhập URL
+                  disabled={(trailerMode === "url" && !!trailerUrl) || readOnly} // khóa khi đang nhập URL
                 />
                 {trailerFile && (
                   <Button
@@ -491,38 +513,40 @@ export default function MovieForm({
                   placeholder="https://…"
                   value={trailerUrl}
                   onChange={(e) => onChangeTrailerUrl(e.target.value)}
-                  disabled={trailerMode === "file" && !!trailerFile} // khóa khi đã chọn file
+                  disabled={
+                    (trailerMode === "file" && !!trailerFile) || readOnly
+                  } // khóa khi đã chọn file
                 />
               </div>
             </CardContent>
           </Card>
         </div>
       </div>
+      {readOnly ? null : (
+        <div className="flex items-center justify-end gap-2">
+          <Button variant="outline" onClick={() => history.back()}>
+            Huỷ
+          </Button>
 
-      <div className="flex items-center justify-end gap-2">
-        <Button variant="outline" onClick={() => history.back()}>
-          Huỷ
-        </Button>
-
-        <Button
-          disabled={!isValid}
-          onClick={() => {
-            setDialogTitle(
-              mode === "create" ? "Xác nhận thêm phim" : "Xác nhận cập nhật"
-            );
-            setDialogMsg(
-              mode === "create" ? "Thêm phim mới?" : "Lưu thay đổi?"
-            );
-            setConfirmOpen(true);
-          }}
-          variant={isValid ? "default" : "ghost"}
-          title={isValid ? "" : "Điền đủ thông tin để lưu"}
-        >
-          <Check className="mr-2 h-4 w-4" />
-          {mode === "edit" ? "Lưu thay đổi" : "Tạo phim"}
-        </Button>
-      </div>
-
+          <Button
+            disabled={!isValid}
+            onClick={() => {
+              setDialogTitle(
+                mode === "create" ? "Xác nhận thêm phim" : "Xác nhận cập nhật"
+              );
+              setDialogMsg(
+                mode === "create" ? "Thêm phim mới?" : "Lưu thay đổi?"
+              );
+              setConfirmOpen(true);
+            }}
+            variant={isValid ? "default" : "ghost"}
+            title={isValid ? "" : "Điền đủ thông tin để lưu"}
+          >
+            <Check className="mr-2 h-4 w-4" />
+            {mode === "edit" ? "Lưu thay đổi" : "Tạo phim"}
+          </Button>
+        </div>
+      )}
       <ConfirmDialog
         isOpen={confirmOpen}
         onClose={() => setConfirmOpen(false)}

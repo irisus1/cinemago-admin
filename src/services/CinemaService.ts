@@ -10,7 +10,7 @@ type CinemaCreate = {
 };
 
 // Lấy danh sách rạp chiếu
-export const getAllCinema = (params?: { page?: number; limit?: number }) =>
+export const getAllCinemas = (params?: { page?: number; limit?: number }) =>
   api.get("/cinemas/public", { params });
 
 // Lấy chi tiết rạp chiếu theo ID
