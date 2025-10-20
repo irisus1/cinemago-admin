@@ -10,11 +10,18 @@ import {
   FiUser,
   FiLock,
 } from "react-icons/fi";
+import { MdStars } from "react-icons/md";
 import { TbTheater } from "react-icons/tb";
+import { FaUserShield } from "react-icons/fa";
 
 import { RxDashboard } from "react-icons/rx";
 
 export const adminTabs = [
+  {
+    name: "Trang chủ",
+    path: "/admin/movies",
+    icon: <RxDashboard className="w-6 h-6" />,
+  },
   {
     name: "Quản lý phim",
     path: "/admin/movies",
@@ -31,48 +38,18 @@ export const adminTabs = [
     icon: <TbTheater className="w-6 h-6" />,
   },
   {
-    name: "Duyệt vé",
-    path: "/admin/ticket-management/print-list",
-    icon: <FiPackage className="w-6 h-6" />,
+    name: "Đánh giá phim",
+    path: "/admin/reviews",
+    icon: <MdStars className="w-6 h-6" />,
   },
   {
-    name: "Danh sách rạp phim",
-    path: "/admin/ticket-management/serve-list",
-    icon: <FiPackage className="w-6 h-6" />,
-  },
-  {
-    name: "Quản lý phòng",
-    path: "/admin/room-management",
-    icon: <FiList className="w-6 h-6" />,
-  },
-  {
-    name: "Báo cáo & Thống kê",
-    path: "/admin/statistic",
-    icon: <FiFile className="w-6 h-6" />,
-  },
-  {
-    name: "Quản lý sản phẩm ngoài",
-    path: "/admin/additionalItem",
-    icon: <FiGift className="w-6 h-6" />,
-  },
-  {
-    name: "Quản lý tài khoản",
-    path: "/admin/user-account",
-    icon: <RxDashboard className="w-6 h-6" />,
-  },
-  {
-    name: "Cài đặt hệ thống",
-    path: "/admin/admin-param",
-    icon: <FiShield className="w-6 h-6" />,
-  },
-  {
-    name: "Quản lý nhân viên",
-    path: "/admin/employee-management",
+    name: "Quản lý người dùng",
+    path: "/admin/users",
     icon: <FiUser className="w-6 h-6" />,
   },
   {
-    name: "Quản lý sự kiện",
-    path: "/admin/promotion-management",
-    icon: <FiLock className="w-6 h-6" />,
+    name: "Thông tin cá nhân",
+    path: "/admin/me",
+    icon: <FaUserShield className="w-6 h-6" />,
   },
 ];
