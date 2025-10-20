@@ -23,15 +23,29 @@ type Genre = {
   isActive: boolean;
 };
 
+type ApiPagination = {
+  totalItems: number;
+  totalPages: number;
+  currentPage: number;
+  pageSize: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+};
+type ApiResponse<T> = { pagination: ApiPagination; data: T[] };
+
 const GenresListPage: React.FC = () => {
   // Data & filters
   const [genres, setGenres] = useState<Genre[]>([]);
   const [queryName, setQueryName] = useState("");
-  const itemsPerPage = 7;
+  const [time, setTime] = useState("");
 
-  // UI state
-  const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
+
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(7);
+  const [pagination, setPagination] = useState<ApiPagination | null>(null);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
 
   // Modal (create/edit)
   const [open, setOpen] = useState(false);
@@ -45,14 +59,30 @@ const GenresListPage: React.FC = () => {
   const [onConfirm, setOnConfirm] = useState<() => void>(() => () => {});
 
   // ===== Data fetching =====
-  const fetchGenres = async () => {
+  const fetchGenres = async (toPage = page) => {
     try {
       setLoading(true);
-      const res = await getAllGenres();
-      const { data } = res.data; // tuỳ payload của bạn
+      const res = await getAllGenres({
+        page: toPage,
+        limit: pageSize,
+        search: queryName.trim() || undefined,
+      });
+      const { data, pagination } = res.data as ApiResponse<Genre>;
       setGenres(data ?? []);
-    } catch (err) {
-      console.error("Error fetching genres:", err);
+      setPagination(pagination ?? null);
+      setTotalPages(pagination?.totalPages ?? 1);
+      setTotalItems(pagination?.totalItems ?? 0);
+      if (pagination?.currentPage && pagination.currentPage !== page) {
+        setPage(pagination.currentPage); // đồng bộ nếu backend normalize
+      }
+      return { items: data ?? [], pagination };
+    } catch (e) {
+      console.error(e);
+      setGenres([]);
+      setPagination(null);
+      setTotalPages(1);
+      setTotalItems(0);
+      return { items: [], pagination: null };
     } finally {
       setLoading(false);
     }
@@ -60,11 +90,15 @@ const GenresListPage: React.FC = () => {
 
   useEffect(() => {
     fetchGenres();
-  }, []);
+  }, [page, queryName]);
+  useEffect(() => {
+    setPage(1);
+  }, [queryName]);
 
   useEffect(() => {
-    setCurrentPage(1);
-  }, [queryName]);
+    const t = setTimeout(() => setQueryName(time), 300);
+    return () => clearTimeout(t);
+  }, [time]);
 
   // ===== Handlers =====
   const handleAddOpen = () => {
@@ -97,19 +131,19 @@ const GenresListPage: React.FC = () => {
   const handleDelete = (g: Genre) => {
     openConfirm(
       "Xác nhận xóa",
-      <>
-        Bạn có chắc chắn muốn xóa thể loại này không?
-        <br />
-        Việc này không thể hoàn tác.
-      </>,
+      <>Bạn có chắc muốn xóa thể loại này không ?</>,
       async () => {
         setIsConfirmDialogOpen(false);
         try {
           await deleteGenre(g.id);
-          await fetchGenres();
+          // flip isActive tại chỗ
+          setGenres((prev) =>
+            prev.map((it) => (it.id === g.id ? { ...it, isActive: false } : it))
+          );
           setDialogTitle("Thành công");
-          setDialogMessage("Xóa thể loại thành công");
+          setDialogMessage("Đã xóa thể loại.");
           setIsSuccessDialogOpen(true);
+          // Nếu cần đồng bộ lại tổng số từ server thì gọi thêm: await fetchGenres();
         } catch (err) {
           alert("Thao tác thất bại: " + err);
         }
@@ -118,38 +152,24 @@ const GenresListPage: React.FC = () => {
   };
 
   const handleRestore = (g: Genre) => {
-    openConfirm(
-      "Xác nhận khôi phục",
-      <>Khôi phục thể loại này?</>,
-      async () => {
-        setIsConfirmDialogOpen(false);
-        try {
-          await restoreGenre(g.id);
-          await fetchGenres();
-          setDialogTitle("Thành công");
-          setDialogMessage("Khôi phục thể loại thành công");
-          setIsSuccessDialogOpen(true);
-        } catch (err) {
-          alert("Thao tác thất bại: " + err);
-        }
+    openConfirm("Xác nhận khôi phục", <>Khôi phục…</>, async () => {
+      setIsConfirmDialogOpen(false);
+      try {
+        await restoreGenre(g.id);
+        setGenres((prev) =>
+          prev.map((it) => (it.id === g.id ? { ...it, isActive: true } : it))
+        );
+        setDialogTitle("Thành công");
+        setDialogMessage("Khôi phục thể loại thành công");
+        setIsSuccessDialogOpen(true);
+        // cần thì gọi: await fetchGenres();
+      } catch (err) {
+        alert("Thao tác thất bại: " + err);
       }
-    );
+    });
   };
 
   const clearFilters = () => setQueryName("");
-
-  // ===== Filtering & pagination =====
-  const filteredGenres = useMemo(() => {
-    return genres.filter((f) =>
-      queryName ? f.name.toLowerCase().includes(queryName.toLowerCase()) : true
-    );
-  }, [genres, queryName]);
-
-  const totalPages = Math.ceil(filteredGenres.length / itemsPerPage) || 1;
-  const paginatedGenres = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage;
-    return filteredGenres.slice(start, start + itemsPerPage);
-  }, [filteredGenres, currentPage]);
 
   // ===== Table columns =====
   const columns: Column<Genre>[] = [
@@ -220,8 +240,8 @@ const GenresListPage: React.FC = () => {
               <input
                 type="text"
                 placeholder="Tên thể loại…"
-                value={queryName}
-                onChange={(e) => setQueryName(e.target.value)}
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
                 className="w-full px-4 py-2 rounded-lg focus:outline-none border"
               />
             </div>
@@ -247,27 +267,27 @@ const GenresListPage: React.FC = () => {
       <div className="bg-white rounded-lg shadow-sm overflow-x-auto">
         {/* <Table columns={columns as any} data={paginatedGenres} /> */}
 
-        <Table<Genre>
-          columns={columns}
-          data={paginatedGenres}
-          getRowKey={(r) => r.id}
-        />
+        <Table<Genre> columns={columns} data={genres} getRowKey={(r) => r.id} />
 
-        {filteredGenres.length > 0 && (
+        {totalItems > 0 && (
           <div className="flex items-center justify-between px-6 py-4 bg-gray-50">
             <button
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
+              onClick={() =>
+                pagination?.hasPrevPage && setPage((p) => Math.max(1, p - 1))
+              }
+              disabled={!pagination?.hasPrevPage || loading}
               className="px-4 py-2 text-sm text-gray-600 bg-white rounded-lg shadow-sm disabled:opacity-50"
             >
               Trước
             </button>
-            <span className="text-sm text-gray-600">
-              Trang {currentPage} trên {totalPages}
-            </span>
+
+            <div className="text-sm text-gray-600">
+              Trang {pagination?.currentPage ?? page} / {totalPages}
+            </div>
+
             <button
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
+              onClick={() => pagination?.hasNextPage && setPage((p) => p + 1)}
+              disabled={!pagination?.hasNextPage || loading}
               className="px-4 py-2 text-sm text-gray-600 bg-white rounded-lg shadow-sm disabled:opacity-50"
             >
               Tiếp

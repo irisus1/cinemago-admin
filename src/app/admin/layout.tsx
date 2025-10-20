@@ -6,7 +6,7 @@ import Sidebar from "@/components/Sidebar";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { adminTabs } from "@/constants/constants";
-import Breadcrumbs from "@/app/admin/Breadcrumbs";
+
 export default function AdminLayout({
   children,
 }: {
@@ -42,7 +42,7 @@ export default function AdminLayout({
       <div className="flex-1 overflow-auto">
         <div className="p-6">
           <Navbar />
-          <Breadcrumbs />
+
           {children}
         </div>
       </div>

@@ -1,4 +1,5 @@
 import api from "@/config/api";
+type ChangePasswordPayload = { oldPassword: string; newPassword: string };
 
 // Đăng nhập
 export const login = (email: string, password: string) =>
@@ -24,5 +25,5 @@ export const signup = (data: {
 }) => api.post("/auth/signup", data);
 
 // (nếu cần) Đổi mật khẩu khi đã login
-export const changePassword = (oldPassword: string, newPassword: string) =>
-  api.post("/auth/change-password", { oldPassword, newPassword });
+export const changePassword = (payload: ChangePasswordPayload) =>
+  api.post("/auth/change-password", payload);

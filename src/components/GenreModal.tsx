@@ -35,7 +35,7 @@ export default function GenreModal({
       setName("");
       setDescription("");
     }
-  }, [open, mode, genre?.id]);
+  }, [open, mode, genre]);
 
   async function handleSubmit() {
     if (!valid) return;

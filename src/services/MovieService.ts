@@ -26,7 +26,11 @@ export const deleteMovie = (id: string) => api.put(`/movies/archive/${id}`);
 export const restoreMovie = (id: string) => api.put(`/movies/restore/${id}`);
 
 // Lấy danh sách thể loại
-export const getAllGenres = () => api.get("/genres/public");
+export const getAllGenres = (params?: {
+  page?: number;
+  limit?: number;
+  search?: string;
+}) => api.get("/genres/public", { params });
 // Thêm thể loại
 export const addGenre = (data: { name: string; description: string }) =>
   api.post("/genres", data);
