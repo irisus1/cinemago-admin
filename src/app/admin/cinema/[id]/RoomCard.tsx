@@ -19,6 +19,7 @@ import Table, { Column } from "@/components/Table";
 import Dialog from "@/components/ConfirmDialog";
 import SuccessDialog from "@/components/SuccessDialog";
 import RoomModal from "@/components/RoomModal";
+import SeatLayoutBuilder from "./RoomLayout";
 
 // === Services (điều chỉnh theo project của bạn) ===
 import {
@@ -26,16 +27,10 @@ import {
   deleteRoom,
   restoreRoom,
 } from "@/services/RoomService";
+import type { Room } from "@/services/RoomService";
 import { se } from "date-fns/locale";
 
 // ===== Types =====
-export type Room = {
-  id: string;
-  name: string;
-  totalSeat: number;
-  created: string; // ISO date
-  isActive: boolean; // (nếu BE dùng isactive, map sang isActive ở service)
-};
 
 type ApiPagination = {
   totalItems: number;
@@ -72,6 +67,7 @@ export default function RoomCard({ cinemaId }: { cinemaId: string }) {
 
   // modal
   const [open, setOpen] = useState(false);
+  const [openRoom, setOpenRoom] = useState<Room | null>(null);
   const [editRoom, setEditRoom] = useState<Room | null>(null);
 
   // dialogs
@@ -100,6 +96,8 @@ export default function RoomCard({ cinemaId }: { cinemaId: string }) {
         search: search.trim() || undefined,
       });
       const payload = res.data as ApiResponse<Room>;
+      console.log("payload: ", payload);
+
       setRooms(payload?.data ?? []);
       setPagination(payload?.pagination ?? null);
       if (
@@ -132,10 +130,16 @@ export default function RoomCard({ cinemaId }: { cinemaId: string }) {
   }, [rooms, status]);
 
   // ===== handlers =====
+
+  const handleViewLayoutOpen = (r: Room) => {
+    setOpenRoom(r);
+  };
+
   const handleAddOpen = () => {
     setEditRoom(null);
     setOpen(true);
   };
+
   const handleEditOpen = (r: Room) => {
     setEditRoom(r);
     setOpen(true);
@@ -225,6 +229,8 @@ export default function RoomCard({ cinemaId }: { cinemaId: string }) {
             }).format(new Date(v as string))
           : "—",
     },
+    { header: "Ghế  VIP thêm", key: "vipPrice" },
+    { header: "Ghế đôi thêm", key: "couplePrice" },
     {
       header: "Trạng thái",
       key: "isActive",
@@ -243,7 +249,7 @@ export default function RoomCard({ cinemaId }: { cinemaId: string }) {
             <>
               <button
                 className="text-green-600 hover:text-green-800"
-                onClick={() => handleEditOpen(row)}
+                onClick={() => handleViewLayoutOpen(row)}
                 title="Xem layout phòng"
               >
                 <FiEye className="w-4 h-4" />
@@ -383,6 +389,15 @@ export default function RoomCard({ cinemaId }: { cinemaId: string }) {
           </div>
         )}
       </Card>
+
+      {openRoom && (
+        <div className="mt-6">
+          <SeatLayoutBuilder
+            seatLayout={openRoom.seatLayout} // <-- truyền layout của room
+            onChange={(data) => console.log("saved:", data)}
+          />
+        </div>
+      )}
 
       {/* Dialogs */}
       <Dialog

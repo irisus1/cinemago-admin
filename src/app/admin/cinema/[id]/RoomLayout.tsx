@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,10 +34,10 @@ const SEAT_TYPES = [
   },
 ] as const;
 
-// Helpers (no explicit boolean type declarations)
+// Helpers
 const toLetters = (n) => {
-  let s = "";
-  let num = n;
+  let s = "",
+    num = n;
   while (num > 0) {
     const r = (num - 1) % 26;
     s = String.fromCharCode(65 + r) + s;
@@ -45,17 +45,33 @@ const toLetters = (n) => {
   }
   return s;
 };
-
 const defaultRows = 5;
 const defaultCols = 8;
-
-// Cell structure: { type: 'regular' | 'vip' | 'double' | 'block', pairId?: string }
 const makeEmptyLayout = (r, c) =>
   Array.from({ length: r }, () =>
     Array.from({ length: c }, () => ({ type: "regular" }))
   );
 
-export default function SeatLayoutBuilder() {
+// Chuẩn hóa seatLayout về ma trận “đều cột”
+const normalizeGrid = (grid) => {
+  if (!Array.isArray(grid) || grid.length === 0)
+    return makeEmptyLayout(defaultRows, defaultCols);
+  const maxC = grid.reduce(
+    (m, row) => Math.max(m, Array.isArray(row) ? row.length : 0),
+    0
+  );
+  return grid.map((row) => {
+    const r = Array.isArray(row) ? row.slice() : [];
+    while (r.length < maxC) r.push({ type: "regular" });
+    return r;
+  });
+};
+
+// ✅ CHỈNH: nhận layout từ room
+export default function SeatLayoutBuilder({
+  seatLayout, // 2D array: [[{type, pairId?}, ...], ...]
+  onChange, // optional: nhận data khi bấm Lưu
+}) {
   const [rows, setRows] = useState(defaultRows);
   const [cols, setCols] = useState(defaultCols);
   const [pendingRows, setPendingRows] = useState(String(defaultRows));
@@ -65,26 +81,47 @@ export default function SeatLayoutBuilder() {
     makeEmptyLayout(defaultRows, defaultCols)
   );
 
-  // Recompute column headers when cols changes
+  // ✅ Hydrate khi seatLayout (từ room) thay đổi
+  useEffect(() => {
+    if (!seatLayout) return;
+    console.log(seatLayout);
+
+    const grid = normalizeGrid(seatLayout);
+    const rr = grid.length;
+    const cc = grid.reduce((m, r) => Math.max(m, r.length), 0);
+    setLayout(grid);
+    setRows(rr);
+    setCols(cc);
+    setPendingRows(String(rr));
+    setPendingCols(String(cc));
+  }, [seatLayout]);
+
   const colHeaders = useMemo(
     () => Array.from({ length: cols }, (_, i) => toLetters(i + 1)),
     [cols]
   );
 
+  // ✅ Resize nhưng giữ các ghế đã set (không reset toàn bộ)
   const generateLayout = () => {
     const r = Math.max(1, Math.min(40, parseInt(pendingRows || "1", 10)));
-    const c = Math.max(1, Math.min(52, parseInt(pendingCols || "1", 10))); // up to AZ
+    const c = Math.max(1, Math.min(52, parseInt(pendingCols || "1", 10)));
     setRows(r);
     setCols(c);
-    setLayout(makeEmptyLayout(r, c));
+    setLayout((prev) =>
+      Array.from({ length: r }, (_, i) =>
+        Array.from({ length: c }, (_, j) =>
+          prev[i]?.[j] ? { ...prev[i][j] } : { type: "regular" }
+        )
+      )
+    );
   };
 
   const unpairIfNeeded = (grid, rIdx, cIdx) => {
     const cell = grid[rIdx][cIdx];
-    if (!cell.pairId) return;
-    // Find partner (left or right)
+    if (!cell?.pairId) return;
     const left = cIdx > 0 ? grid[rIdx][cIdx - 1] : null;
-    const right = cIdx < cols - 1 ? grid[rIdx][cIdx + 1] : null;
+    const right =
+      cIdx < (grid[rIdx]?.length ?? 0) - 1 ? grid[rIdx][cIdx + 1] : null;
     if (left && left.pairId === cell.pairId) {
       left.pairId = undefined;
       if (left.type === "double") left.type = "regular";
@@ -99,17 +136,17 @@ export default function SeatLayoutBuilder() {
   const tryPairDouble = (grid, rIdx, cIdx) => {
     const cell = grid[rIdx][cIdx];
     if (cell.type === "block") return false;
-    if (cell.pairId) return true; // đã là 1 nửa cặp
+    if (cell.pairId) return true;
 
     const canUse = (rr, cc) =>
       rr >= 0 &&
       cc >= 0 &&
-      rr < rows &&
-      cc < cols &&
+      rr < grid.length &&
+      cc < grid[rr].length &&
       !grid[rr][cc].pairId &&
       grid[rr][cc].type !== "block";
 
-    // Ưu tiên ghế bên trái
+    // Ưu tiên bên trái
     if (canUse(rIdx, cIdx - 1)) {
       const pid = `R${rIdx + 1}C${cIdx - 1}-${cIdx}`;
       grid[rIdx][cIdx - 1].pairId = pid;
@@ -118,7 +155,7 @@ export default function SeatLayoutBuilder() {
       cell.type = "double";
       return true;
     }
-    // Nếu trái không được, thử bên phải
+    // Sau đó bên phải
     if (canUse(rIdx, cIdx + 1)) {
       const pid = `R${rIdx + 1}C${cIdx}-${cIdx + 1}`;
       grid[rIdx][cIdx + 1].pairId = pid;
@@ -136,24 +173,17 @@ export default function SeatLayoutBuilder() {
       const cell = next[rIdx][cIdx];
 
       if (selectedType === "double") {
-        // Nếu đang là cặp double rồi thì giữ nguyên
         if (!cell.pairId) {
           const ok = tryPairDouble(next, rIdx, cIdx);
-          if (!ok) {
-            // thông báo nếu không thể ghép
-            if (typeof window !== "undefined")
-              window.alert(
-                "Không thể tạo ghế đôi (không có ghế trống liền kề trái/phải)."
-              );
-          }
+          if (!ok && typeof window !== "undefined")
+            window.alert(
+              "Không thể tạo ghế đôi (không có ghế trống liền kề trái/phải)."
+            );
         }
         return next;
       }
 
-      // Nếu chuyển sang loại khác, cần gỡ cặp nếu có
       if (cell.pairId) unpairIfNeeded(next, rIdx, cIdx);
-
-      // Gán loại mới
       next[rIdx][cIdx].type = selectedType;
       return next;
     });
@@ -182,7 +212,10 @@ export default function SeatLayoutBuilder() {
           }))
         )
         .flat(),
+      grid: layout,
     };
+    if (onChange) onChange(data); // gửi ra cha nếu cần
+
     const blob = new Blob([JSON.stringify(data, null, 2)], {
       type: "application/json",
     });
@@ -196,25 +229,24 @@ export default function SeatLayoutBuilder() {
     URL.revokeObjectURL(url);
   };
 
-  // Helpers cho render double để nối 2 ghế
   const isLeftHalf = (rIdx, cIdx) => {
     const cell = layout[rIdx][cIdx];
-    if (!cell.pairId) return false;
-    const right = cIdx < cols - 1 ? layout[rIdx][cIdx + 1] : null;
-    return right && right.pairId === cell.pairId; // có bạn ở bên phải => mình là nửa trái
+    if (!cell?.pairId) return false;
+    const right =
+      cIdx < layout[rIdx].length - 1 ? layout[rIdx][cIdx + 1] : null;
+    return right && right.pairId === cell.pairId;
   };
   const isRightHalf = (rIdx, cIdx) => {
     const cell = layout[rIdx][cIdx];
-    if (!cell.pairId) return false;
+    if (!cell?.pairId) return false;
     const left = cIdx > 0 ? layout[rIdx][cIdx - 1] : null;
-    return left && left.pairId === cell.pairId; // có bạn ở bên trái => mình là nửa phải
+    return left && left.pairId === cell.pairId;
   };
 
   return (
     <div className="w-full p-6 space-y-6">
-      {/* Top Controls: 3 cards */}
+      {/* Card 1: loại ghế */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Card 1: chọn loại ghế */}
         <Card className="shadow-sm">
           <CardHeader>
             <CardTitle className="text-lg">1) Chọn loại ghế</CardTitle>
@@ -261,9 +293,9 @@ export default function SeatLayoutBuilder() {
                   type="number"
                   value={pendingRows}
                   onChange={(e) => setPendingRows(e.target.value)}
-                  placeholder="VD: 10"
                   min={1}
                   max={40}
+                  placeholder="VD: 10"
                 />
               </div>
               <div className="space-y-2">
@@ -272,9 +304,9 @@ export default function SeatLayoutBuilder() {
                   type="number"
                   value={pendingCols}
                   onChange={(e) => setPendingCols(e.target.value)}
-                  placeholder="VD: 12"
                   min={1}
                   max={52}
+                  placeholder="VD: 12"
                 />
               </div>
             </div>
@@ -293,7 +325,7 @@ export default function SeatLayoutBuilder() {
           </CardContent>
         </Card>
 
-        {/* Card 3: lưu / hủy */}
+        {/* Card 3: Lưu/Hủy */}
         <Card className="shadow-sm">
           <CardHeader>
             <CardTitle className="text-lg">3) Lưu & Hủy</CardTitle>
@@ -334,17 +366,16 @@ export default function SeatLayoutBuilder() {
         </div>
       </div>
 
-      {/* Screen indicator: nhỏ lại và căn giữa */}
+      {/* Screen */}
       <div className="w-full flex justify-center">
         <div className="w-1/2 max-w-xl h-2 bg-gray-300 rounded-full" />
       </div>
       <div className="text-center text-xs text-muted-foreground">Màn hình</div>
 
-      {/* Seat Grid: căn giữa */}
+      {/* Grid */}
       <div className="w-full flex justify-center">
         <div className="overflow-auto border rounded-2xl p-4 bg-white shadow-sm">
           <div className="inline-block">
-            {/* Column headers */}
             <div
               className="grid"
               style={{
@@ -362,7 +393,6 @@ export default function SeatLayoutBuilder() {
               ))}
             </div>
 
-            {/* Rows */}
             <div className="space-y-1">
               {layout.map((row, rIdx) => (
                 <div
@@ -372,18 +402,15 @@ export default function SeatLayoutBuilder() {
                     gridTemplateColumns: `3rem repeat(${cols}, minmax(2.25rem, 1fr))`,
                   }}
                 >
-                  {/* Row index */}
                   <div className="text-center text-xs font-medium text-muted-foreground">
                     {rIdx + 1}
                   </div>
-                  {/* Seats */}
                   {row.map((t, cIdx) => (
                     <button
                       key={cIdx}
                       onClick={() => applySeat(rIdx, cIdx)}
                       className={cn(
                         "h-8 border flex items-center justify-center text-[10px] font-semibold select-none leading-none transition-all",
-                        // nền theo loại
                         t.type === "regular" &&
                           "bg-gray-200 border-gray-300 hover:brightness-95",
                         t.type === "vip" &&
@@ -392,7 +419,6 @@ export default function SeatLayoutBuilder() {
                           "bg-teal-200 border-teal-300 hover:brightness-95",
                         t.type === "block" &&
                           "bg-red-200 border-red-300 hover:brightness-95",
-                        // bo góc để 2 ghế double liền nhau trông như 1 khối
                         t.type !== "double" && "rounded-lg",
                         t.type === "double" &&
                           isLeftHalf(rIdx, cIdx) &&
@@ -405,9 +431,9 @@ export default function SeatLayoutBuilder() {
                           !isRightHalf(rIdx, cIdx) &&
                           "rounded-lg"
                       )}
-                      title={`Ghế ${`${toLetters(cIdx + 1)}${rIdx + 1}`}${
-                        rIdx + 1
-                      } - ${t.type}${t.pairId ? " (double)" : ""}`}
+                      title={`Ghế ${toLetters(cIdx + 1)}${rIdx + 1} - ${
+                        t.type
+                      }${t.pairId ? " (double)" : ""}`}
                     >
                       {`${toLetters(cIdx + 1)}${rIdx + 1}`}
                     </button>

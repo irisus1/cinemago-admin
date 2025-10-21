@@ -9,7 +9,7 @@ export type SeatCell = {
 };
 
 export type Room = {
-  id?: string;
+  id: string;
   name: string;
   cinemaId: string;
   totalSeats?: number;
@@ -18,6 +18,8 @@ export type Room = {
   createdAt?: string;
   isActive?: boolean;
   seatLayout?: SeatCell[];
+  VIP?: number;
+  COUPLE?: number;
 };
 // Lấy danh sách phòng chiếu
 export const getRooms = (params?: {
