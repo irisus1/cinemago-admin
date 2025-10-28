@@ -26,6 +26,7 @@ interface AuthContextType {
     otp: string
   ) => Promise<void>;
   fetchEmployeeDetail: () => Promise<void>;
+  setUserDetail: (data: User) => void;
   logout: () => Promise<void>;
 }
 
@@ -34,7 +35,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState<string | null>(null);
-  const [userDetail, setUserDetail] = useState<User | null>(null);
+  const [userDetail, _setUserDetail] = useState<User | null>(null);
 
   const login = async (email: string, password: string) => {
     const res = await api.post("/auth/login", { email, password });
@@ -82,6 +83,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return res.data;
   };
 
+  const setUserDetail = (data: User) => {
+    _setUserDetail(data); // Hàm này dùng để cập nhật state userDetail
+  };
+
   const fetchEmployeeDetail = async () => {
     if (!accessToken) return;
     const res = await api.get("/users/profile", {
@@ -89,6 +94,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         Authorization: `Bearer ${accessToken}`,
       },
     });
+    console.log("auth: ", res);
+
     setUserDetail(res.data.data);
   };
 
@@ -102,6 +109,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         forgotPassword,
         resetPassword,
         logout,
+        setUserDetail,
         fetchEmployeeDetail,
       }}
     >

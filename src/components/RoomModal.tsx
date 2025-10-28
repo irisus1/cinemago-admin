@@ -16,7 +16,7 @@ import type { Room } from "@/services/RoomService";
 import { cn } from "@/lib/utils";
 
 // services tuỳ dự án bạn, đổi tên nếu khác
-import { createRoom, updateRoom } from "@/services/RoomService";
+import { createRoom, updateRoom, getRoomDetails } from "@/services/RoomService";
 
 export type RoomModalProps = {
   open: boolean;
@@ -64,7 +64,7 @@ export default function RoomModal({
   console.log(room);
 
   const [saving, setSaving] = useState(false);
-  const [showLayout, setShowLayout] = useState(false);
+  const [loading, setLoadingRoom] = useState(false);
 
   const [name, setName] = useState(room?.name ?? "");
   const [vipBonus, setVipBonus] = useState<number | "">(room?.vipPrice ?? 0);
@@ -74,22 +74,39 @@ export default function RoomModal({
 
   // reset khi mở / đổi room
   useEffect(() => {
-    if (!open) return;
-    setName(room?.name ?? "");
-    setVipBonus(room?.vipPrice ?? 0);
-    setCoupleBonus(room?.couplePrice ?? 0);
-  }, [open, room]);
+    if (!open || !room?.id) return;
+
+    (async () => {
+      try {
+        setLoadingRoom(true);
+        const res = await getRoomDetails(room.id); // { data: Room }
+        console.log(res);
+
+        const r = res.data.data;
+        setName(r?.name ?? "");
+        setVipBonus(Number(r?.VIP ?? 0));
+        setCoupleBonus(Number(r?.COUPLE ?? 0));
+      } catch (e) {
+        console.log("Không tải được thông tin phòng");
+      } finally {
+        setLoadingRoom(false);
+      }
+    })();
+  }, [open, room?.id]);
 
   const handleSave = async () => {
     if (!name.trim()) return;
     setSaving(true);
     try {
       const payload: Room = {
+        id: room?.id || "",
         cinemaId,
         name: name.trim(),
         vipPrice: Number(vipBonus || 0),
         couplePrice: Number(coupleBonus || 0),
       };
+
+      console.log("edit create payload: ", payload);
 
       if (mode === "create") {
         await createRoom({
@@ -169,7 +186,10 @@ export default function RoomModal({
             <Button variant="ghost" onClick={onClose} disabled={saving}>
               Hủy
             </Button>
-            <Button onClick={handleSave} disabled={saving || !name.trim()}>
+            <Button
+              onClick={handleSave}
+              disabled={saving || !name.trim() || loading}
+            >
               {saving
                 ? "Đang lưu..."
                 : mode === "create"

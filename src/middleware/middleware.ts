@@ -55,11 +55,11 @@ export async function middleware(req: NextRequest) {
 
   if (pathname === "/") {
     if (accessToken) {
-      return NextResponse.redirect(new URL("/admin/movies", req.url));
+      return NextResponse.redirect(new URL("/admin/dashboard", req.url));
     }
 
     if (!accessToken && refreshToken) {
-      const refreshed = await tryRefresh(req, "/admin/movies");
+      const refreshed = await tryRefresh(req, "/admin/dashboard");
       if (refreshed) return refreshed;
     }
 

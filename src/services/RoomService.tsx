@@ -21,6 +21,14 @@ export type Room = {
   VIP?: number;
   COUPLE?: number;
 };
+export type UpdateRoomDto = Partial<{
+  name: string;
+  cinemaId: string;
+  seatLayout: SeatCell[];
+  vipPrice: number;
+  couplePrice: number;
+}>;
+
 // Lấy danh sách phòng chiếu
 export const getRooms = (params?: {
   page?: number;
@@ -29,6 +37,11 @@ export const getRooms = (params?: {
   search?: string;
 }) => api.get("/rooms/public", { params });
 
+//lấy chi tiết phòng chiếu
+export const getRoomDetails = (roomId: string) => {
+  return api.get(`/rooms/public/${roomId}`);
+};
+
 // Tạo phòng chiếu
 export const createRoom = (data: Room) => {
   return api.post("/rooms", data);
@@ -36,7 +49,7 @@ export const createRoom = (data: Room) => {
 
 // Cập nhật phòng chiếu
 
-export const updateRoom = (id: string, data: Room) => {
+export const updateRoom = (id: string, data: UpdateRoomDto) => {
   return api.put(`/rooms/${id}`, data);
 };
 

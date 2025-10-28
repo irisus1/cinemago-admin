@@ -12,6 +12,11 @@ export type User = {
   createdAt?: string;
 };
 
+export type Updateuser = Omit<
+  User,
+  "id" | "email" | "password" | "role" | "createdAt" | "isActive"
+>;
+
 export const getMe = () => api.get("/users/profile");
 // Lấy danh sách người dùng
 export const getAllUsers = (params?: {
@@ -21,6 +26,10 @@ export const getAllUsers = (params?: {
   role?: string;
 }) => api.get("/users", { params });
 
+// Cập nhật thông tin cá nhân
+export const updateProfile = (data: FormData) => {
+  return api.put("/users/profile", data);
+};
 // Tạo người dùng
 export const createUser = (data: User) => {
   return api.post("/users", data);

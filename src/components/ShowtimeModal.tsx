@@ -19,6 +19,12 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { toast } from "sonner";
+import {
+  createShowTime,
+  updateShowTime,
+  ShowtimeCreateDto,
+} from "@/services/ShowtimeService";
 
 // ===== Types =====
 type Cinema = { id: string; name: string; provinceName?: string };
@@ -29,13 +35,13 @@ type ShowTime = {
   cinemaId: string;
   format: string;
   roomId: string;
+  movieId: string;
   roomName: string;
   startTime: string; // ISO
   endTime?: string; // ISO
   price?: number;
   status?: string;
   subtitle?: boolean;
-  // các field ngôn ngữ có thể khác nhau tùy backend:
   language?: string;
   isActive?: boolean;
 };
@@ -46,34 +52,13 @@ type Props = {
   mode: "create" | "edit";
   movieId: string;
   showtime?: ShowTime; // dùng khi edit
-  onSuccess?: () => void; // gọi sau khi create/update OK
+  onSuccess?: () => void; // callback sau khi lưu OK
 };
 
-// ===== Services (thay bằng service thực tế của bạn) =====
-async function getAllCinemas() {
-  return await fetch("/api/cinemas").then((r) => r.json());
-}
-async function getRoomsByCinemaId(cinemaId: string) {
-  return await fetch(`/api/cinemas/${cinemaId}/rooms`).then((r) => r.json());
-}
-async function createShowtime(movieId: string, body: Omit<ShowTime, "id">) {
-  const r = await fetch(`/api/movies/${movieId}/showtimes`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!r.ok) throw new Error("Create failed");
-  return r.json();
-}
-async function updateShowtime(showtimeId: string, body: Omit<ShowTime, "id">) {
-  const r = await fetch(`/api/showtimes/${showtimeId}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!r.ok) throw new Error("Update failed");
-  return r.json();
-}
+// ===== Services (dùng API có sẵn của bạn) =====
+import { getAllCinemas } from "@/services/CinemaService";
+import { getRooms } from "@/services/RoomService";
+// import { createShowtime, updateShowtime } from "@/services/ShowtimeService";
 
 // ===== Helpers =====
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -118,15 +103,17 @@ export default function ShowtimeModal({
       setRoomId(showtime.roomId ?? "");
       setPrice(showtime.price != null ? String(showtime.price) : "");
       const s = new Date(showtime.startTime);
-      const e = new Date(showtime.endTime ?? "");
+      const e = showtime.endTime ? new Date(showtime.endTime) : null;
       setStartDate(
         `${s.getFullYear()}-${pad(s.getMonth() + 1)}-${pad(s.getDate())}`
       );
       setStartTime(`${pad(s.getHours())}:${pad(s.getMinutes())}`);
       setEndDate(
-        `${e.getFullYear()}-${pad(e.getMonth() + 1)}-${pad(e.getDate())}`
+        e
+          ? `${e.getFullYear()}-${pad(e.getMonth() + 1)}-${pad(e.getDate())}`
+          : ""
       );
-      setEndTime(`${pad(e.getHours())}:${pad(e.getMinutes())}`);
+      setEndTime(e ? `${pad(e.getHours())}:${pad(e.getMinutes())}` : "");
       setLanguage(showtime.language ?? "English");
       setFormat(showtime.format ?? "2D");
       setSubtitle(Boolean(showtime.subtitle));
@@ -149,14 +136,19 @@ export default function ShowtimeModal({
   // Load cinemas khi mở modal
   useEffect(() => {
     if (!open) return;
-    let cancelled = false;
+    let alive = true;
     (async () => {
-      const res = await getAllCinemas();
-      const data: Cinema[] = res?.data?.data ?? res ?? [];
-      if (!cancelled) setCinemas(data);
+      try {
+        const res = await getAllCinemas();
+
+        const data = res.data.data ?? [];
+        if (alive) setCinemas(data);
+      } catch (e: any) {
+        if (alive) toast.error(e?.message || "Không tải được danh sách rạp");
+      }
     })();
     return () => {
-      cancelled = true;
+      alive = false;
     };
   }, [open]);
 
@@ -167,17 +159,22 @@ export default function ShowtimeModal({
       if (roomId) setRoomId("");
       return;
     }
-    let cancelled = false;
+    let alive = true;
     (async () => {
-      const res = await getRoomsByCinemaId(cinemaId);
-      const data: Room[] = res?.data?.data ?? res ?? [];
-      if (!cancelled) {
+      try {
+        const res = await getRooms({ cinemaId: cinemaId });
+        console.log(res);
+
+        const data = res.data.data ?? [];
+        if (!alive) return;
         setRooms(data);
         if (!data.some((r) => r.id === roomId)) setRoomId("");
+      } catch (e: any) {
+        if (alive) toast.error(e?.message || "Không tải được danh sách phòng");
       }
     })();
     return () => {
-      cancelled = true;
+      alive = false;
     };
   }, [open, cinemaId]);
 
@@ -194,27 +191,33 @@ export default function ShowtimeModal({
     if (!canSubmit) return;
     try {
       setLoading(true);
-      const body: Omit<ShowTime, "id"> = {
-        cinemaId,
+      const body: ShowtimeCreateDto = {
         roomId,
-        price: price === "" ? undefined : Number(price),
+        movieId,
+        price: Number(price),
         startTime: toIsoLocal(startDate, startTime),
         endTime: toIsoLocal(endDate, endTime),
         language,
         format,
         subtitle,
       };
+
+      console.log(body);
+
       if (mode === "edit" && showtime?.id) {
-        await updateShowtime(showtime.id, body);
+        await updateShowTime(showtime.id, body);
+        toast.success("Cập nhật suất chiếu thành công");
       } else {
-        await createShowtime(movieId, body);
+        await createShowTime(body);
+        toast.success("Tạo suất chiếu thành công");
       }
       onSuccess?.();
       onClose();
-    } catch (e) {
-      console.error(e);
-      // bạn có thể thay bằng toast
-      alert(`${mode === "edit" ? "Cập nhật" : "Tạo"} suất chiếu thất bại`);
+    } catch (e: any) {
+      toast.error(
+        e?.message ||
+          `${mode === "edit" ? "Cập nhật" : "Tạo"} suất chiếu thất bại`
+      );
     } finally {
       setLoading(false);
     }
@@ -253,7 +256,7 @@ export default function ShowtimeModal({
 
         {/* Form */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* 1) RẠP — 1 hàng, full width */}
+          {/* 1) RẠP — full width */}
           <div className="md:col-span-2 min-w-0">
             <Label>Rạp</Label>
             <Select value={cinemaId} onValueChange={setCinemaId}>
@@ -271,7 +274,7 @@ export default function ShowtimeModal({
             </Select>
           </div>
 
-          {/* 2) PHÒNG + GIÁ — cùng hàng */}
+          {/* 2) PHÒNG + GIÁ */}
           <div className="min-w-0">
             <Label>Phòng</Label>
             <Select
@@ -294,6 +297,7 @@ export default function ShowtimeModal({
               </SelectContent>
             </Select>
           </div>
+
           <div className="min-w-0">
             <Label>Giá (₫)</Label>
             <Input
@@ -305,7 +309,7 @@ export default function ShowtimeModal({
             />
           </div>
 
-          {/* 3) NGÀY/GIỜ BẮT ĐẦU — giữ nguyên */}
+          {/* 3) NGÀY/GIỜ BẮT ĐẦU */}
           <div className="min-w-0">
             <Label>Ngày bắt đầu</Label>
             <Input
@@ -325,7 +329,7 @@ export default function ShowtimeModal({
             />
           </div>
 
-          {/* 4) NGÀY/GIỜ KẾT THÚC — giữ nguyên */}
+          {/* 4) NGÀY/GIỜ KẾT THÚC */}
           <div className="min-w-0">
             <Label>Ngày kết thúc</Label>
             <Input
@@ -345,7 +349,7 @@ export default function ShowtimeModal({
             />
           </div>
 
-          {/* 5) NGÔN NGỮ + ĐỊNH DẠNG — cùng hàng */}
+          {/* 5) NGÔN NGỮ + ĐỊNH DẠNG */}
           <div className="min-w-0">
             <Label>Ngôn ngữ</Label>
             <Select value={language} onValueChange={setLanguage}>
@@ -375,7 +379,7 @@ export default function ShowtimeModal({
             </Select>
           </div>
 
-          {/* 6) PHỤ ĐỀ — 1 hàng, full width */}
+          {/* 6) PHỤ ĐỀ */}
           <div className="md:col-span-2">
             <div className="flex w-full items-center justify-between rounded-lg border p-3">
               <div className="min-w-0">

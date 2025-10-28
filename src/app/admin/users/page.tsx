@@ -44,7 +44,7 @@ const UsersListPage: React.FC = () => {
 
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(10);
+  const [pageSize] = useState(7);
   const [pagination, setPagination] = useState<ApiPagination | null>(null);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);

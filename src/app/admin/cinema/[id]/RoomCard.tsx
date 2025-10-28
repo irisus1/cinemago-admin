@@ -3,6 +3,8 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Toaster } from "@/components/ui/sonner";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -29,6 +31,7 @@ import {
 } from "@/services/RoomService";
 import type { Room } from "@/services/RoomService";
 import { se } from "date-fns/locale";
+import { set } from "date-fns";
 
 // ===== Types =====
 
@@ -48,6 +51,7 @@ type ApiResponse<T> = {
 
 export default function RoomCard({ cinemaId }: { cinemaId: string }) {
   // server data + paging
+
   const [rooms, setRooms] = useState<Room[]>([]);
   const [pagination, setPagination] = useState<ApiPagination | null>(null);
   const [page, setPage] = useState(1);
@@ -67,6 +71,7 @@ export default function RoomCard({ cinemaId }: { cinemaId: string }) {
 
   // modal
   const [open, setOpen] = useState(false);
+  const [openLayout, setOpenLayout] = useState(false);
   const [openRoom, setOpenRoom] = useState<Room | null>(null);
   const [editRoom, setEditRoom] = useState<Room | null>(null);
 
@@ -133,6 +138,7 @@ export default function RoomCard({ cinemaId }: { cinemaId: string }) {
 
   const handleViewLayoutOpen = (r: Room) => {
     setOpenRoom(r);
+    setOpenLayout(true);
   };
 
   const handleAddOpen = () => {
@@ -229,8 +235,6 @@ export default function RoomCard({ cinemaId }: { cinemaId: string }) {
             }).format(new Date(v as string))
           : "—",
     },
-    { header: "Ghế  VIP thêm", key: "vipPrice" },
-    { header: "Ghế đôi thêm", key: "couplePrice" },
     {
       header: "Trạng thái",
       key: "isActive",
@@ -390,14 +394,22 @@ export default function RoomCard({ cinemaId }: { cinemaId: string }) {
         )}
       </Card>
 
-      {openRoom && (
-        <div className="mt-6">
-          <SeatLayoutBuilder
-            seatLayout={openRoom.seatLayout} // <-- truyền layout của room
-            onChange={(data) => console.log("saved:", data)}
-          />
-        </div>
-      )}
+      <div className="mt-6">
+        <SeatLayoutBuilder
+          open={openLayout}
+          onClose={() => setOpenLayout(false)}
+          room={openRoom ?? undefined}
+          seatLayout={openRoom?.seatLayout}
+          notify={(msg) => toast.error(msg)}
+          onChange={async (seatLayout) => {
+            console.log("seatLayout to save:", seatLayout);
+            handleRefresh();
+            setOpenLayout(false);
+            // ví dụ gọi API cập nhật
+            // await api.put(`/rooms/${openRoom.id}`, { seatLayout });
+          }}
+        />
+      </div>
 
       {/* Dialogs */}
       <Dialog

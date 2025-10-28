@@ -1,26 +1,20 @@
-import {
-  FiFilm,
-  FiChrome,
-  FiCalendar,
-  FiPackage,
-  FiList,
-  FiFile,
-  FiGift,
-  FiShield,
-  FiUser,
-  FiLock,
-} from "react-icons/fi";
+import { FiFilm, FiChrome, FiUser } from "react-icons/fi";
 import { MdStars } from "react-icons/md";
 import { TbTheater } from "react-icons/tb";
 import { FaUserShield } from "react-icons/fa";
-
+import { LucideTicket } from "lucide-react";
 import { RxDashboard } from "react-icons/rx";
 
 export const adminTabs = [
   {
     name: "Trang chủ",
-    path: "/admin/movies",
+    path: "/admin/dashboard",
     icon: <RxDashboard className="w-6 h-6" />,
+  },
+  {
+    name: "Đặt vé trực tiếp",
+    path: "/admin/ticket",
+    icon: <LucideTicket className="w-6 h-6" />,
   },
   {
     name: "Quản lý phim",
