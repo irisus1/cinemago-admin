@@ -15,7 +15,7 @@ export interface Cinema {
 
 export type CinemaPublic = Pick<
   Cinema,
-  "id" | "name" | "city" | "address" | "longitude" | "latitude"
+  "id" | "name" | "city" | "address" | "longitude" | "latitude" | "isActive"
 >;
 
 export type PageParams = {

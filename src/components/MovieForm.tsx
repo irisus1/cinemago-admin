@@ -24,14 +24,13 @@ import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon, X, Check, ChevronsUpDown, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { getAllGenres } from "@/services/MovieService";
 import SuccessDialog from "./SuccessDialog";
 import ConfirmDialog from "./ConfirmDialog";
 import FailedDialog from "./FailedDialog";
 import { addMovie, updateMovie } from "@/services/MovieService";
 import RefreshLoader from "./Loading";
+import { genreService, type Genre } from "@/services";
 
-export type Genre = { id: string; name: string; [k: string]: unknown };
 export type Movie = {
   id?: string;
   title: string;
@@ -107,8 +106,8 @@ export default function MovieForm({
   useEffect(() => {
     (async () => {
       try {
-        const res = await getAllGenres();
-        const list: Genre[] = res?.data?.data ?? res?.data ?? [];
+        const res = await genreService.getAllGenres();
+        const list: Genre[] = res?.data ?? [];
         setAllGenres(list);
       } catch (e) {
         console.error("getAllGenres error", e);

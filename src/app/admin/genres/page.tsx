@@ -9,29 +9,9 @@ import Dialog from "@/components/ConfirmDialog";
 import SuccessDialog from "@/components/SuccessDialog";
 import RefreshLoader from "@/components/Loading";
 import GenreModal from "@/components/GenreModal";
-import {
-  getAllGenres,
-  deleteGenre,
-  restoreGenre,
-} from "@/services/MovieService";
+import { genreService, type Genre, PaginationMeta } from "@/services";
 
 // ===== Types =====
-type Genre = {
-  id: string;
-  name: string;
-  description: string;
-  isActive: boolean;
-};
-
-type ApiPagination = {
-  totalItems: number;
-  totalPages: number;
-  currentPage: number;
-  pageSize: number;
-  hasNextPage: boolean;
-  hasPrevPage: boolean;
-};
-type ApiResponse<T> = { pagination: ApiPagination; data: T[] };
 
 const GenresListPage: React.FC = () => {
   // Data & filters
@@ -43,7 +23,7 @@ const GenresListPage: React.FC = () => {
 
   const [page, setPage] = useState(1);
   const [pageSize] = useState(7);
-  const [pagination, setPagination] = useState<ApiPagination | null>(null);
+  const [pagination, setPagination] = useState<PaginationMeta | null>(null);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
 
@@ -62,12 +42,14 @@ const GenresListPage: React.FC = () => {
   const fetchGenres = async (toPage = page) => {
     try {
       setLoading(true);
-      const res = await getAllGenres({
+      const { data, pagination } = await genreService.getAllGenres({
         page: toPage,
         limit: pageSize,
         search: queryName.trim() || undefined,
       });
-      const { data, pagination } = res.data as ApiResponse<Genre>;
+
+      console.log(data, pagination);
+
       setGenres(data ?? []);
       setPagination(pagination ?? null);
       setTotalPages(pagination?.totalPages ?? 1);
@@ -135,7 +117,7 @@ const GenresListPage: React.FC = () => {
       async () => {
         setIsConfirmDialogOpen(false);
         try {
-          await deleteGenre(g.id);
+          await genreService.deleteGenre(g.id);
           // flip isActive tại chỗ
           setGenres((prev) =>
             prev.map((it) => (it.id === g.id ? { ...it, isActive: false } : it))
@@ -155,7 +137,7 @@ const GenresListPage: React.FC = () => {
     openConfirm("Xác nhận khôi phục", <>Khôi phục…</>, async () => {
       setIsConfirmDialogOpen(false);
       try {
-        await restoreGenre(g.id);
+        await genreService.restoreGenre(g.id);
         setGenres((prev) =>
           prev.map((it) => (it.id === g.id ? { ...it, isActive: true } : it))
         );
@@ -177,9 +159,10 @@ const GenresListPage: React.FC = () => {
     { header: "Mô tả", key: "description" },
     {
       header: "Hành động",
+      className: "w-[120px] text-right",
       key: "actions",
       render: (_: unknown, row: Genre) => (
-        <div className="flex space-x-3">
+        <div className="flex gap-2 items-center">
           {row.isActive ? (
             <>
               <button
@@ -265,8 +248,6 @@ const GenresListPage: React.FC = () => {
       </div>
 
       <div className="bg-white rounded-lg shadow-sm overflow-x-auto">
-        {/* <Table columns={columns as any} data={paginatedGenres} /> */}
-
         <Table<Genre> columns={columns} data={genres} getRowKey={(r) => r.id} />
 
         {totalItems > 0 && (

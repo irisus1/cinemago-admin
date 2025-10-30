@@ -14,9 +14,9 @@ import {
   getAllMovies,
   deleteMovie,
   restoreMovie,
-  getAllGenres,
   updateMovieStatus,
 } from "@/services/MovieService";
+import { genreService, movieService, type Movie } from "@/services";
 import GenreMultiSelect from "@/components/GenreMultiSelect";
 import { Modal } from "@/components/Modal";
 import { X } from "lucide-react";
@@ -105,18 +105,8 @@ const MoviesListPage: React.FC = () => {
   }
 
   const fetchPage = useCallback(async (p: number) => {
-    const res = await getAllMovies({ page: p, limit });
-    const { data, pagination } = res.data as {
-      data: movie[];
-      pagination: {
-        totalItems: number;
-        totalPages: number;
-        currentPage: number;
-        pageSize: number;
-        hasNextPage: boolean;
-        hasPrevPage: boolean;
-      };
-    };
+    const res = await movieService.getAllMovies({ page: p, limit });
+    const { data, pagination } = res;
     console.log(data);
 
     return { data: data ?? [], pagination };
@@ -303,9 +293,9 @@ const MoviesListPage: React.FC = () => {
         setGlobalLoading(true);
 
         // Tùy API của bạn: ví dụ trả { data: Genre[] }
-        const res = await getAllGenres();
+        const res = await genreService.getAllGenres();
 
-        const list: Genre[] = res.data?.data as Genre[];
+        const list: Genre[] = res.data ?? [];
 
         if (!cancelled) setAllGenres(list);
       } catch {

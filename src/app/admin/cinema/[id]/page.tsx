@@ -9,17 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { MapPin, Globe2 } from "lucide-react";
 import { BiArrowBack } from "react-icons/bi";
-import { getCinemaById } from "@/services/CinemaService";
+import { cinemaService, type Cinema } from "@/services";
 import RoomCard from "./RoomCard";
-
-type Cinema = {
-  id: string;
-  name: string;
-  city: string;
-  address: string;
-  latitude: number | string;
-  longitude: number | string;
-};
 
 export default function CinemaDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -31,8 +22,8 @@ export default function CinemaDetailPage() {
     (async () => {
       try {
         setLoading(true);
-        const res = await getCinemaById(id);
-        const data = res?.data?.data as Cinema;
+        const res = await cinemaService.getCinemaById(id);
+        const data = res;
         if (!cancelled) setCinema(data);
       } finally {
         if (!cancelled) setLoading(false);

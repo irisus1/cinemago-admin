@@ -4,7 +4,7 @@ export { cinemaService } from "./cinema.service";
 export { userService } from "./user.service";
 export { genreService } from "./genre.service";
 export { movieService } from "./movie.service";
-export { showtimeService } from "./showtime.service";
+export { showTimeService } from "./showtime.service";
 export { roomService } from "./room.service";
 
 // Export types
@@ -27,10 +27,10 @@ export type {
   UpdateCinemaRequest,
 } from "./cinema.service";
 
-export type { Genre } from "./genre.service";
+export type { Genre, PaginationMeta } from "./genre.service";
 
 export type { Movie, MovieQuery } from "./movie.service";
 
-export type { Showtime, ShowtimeQuery } from "./showtime.service";
+export type { ShowTime, ShowTimeQuery } from "./showtime.service";
 
 export type { Room, RoomQuery, RoomCreate, RoomUpdate } from "./room.service";

@@ -1,11 +1,13 @@
 import api from "@/config/api";
 import axios from "axios";
+import { is } from "date-fns/locale";
 
 // ==== Types ====
 export interface Genre {
   id: string;
   name: string;
   description: string;
+  isActive: boolean;
 }
 
 export type PageParams = {

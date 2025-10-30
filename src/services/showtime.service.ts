@@ -2,11 +2,13 @@ import api from "@/config/api";
 import axios from "axios";
 
 // ===== Types =====
-export interface Showtime {
+export interface ShowTime {
   id: string;
   movieId: string;
   cinemaId: string;
+  cinemaName?: string;
   roomId: string;
+  roomName?: string;
   startTime: string; // ISO string
   endTime: string; // ISO string
   price: number;
@@ -14,11 +16,12 @@ export interface Showtime {
   subtitle: boolean;
   format: string; // e.g. "2D", "3D", "IMAX"
   isActive: boolean;
+  status?: string;
   createdAt?: string;
   updatedAt?: string;
 }
 
-export type ShowtimeQuery = {
+export type ShowTimeQuery = {
   page?: number;
   limit?: number;
   movieId?: string;
@@ -55,14 +58,14 @@ function toIso(value?: Date | string): string | undefined {
 }
 
 // ===== Service =====
-class ShowtimeService {
-  // GET /showtimes/public -> { pagination, data }
-  async getShowtimes(
-    params?: ShowtimeQuery
-  ): Promise<ServerPaginated<Showtime>> {
+class ShowTimeService {
+  // GET /ShowTimes/public -> { pagination, data }
+  async getShowTimes(
+    params?: ShowTimeQuery
+  ): Promise<ServerPaginated<ShowTime>> {
     try {
-      const { data } = await api.get<ServerPaginated<Showtime>>(
-        "/showtimes/public",
+      const { data } = await api.get<ServerPaginated<ShowTime>>(
+        "/ShowTimes/public",
         {
           params: {
             ...params,
@@ -74,43 +77,43 @@ class ShowtimeService {
       return data;
     } catch (e: unknown) {
       const msg = getMsg(e, "Không thể lấy danh sách suất chiếu.");
-      console.error("Get showtimes error:", e);
+      console.error("Get ShowTimes error:", e);
       throw new Error(msg);
     }
   }
 
-  // (tuỳ BE có route này) GET /showtimes/by-movie/:movieId -> { pagination, data }
-  async getAllShowtimeByMovieId(
+  // (tuỳ BE có route này) GET /ShowTimes/by-movie/:movieId -> { pagination, data }
+  async getAllShowTimeByMovieId(
     movieId: string,
     params?: { page?: number; limit?: number }
-  ): Promise<ServerPaginated<Showtime>> {
+  ): Promise<ServerPaginated<ShowTime>> {
     try {
-      const { data } = await api.get<ServerPaginated<Showtime>>(
-        `/showtimes/by-movie/${movieId}`,
+      const { data } = await api.get<ServerPaginated<ShowTime>>(
+        `/ShowTimes/by-movie/${movieId}`,
         { params }
       );
       return data;
     } catch (e: unknown) {
       const msg = getMsg(e, "Không thể lấy suất chiếu theo phim.");
-      console.error("Get showtimes by movie error:", e);
+      console.error("Get ShowTimes by movie error:", e);
       throw new Error(msg);
     }
   }
 
-  // GET /showtimes/:id -> { data }
-  async getShowtimeById(id: string): Promise<Showtime> {
+  // GET /ShowTimes/:id -> { data }
+  async getShowTimeById(id: string): Promise<ShowTime> {
     try {
-      const { data } = await api.get<{ data: Showtime }>(`/showtimes/${id}`);
+      const { data } = await api.get<{ data: ShowTime }>(`/ShowTimes/${id}`);
       return data.data;
     } catch (e: unknown) {
       const msg = getMsg(e, "Không thể lấy thông tin suất chiếu.");
-      console.error("Get showtime detail error:", e);
+      console.error("Get ShowTime detail error:", e);
       throw new Error(msg);
     }
   }
 
-  // POST /showtimes -> { data }
-  async createShowtime(payload: {
+  // POST /ShowTimes -> { data }
+  async createShowTime(payload: {
     movieId: string;
     roomId: string;
     startTime: Date | string;
@@ -119,24 +122,24 @@ class ShowtimeService {
     language: string;
     subtitle: boolean;
     format: string;
-  }): Promise<Showtime> {
+  }): Promise<ShowTime> {
     try {
       const body = {
         ...payload,
         startTime: toIso(payload.startTime)!,
         endTime: toIso(payload.endTime)!,
       };
-      const { data } = await api.post<{ data: Showtime }>("/showtimes", body);
+      const { data } = await api.post<{ data: ShowTime }>("/ShowTimes", body);
       return data.data;
     } catch (e: unknown) {
       const msg = getMsg(e, "Không thể tạo suất chiếu.");
-      console.error("Create showtime error:", e);
+      console.error("Create ShowTime error:", e);
       throw new Error(msg);
     }
   }
 
-  // PUT /showtimes/:id -> { data }
-  async updateShowtime(
+  // PUT /ShowTimes/:id -> { data }
+  async updateShowTime(
     id: string,
     payload: Partial<{
       movieId: string;
@@ -149,50 +152,50 @@ class ShowtimeService {
       format: string;
       isActive: boolean;
     }>
-  ): Promise<Showtime> {
+  ): Promise<ShowTime> {
     try {
       const body = {
         ...payload,
         startTime: toIso(payload.startTime),
         endTime: toIso(payload.endTime),
       };
-      const { data } = await api.put<{ data: Showtime }>(
-        `/showtimes/${id}`,
+      const { data } = await api.put<{ data: ShowTime }>(
+        `/ShowTimes/${id}`,
         body
       );
       return data.data;
     } catch (e: unknown) {
       const msg = getMsg(e, "Không thể cập nhật suất chiếu.");
-      console.error("Update showtime error:", e);
+      console.error("Update ShowTime error:", e);
       throw new Error(msg);
     }
   }
 
-  // PUT /showtimes/archive/:id -> string
-  async deleteShowtime(id: string): Promise<string> {
+  // PUT /ShowTimes/archive/:id -> string
+  async deleteShowTime(id: string): Promise<string> {
     try {
-      const { data } = await api.put<string>(`/showtimes/archive/${id}`);
+      const { data } = await api.put<string>(`/ShowTimes/archive/${id}`);
       return data;
     } catch (e: unknown) {
       const msg = getMsg(e, "Không thể xóa (archive) suất chiếu.");
-      console.error("Archive showtime error:", e);
+      console.error("Archive ShowTime error:", e);
       throw new Error(msg);
     }
   }
 
-  // PUT /showtimes/restore/:id -> string
-  async restoreShowtime(id: string): Promise<string> {
+  // PUT /ShowTimes/restore/:id -> string
+  async restoreShowTime(id: string): Promise<string> {
     try {
-      const { data } = await api.put<string>(`/showtimes/restore/${id}`);
+      const { data } = await api.put<string>(`/ShowTimes/restore/${id}`);
       return data;
     } catch (e: unknown) {
       const msg = getMsg(e, "Không thể khôi phục suất chiếu.");
-      console.error("Restore showtime error:", e);
+      console.error("Restore ShowTime error:", e);
       throw new Error(msg);
     }
   }
 
-  // GET /showtimes/busy-rooms -> { data: string[] }
+  // GET /ShowTimes/busy-rooms -> { data: string[] }
   async getBusyRoomIds(params: {
     startTime: Date | string;
     endTime: Date | string;
@@ -200,7 +203,7 @@ class ShowtimeService {
   }): Promise<string[]> {
     try {
       const { data } = await api.get<{ data: string[] }>(
-        "/showtimes/busy-rooms",
+        "/ShowTimes/busy-rooms",
         {
           params: {
             ...params,
@@ -218,4 +221,4 @@ class ShowtimeService {
   }
 }
 
-export const showtimeService = new ShowtimeService();
+export const showTimeService = new ShowTimeService();

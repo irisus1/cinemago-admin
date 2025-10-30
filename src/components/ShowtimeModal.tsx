@@ -21,30 +21,15 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
-  createShowTime,
-  updateShowTime,
-  ShowtimeCreateDto,
-} from "@/services/ShowtimeService";
+  cinemaService,
+  showTimeService,
+  roomService,
+  type Cinema,
+  ShowTime,
+} from "@/services";
 
 // ===== Types =====
-type Cinema = { id: string; name: string; provinceName?: string };
 type Room = { id: string; name: string; seats?: number };
-type ShowTime = {
-  id?: string;
-  cinemaName: string;
-  cinemaId: string;
-  format: string;
-  roomId: string;
-  movieId: string;
-  roomName: string;
-  startTime: string; // ISO
-  endTime?: string; // ISO
-  price?: number;
-  status?: string;
-  subtitle?: boolean;
-  language?: string;
-  isActive?: boolean;
-};
 
 type Props = {
   open: boolean;
@@ -54,11 +39,6 @@ type Props = {
   showtime?: ShowTime; // dùng khi edit
   onSuccess?: () => void; // callback sau khi lưu OK
 };
-
-// ===== Services (dùng API có sẵn của bạn) =====
-import { getAllCinemas } from "@/services/CinemaService";
-import { getRooms } from "@/services/RoomService";
-// import { createShowtime, updateShowtime } from "@/services/ShowtimeService";
 
 // ===== Helpers =====
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -139,9 +119,9 @@ export default function ShowtimeModal({
     let alive = true;
     (async () => {
       try {
-        const res = await getAllCinemas();
+        const res = await cinemaService.getAllCinemas();
 
-        const data = res.data.data ?? [];
+        const data = res.data ?? [];
         if (alive) setCinemas(data);
       } catch (e: any) {
         if (alive) toast.error(e?.message || "Không tải được danh sách rạp");
@@ -162,21 +142,21 @@ export default function ShowtimeModal({
     let alive = true;
     (async () => {
       try {
-        const res = await getRooms({ cinemaId: cinemaId });
+        const res = await roomService.getRooms({ cinemaId: cinemaId });
         console.log(res);
 
-        const data = res.data.data ?? [];
+        const data = res.data ?? [];
         if (!alive) return;
         setRooms(data);
         if (!data.some((r) => r.id === roomId)) setRoomId("");
-      } catch (e: any) {
-        if (alive) toast.error(e?.message || "Không tải được danh sách phòng");
+      } catch (e) {
+        if (alive) toast.error("Không tải được danh sách phòng");
       }
     })();
     return () => {
       alive = false;
     };
-  }, [open, cinemaId]);
+  }, [open, cinemaId, roomId]);
 
   const canSubmit = useMemo(() => {
     if (!cinemaId || !roomId) return false;
@@ -191,7 +171,7 @@ export default function ShowtimeModal({
     if (!canSubmit) return;
     try {
       setLoading(true);
-      const body: ShowtimeCreateDto = {
+      const body = {
         roomId,
         movieId,
         price: Number(price),
@@ -205,25 +185,23 @@ export default function ShowtimeModal({
       console.log(body);
 
       if (mode === "edit" && showtime?.id) {
-        await updateShowTime(showtime.id, body);
+        await showTimeService.updateShowTime(showtime.id, body);
         toast.success("Cập nhật suất chiếu thành công");
       } else {
-        await createShowTime(body);
+        await showTimeService.createShowTime(body);
         toast.success("Tạo suất chiếu thành công");
       }
       onSuccess?.();
       onClose();
-    } catch (e: any) {
+    } catch (e) {
       toast.error(
-        e?.message ||
-          `${mode === "edit" ? "Cập nhật" : "Tạo"} suất chiếu thất bại`
+        `${mode === "edit" ? "Cập nhật" : "Tạo"} suất chiếu thất bại`
       );
     } finally {
       setLoading(false);
     }
   }, [
     canSubmit,
-    cinemaId,
     roomId,
     price,
     startDate,
@@ -267,7 +245,7 @@ export default function ShowtimeModal({
                 {cinemas.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
                     {c.name}
-                    {c.provinceName ? ` (${c.provinceName})` : ""}
+                    {c.city ? `  - ${c.city}` : ""}
                   </SelectItem>
                 ))}
               </SelectContent>

@@ -22,44 +22,18 @@ import {
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import Table, { Column } from "@/components/Table";
-import {
-  getAllShowTimes,
-  deleteShowTime,
-  restoreShowTime,
-} from "@/services/ShowtimeService";
-import { getCinemaById, getAllCinemas } from "@/services/CinemaService";
-import { getRooms } from "@/services/RoomService";
 import { fetchNamesFromPaginated, PageResp, HasIdName } from "./helper";
 import Dialog from "@/components/ConfirmDialog";
 import SuccessDialog from "@/components/SuccessDialog";
 import ShowTimeModal from "@/components/ShowtimeModal";
-
-type ShowTime = {
-  id: string;
-  cinemaName: string;
-  cinemaId: string;
-  format: string;
-  movieId: string;
-  roomId: string;
-  roomName: string;
-  startTime: string; // ISO
-  endTime?: string; // ISO
-  price?: number;
-  status?: string;
-  subtitle?: boolean;
-  // các field ngôn ngữ có thể khác nhau tùy backend:
-  language?: string;
-  isActive?: boolean;
-};
-
-type PaginationMeta = {
-  page?: number;
-  limit?: number | null;
-  pageSize?: number | null;
-  total?: number | null;
-  totalItems?: number | null;
-  totalPages?: number | null;
-};
+import {
+  cinemaService,
+  roomService,
+  showTimeService,
+  type ShowTime,
+  PaginationMeta,
+} from "@/services";
+import { da } from "date-fns/locale";
 
 export default function ShowtimesCard({ movieId }: { movieId: string }) {
   const [showtimes, setShowtimes] = useState<ShowTime[]>([]);
@@ -94,18 +68,13 @@ export default function ShowtimesCard({ movieId }: { movieId: string }) {
   // Nếu có endpoint bulk:
   const getCinemasPage = useCallback(
     async (page: number, limit: number): Promise<PageResp<HasIdName>> => {
-      const res = await getAllCinemas({ page, limit });
+      const res = await cinemaService.getAllCinemas({ page, limit });
 
-      const raw = (res.data?.data ?? []) as Array<{
-        id: string | number;
-        name: string;
-      }>;
-
-      console.log(raw);
+      const { data, pagination } = res;
 
       return {
-        data: raw.map((x) => ({ id: String(x.id), name: x.name })),
-        pagination: res.data?.pagination,
+        data: data.map((x) => ({ id: String(x.id), name: x.name })),
+        pagination: pagination,
       };
     },
     []
@@ -113,14 +82,13 @@ export default function ShowtimesCard({ movieId }: { movieId: string }) {
 
   const getRoomsPage = useCallback(
     async (page: number, limit: number): Promise<PageResp<HasIdName>> => {
-      const res = await getRooms({ page, limit });
-      const raw = (res.data?.data ?? []) as Array<{
-        id: string | number;
-        name: string;
-      }>;
+      const res = await roomService.getRooms({ page, limit });
+
+      const { data, pagination } = res;
+
       return {
-        data: raw.map((x) => ({ id: String(x.id), name: x.name })),
-        pagination: res.data?.pagination,
+        data: data.map((x) => ({ id: String(x.id), name: x.name })),
+        pagination: pagination,
       };
     },
     []
@@ -133,38 +101,32 @@ export default function ShowtimesCard({ movieId }: { movieId: string }) {
         setLoadingShow(true);
 
         // GỌI API có page/limit
-        const res = await getAllShowTimes({
+        const res = await showTimeService.getShowTimes({
           movieId: movieId,
           page,
           limit: pageSize,
         });
 
-        const raw = (res.data?.data || []) as ShowTime[];
-        const pg = (res.data?.pagination || {}) as PaginationMeta;
+        const { data, pagination } = res;
 
         // Ưu tiên lấy totalItems/total từ backend nếu có
-        const limitFromServer =
-          (pg.limit ?? pg.pageSize ?? pageSize) || pageSize;
-        const totalFromServer = (pg.totalItems ?? pg.total ?? 0) as number;
+        const limitFromServer = (pagination.pageSize ?? pageSize) || pageSize;
+        const totalFromServer = (pagination.totalItems ?? 0) as number;
 
         // fallback: nếu backend chưa trả total, ước lượng theo độ dài trang hiện tại
         const totalFallback =
           typeof totalFromServer === "number" && totalFromServer > 0
             ? totalFromServer
-            : (page - 1) * limitFromServer + raw.length;
+            : (page - 1) * limitFromServer + data.length;
 
         if (!cancelled) setTotalItems(totalFallback);
 
         // === phần enrich tên rạp/phòng (giữ nguyên) ===
         const needCinemaIds = new Set(
-          raw
-            .filter((s) => !s.cinemaName && s.cinemaId)
-            .map((s) => String(s.cinemaId))
+          data.filter((s) => s.cinemaId).map((s) => String(s.cinemaId))
         );
         const needRoomIds = new Set(
-          raw
-            .filter((s) => !s.roomName && s.roomId)
-            .map((s) => String(s.roomId))
+          data.filter((s) => s.roomId).map((s) => String(s.roomId))
         );
 
         const [cinemaMapNew, roomMapNew] = await Promise.all([
@@ -175,14 +137,14 @@ export default function ShowtimesCard({ movieId }: { movieId: string }) {
         cinemaMapNew.forEach((v, k) => cinemaCache.current.set(k, v));
         roomMapNew.forEach((v, k) => roomCache.current.set(k, v));
 
-        const enriched = raw.map((s) => ({
+        const enriched = data.map((s) => ({
           ...s,
-          cinemaName:
-            s.cinemaName || cinemaCache.current.get(String(s.cinemaId)) || "",
-          roomName: s.roomName || roomCache.current.get(String(s.roomId)) || "",
+          cinemaName: cinemaCache.current.get(String(s.cinemaId)) || "",
+          roomName: roomCache.current.get(String(s.roomId)) || "",
         }));
 
         if (!cancelled) setShowtimes(enriched);
+        console.log(enriched);
       } finally {
         if (!cancelled) setLoadingShow(false);
       }
@@ -251,7 +213,7 @@ export default function ShowtimesCard({ movieId }: { movieId: string }) {
       async () => {
         setIsConfirmDialogOpen(false);
         try {
-          await deleteShowTime(showtime.id);
+          await showTimeService.deleteShowTime(showtime.id);
           patchShowtime(showtime.id, { isActive: false });
           setReloadTick((x) => x + 1);
           setDialogTitle("Thành công");
@@ -271,7 +233,7 @@ export default function ShowtimesCard({ movieId }: { movieId: string }) {
       async () => {
         setIsConfirmDialogOpen(false);
         try {
-          await restoreShowTime(showtime.id);
+          await showTimeService.restoreShowTime(showtime.id);
           patchShowtime(showtime.id, { isActive: true });
           setReloadTick((x) => x + 1);
           setDialogTitle("Thành công");
@@ -370,8 +332,6 @@ export default function ShowtimesCard({ movieId }: { movieId: string }) {
     ],
     []
   );
-
-  console.log(showtimes);
 
   return (
     <div>

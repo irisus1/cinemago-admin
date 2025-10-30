@@ -17,7 +17,7 @@ import type {
   PaymentIntent,
 } from "@/lib/types";
 import { api } from "@/lib/api";
-import { getAllShowTimes } from "@/services/ShowtimeService";
+import { showTimeService } from "@/services";
 import { getMovieById } from "@/services/MovieService";
 
 /** Helpers */
@@ -108,7 +108,7 @@ export default function AdminWalkupBookingPage() {
         setLoading(true);
 
         // 1) Lấy showtimes theo khoảng ngày
-        const sts = await getAllShowTimes({
+        const sts = await showTimeService.getShowTimes({
           startTime: dayRange.startDate,
           // endTime: dayRange.endDate,
         });
