@@ -1,7 +1,7 @@
 import apiClient from "../lib/axios";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
-import type { User } from "./UserService";
+import type { User } from "./user.service";
 
 // ===== Types khớp với BE hiện tại =====
 export interface LoginRequest {

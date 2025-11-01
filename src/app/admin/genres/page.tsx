@@ -5,9 +5,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import Table, { Column } from "@/components/Table";
 import { FiEdit2, FiTrash2 } from "react-icons/fi";
 import { BiRefresh } from "react-icons/bi";
-import Dialog from "@/components/ConfirmDialog";
-import SuccessDialog from "@/components/SuccessDialog";
 import RefreshLoader from "@/components/Loading";
+import { Modal } from "@/components/Modal";
 import GenreModal from "@/components/GenreModal";
 import { genreService, type Genre, PaginationMeta } from "@/services";
 
@@ -278,18 +277,29 @@ const GenresListPage: React.FC = () => {
       </div>
 
       {/* Confirm & Success */}
-      <Dialog
+      <Modal
         isOpen={isConfirmDialogOpen}
         onClose={() => setIsConfirmDialogOpen(false)}
-        onConfirm={onConfirm}
+        type="info"
         title={dialogTitle}
         message={dialogMessage}
+        onCancel={() => setIsConfirmDialogOpen(false)}
+        cancelText="Hủy"
+        onConfirm={() => {
+          onConfirm();
+          setIsConfirmDialogOpen(false);
+        }}
+        confirmText="Xác nhận"
       />
-      <SuccessDialog
+
+      <Modal
         isOpen={isSuccessDialogOpen}
         onClose={() => setIsSuccessDialogOpen(false)}
+        type="success"
         title={dialogTitle}
         message={dialogMessage}
+        onCancel={() => setIsSuccessDialogOpen(false)}
+        cancelText="Đóng"
       />
 
       {/* Modal Thêm/Sửa */}

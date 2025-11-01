@@ -6,9 +6,9 @@ import { useRouter } from "next/navigation";
 import Table, { Column } from "@/components/Table";
 import { FiEdit2, FiTrash2, FiEye } from "react-icons/fi";
 import { BiRefresh } from "react-icons/bi";
-import Dialog from "@/components/ConfirmDialog";
-import SuccessDialog from "@/components/SuccessDialog";
+
 import RefreshLoader from "@/components/Loading";
+import { Modal } from "@/components/Modal";
 import CinemaModal from "@/components/CinemaModal";
 import { cinemaService, type Cinema, PaginationMeta } from "@/services";
 
@@ -441,18 +441,30 @@ const CinemasListPage: React.FC = () => {
       </div>
 
       {/* Confirm & Success */}
-      <Dialog
+
+      <Modal
         isOpen={isConfirmDialogOpen}
         onClose={() => setIsConfirmDialogOpen(false)}
-        onConfirm={onConfirm}
+        type="info"
         title={dialogTitle}
         message={dialogMessage}
+        onCancel={() => setIsConfirmDialogOpen(false)}
+        cancelText="Hủy"
+        onConfirm={() => {
+          onConfirm();
+          setIsConfirmDialogOpen(false);
+        }}
+        confirmText="Xác nhận"
       />
-      <SuccessDialog
+
+      <Modal
         isOpen={isSuccessDialogOpen}
         onClose={() => setIsSuccessDialogOpen(false)}
+        type="success"
         title={dialogTitle}
         message={dialogMessage}
+        onCancel={() => setIsSuccessDialogOpen(false)}
+        cancelText="Đóng"
       />
 
       {/* Modal Thêm/Sửa */}

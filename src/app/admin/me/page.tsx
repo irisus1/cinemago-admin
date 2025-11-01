@@ -7,17 +7,15 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Eye, EyeOff, ShieldCheck } from "lucide-react";
-import Dialog from "@/components/ConfirmDialog";
-import SuccessDialog from "@/components/SuccessDialog";
+import { Modal } from "@/components/Modal";
 import RefreshLoader from "@/components/Loading";
 import { cn } from "@/lib/utils";
 
 // ====== Services (điều chỉnh theo project) ======
-import { getMe, updateProfile } from "@/services/UserService";
+import { userService } from "@/services";
 import { changePassword } from "@/services/AuthService";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
-import { set } from "date-fns";
 
 // ====== Types ======
 type Me = {
@@ -28,8 +26,8 @@ type Me = {
   role: string;
   avatarUrl?: string;
   isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 // ====== Helpers ======
@@ -47,12 +45,6 @@ const mapGender = (v: unknown): GenderVN => {
   if (["other", "khac", "khác"].includes(key)) return "Khác";
   if (isGenderVN(s)) return s;
   return "Khác";
-};
-
-const normalizeGenderToEnum = (v: GenderVN): "MALE" | "FEMALE" | "OTHER" => {
-  if (v === "Nam") return "MALE";
-  if (v === "Nữ") return "FEMALE";
-  return "OTHER";
 };
 
 // đánh giá độ mạnh mật khẩu (0–4)
@@ -103,8 +95,8 @@ export default function ProfilePage() {
   const load = async () => {
     setLoading(true);
     try {
-      const res = await getMe();
-      const data = (res.data?.data ?? res.data) as Me;
+      const res = await userService.getMe();
+      const data = res;
       const user: Me = {
         id: data.id,
         email: data.email,
@@ -194,7 +186,7 @@ export default function ProfilePage() {
       fd.set("gender", genderVN);
       if (avatarFile) fd.set("avatar", avatarFile);
 
-      await updateProfile(fd);
+      await userService.updateProfile(fd);
 
       // Cập nhật baseline sau khi lưu thành công
       baselineRef.current = {
@@ -359,9 +351,10 @@ export default function ProfilePage() {
                 </div>
 
                 <div className="text-sm text-muted-foreground">
-                  Tạo lúc: {new Date(me.createdAt).toLocaleString("vi-VN")}
+                  Tạo lúc: {new Date(me.createdAt ?? 0).toLocaleString("vi-VN")}
                   <br />
-                  Cập nhật: {new Date(me.updatedAt).toLocaleString("vi-VN")}
+                  Cập nhật:{" "}
+                  {new Date(me.updatedAt ?? 0).toLocaleString("vi-VN")}
                 </div>
               </div>
 
@@ -519,21 +512,31 @@ export default function ProfilePage() {
         </CardContent>
       </Card>
 
-      <Dialog
+      <Modal
         isOpen={isConfirmDialogOpen}
         onClose={() => setIsConfirmDialogOpen(false)}
-        onConfirm={onConfirm}
+        type="info"
         title={dialogTitle}
         message={dialogMessage}
+        onCancel={() => setIsConfirmDialogOpen(false)}
+        cancelText="Hủy"
+        onConfirm={() => {
+          onConfirm();
+          setIsConfirmDialogOpen(false);
+        }}
+        confirmText="Xác nhận"
       />
 
-      {/* Success dialog + loader */}
-      <SuccessDialog
+      <Modal
         isOpen={isSuccessDialogOpen}
         onClose={() => setIsSuccessDialogOpen(false)}
+        type="success"
         title={dialogTitle}
         message={dialogMessage}
+        onCancel={() => setIsSuccessDialogOpen(false)}
+        cancelText="Đóng"
       />
+
       <RefreshLoader isOpen={loading} />
     </div>
   );

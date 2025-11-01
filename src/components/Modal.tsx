@@ -7,8 +7,10 @@ interface ModalProps {
   type?: "success" | "error" | "warning" | "info";
   title: string;
   message?: React.ReactNode;
-  onConfirm: () => void;
+  onConfirm?: () => void; // đổi thành optional
   confirmText?: string;
+  onCancel?: () => void; // NEW
+  cancelText?: string; // NEW
 }
 
 export const Modal = ({
@@ -19,15 +21,13 @@ export const Modal = ({
   message,
   onConfirm,
   confirmText = "Đóng",
+  onCancel, // NEW
+  cancelText = "Hủy", // NEW
 }: ModalProps) => {
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "unset";
-    }
+    document.body.style.overflow = isOpen ? "hidden" : "unset";
     return () => {
-      document.body.style.overflow = "unset";
+      document.body.style.overflow = "unset"; // hoặc ""
     };
   }, [isOpen]);
 
@@ -62,7 +62,7 @@ export const Modal = ({
       borderColor: "border-blue-200",
       buttonColor: "bg-blue-500 hover:bg-blue-600",
     },
-  };
+  } as const;
 
   const {
     icon: Icon,
@@ -71,6 +71,9 @@ export const Modal = ({
     borderColor,
     buttonColor,
   } = config[type];
+
+  // Có onCancel => modal confirm (2 nút). Không có => modal thông báo (1 nút).
+  const isConfirm = typeof onCancel === "function";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
@@ -83,6 +86,7 @@ export const Modal = ({
         <button
           onClick={onClose}
           className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 transition-colors"
+          aria-label="Close"
         >
           <X className="w-5 h-5 text-gray-400" />
         </button>
@@ -100,12 +104,29 @@ export const Modal = ({
             <p className="text-gray-600 mb-6 leading-relaxed">{message}</p>
           )}
 
-          <button
-            onClick={onConfirm}
-            className={`w-full py-3.5 px-6 ${buttonColor} text-white font-semibold rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl`}
-          >
-            {confirmText}
-          </button>
+          {isConfirm ? (
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={onCancel}
+                className="w-full py-3.5 px-6 bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold rounded-xl transition-all duration-200"
+              >
+                {cancelText}
+              </button>
+              <button
+                onClick={onConfirm}
+                className={`w-full py-3.5 px-6 ${buttonColor} text-white font-semibold rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl`}
+              >
+                {confirmText || "Xác nhận"}
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={onConfirm || onClose}
+              className={`w-full py-3.5 px-6 ${buttonColor} text-white font-semibold rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl`}
+            >
+              {confirmText}
+            </button>
+          )}
         </div>
       </div>
     </div>

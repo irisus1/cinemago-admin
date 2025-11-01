@@ -33,4 +33,11 @@ export type { Movie, MovieQuery } from "./movie.service";
 
 export type { ShowTime, ShowTimeQuery } from "./showtime.service";
 
-export type { Room, RoomQuery, RoomCreate, RoomUpdate } from "./room.service";
+export type {
+  Room,
+  RoomQuery,
+  RoomCreate,
+  RoomUpdate,
+  SeatType,
+  SeatCell,
+} from "./room.service";

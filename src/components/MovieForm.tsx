@@ -24,25 +24,9 @@ import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon, X, Check, ChevronsUpDown, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import SuccessDialog from "./SuccessDialog";
-import ConfirmDialog from "./ConfirmDialog";
-import FailedDialog from "./FailedDialog";
-import { addMovie, updateMovie } from "@/services/MovieService";
 import RefreshLoader from "./Loading";
-import { genreService, type Genre } from "@/services";
-
-export type Movie = {
-  id?: string;
-  title: string;
-  description: string;
-  duration: number;
-  rating?: number;
-  genres: Genre[];
-  trailerUrl?: string; // URL hiện có
-  thumbnail?: string; // URL hiện có
-  releaseDate?: string; // ISO
-  isActive?: boolean;
-};
+import { Modal } from "./Modal";
+import { genreService, movieService, type Genre, Movie } from "@/services";
 
 export default function MovieForm({
   mode,
@@ -196,11 +180,11 @@ export default function MovieForm({
 
     try {
       if (mode === "edit") {
-        await updateMovie(film?.id || "", fd);
+        await movieService.updateMovie(film?.id || "", fd);
         setDialogTitle("Thành công");
         setDialogMsg("Cập nhật thành công");
       } else {
-        await addMovie(fd);
+        await movieService.addMovie(fd);
         setDialogTitle("Thành công");
         setDialogMsg("Tạo phim thành công");
       }
@@ -546,24 +530,40 @@ export default function MovieForm({
           </Button>
         </div>
       )}
-      <ConfirmDialog
+
+      <Modal
         isOpen={confirmOpen}
         onClose={() => setConfirmOpen(false)}
-        onConfirm={handleSubmit}
+        type="info"
         title={dialogTitle}
         message={dialogMsg}
+        onCancel={() => setConfirmOpen(false)}
+        cancelText="Hủy"
+        onConfirm={() => {
+          handleSubmit();
+          setConfirmOpen(false);
+        }}
+        confirmText="Xác nhận"
       />
-      <SuccessDialog
+
+      <Modal
         isOpen={successOpen}
         onClose={() => setSuccessOpen(false)}
+        type="success"
         title={dialogTitle}
         message={dialogMsg}
+        onCancel={() => setSuccessOpen(false)}
+        cancelText="Đóng"
       />
-      <FailedDialog
+
+      <Modal
         isOpen={failOpen}
         onClose={() => setFailOpen(false)}
+        type="error"
         title={dialogTitle}
         message={dialogMsg}
+        onCancel={() => setFailOpen(false)}
+        cancelText="Đóng"
       />
       <RefreshLoader isOpen={loading} />
     </div>

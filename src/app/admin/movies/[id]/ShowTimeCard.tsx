@@ -23,8 +23,8 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import Table, { Column } from "@/components/Table";
 import { fetchNamesFromPaginated, PageResp, HasIdName } from "./helper";
-import Dialog from "@/components/ConfirmDialog";
-import SuccessDialog from "@/components/SuccessDialog";
+
+import { Modal } from "@/components/Modal";
 import ShowTimeModal from "@/components/ShowtimeModal";
 import {
   cinemaService,
@@ -426,19 +426,32 @@ export default function ShowtimesCard({ movieId }: { movieId: string }) {
           )}
         </CardContent>
       </Card>
-      <Dialog
+
+      <Modal
         isOpen={isConfirmDialogOpen}
         onClose={() => setIsConfirmDialogOpen(false)}
-        onConfirm={onConfirm}
+        type="info"
         title={dialogTitle}
         message={dialogMessage}
+        onCancel={() => setIsConfirmDialogOpen(false)}
+        cancelText="Hủy"
+        onConfirm={() => {
+          onConfirm();
+          setIsConfirmDialogOpen(false);
+        }}
+        confirmText="Xác nhận"
       />
-      <SuccessDialog
+
+      <Modal
         isOpen={isSuccessDialogOpen}
         onClose={() => setIsSuccessDialogOpen(false)}
+        type="success"
         title={dialogTitle}
         message={dialogMessage}
+        onCancel={() => setIsSuccessDialogOpen(false)}
+        cancelText="Đóng"
       />
+
       <ShowTimeModal
         open={open}
         onClose={() => setOpen(false)}

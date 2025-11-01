@@ -7,7 +7,7 @@ import {
 } from "react-icons/fa";
 import { FaRegCirclePlay } from "react-icons/fa6";
 import TrailerModal from "./TrailerModal";
-import { getAllGenres } from "@/services/MovieService";
+import { genreService } from "@/services";
 
 type Tag = { id: string | number; name: string };
 
@@ -60,7 +60,7 @@ const MovieCard: React.FC<MovieCardProps> = ({
     let mounted = true;
     (async () => {
       try {
-        const res: any = await getAllGenres({ limit: 100 });
+        const res: any = await genreService.getAllGenres({ limit: 100 });
         const list: Tag[] =
           res?._embedded?.tagResponseDtoList ??
           res?.data?._embedded?.tagResponseDtoList ??

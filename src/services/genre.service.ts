@@ -17,12 +17,12 @@ export type PageParams = {
 };
 
 export type PaginationMeta = {
-  totalItems: number;
-  totalPages: number;
-  currentPage: number;
-  pageSize: number;
-  hasNextPage: boolean;
-  hasPrevPage: boolean;
+  totalItems?: number;
+  totalPages?: number;
+  currentPage?: number;
+  pageSize?: number;
+  hasNextPage?: boolean;
+  hasPrevPage?: boolean;
 };
 
 export type ServerPaginated<T> = {

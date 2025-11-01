@@ -9,7 +9,6 @@ import ConcessionsList from "@/components/order-ticket/ConcessionsList";
 import PaymentQR from "@/components/order-ticket/PaymentQR";
 import ReceiptView from "@/components/order-ticket/ReceiptView";
 import type {
-  Movie,
   TheaterBlock,
   Showtime,
   SeatMap,
@@ -17,8 +16,7 @@ import type {
   PaymentIntent,
 } from "@/lib/types";
 import { api } from "@/lib/api";
-import { showTimeService } from "@/services";
-import { getMovieById } from "@/services/MovieService";
+import { showTimeService, movieService, type Genre, Movie } from "@/services";
 
 /** Helpers */
 const toLocalDayRange = (dateStr: string) => {
@@ -48,27 +46,6 @@ const toLocalDayRange = (dateStr: string) => {
     endDate: endDate.toISOString(),
   };
 };
-
-interface Genre {
-  id: string;
-  name: string;
-  description?: string;
-}
-
-interface Movie {
-  id: string;
-  title: string;
-  description?: string;
-  duration?: number;
-  releaseDate?: string;
-  rating?: number;
-  thumbnail?: string;
-  trailerUrl?: string;
-  genres?: Genre[];
-  status?: string;
-  createdAt?: string;
-  updatedAt?: string;
-}
 
 interface ShowTime {
   id: string;
@@ -115,18 +92,16 @@ export default function AdminWalkupBookingPage() {
 
         // 2) Lấy danh sách movieId duy nhất
         const movieIdSet = new Set<string>(
-          sts.data.data
-            .map((s: ShowTime) => String(s.movieId || ""))
-            .filter(Boolean)
+          sts.data.map((s: ShowTime) => String(s.movieId || "")).filter(Boolean)
         );
         const ids = Array.from(movieIdSet);
 
         // 3) Lấy chi tiết từng phim
         const details = await Promise.all(
           ids.map(async (id) => {
-            const res = await getMovieById(id);
+            const res = await movieService.getMovieById(id);
             // đảm bảo có id để MovieGrid render
-            return res.data.data;
+            return res;
           })
         );
 

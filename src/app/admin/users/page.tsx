@@ -5,47 +5,23 @@ import React, { useEffect, useMemo, useState } from "react";
 import Table, { Column } from "@/components/Table";
 import { FiEdit2, FiTrash2 } from "react-icons/fi";
 import { BiRefresh } from "react-icons/bi";
-import Dialog from "@/components/ConfirmDialog";
-import SuccessDialog from "@/components/SuccessDialog";
+import { Modal } from "@/components/Modal";
 import RefreshLoader from "@/components/Loading";
-// (tuỳ bạn có UserModal hay không)
-// import UserModal from "@/components/UserModal";
-import { getAllUsers, deleteUser, restoreUser } from "@/services/UserService";
+
+import { userService, type User, PaginationMeta } from "@/services";
 import { Badge } from "@/components/ui/badge";
-
-type User = {
-  id: string;
-  email: string;
-  fullname: string;
-  gender: "Nam" | "Nữ" | null;
-  role: "ADMIN" | "USER" | string;
-  isActive: boolean;
-  createdAt: string; // ISO
-};
-
-type ApiPagination = {
-  totalItems: number;
-  totalPages: number;
-  currentPage: number;
-  pageSize: number;
-  hasNextPage: boolean;
-  hasPrevPage: boolean;
-};
-type ApiResponse<T> = { pagination: ApiPagination; data: T[] };
 
 const UsersListPage: React.FC = () => {
   // Data & filters
   const [users, setUsers] = useState<User[]>([]);
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState(""); // debounce input
-  const [role, setRole] = useState<"__ALL__" | "ADMIN" | "STAFF" | "USER">(
-    "__ALL__"
-  );
+  const [role, setRole] = useState<"__ALL__" | "ADMIN" | "USER">("__ALL__");
 
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize] = useState(7);
-  const [pagination, setPagination] = useState<ApiPagination | null>(null);
+  const [pagination, setPagination] = useState<PaginationMeta | null>(null);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
 
@@ -75,13 +51,13 @@ const UsersListPage: React.FC = () => {
   const fetchUsers = async (toPage = page) => {
     try {
       setLoading(true);
-      const res = await getAllUsers({
+      const res = await userService.getAllUsers({
         page: toPage,
         limit: pageSize,
         search: search.trim() || undefined,
         role: role !== "__ALL__" ? role : undefined, // BE yêu cầu uppercase
       });
-      const { data, pagination } = res.data as ApiResponse<User>;
+      const { data, pagination } = res;
       setUsers(data ?? []);
       setPagination(pagination ?? null);
       setTotalPages(pagination?.totalPages ?? 1);
@@ -134,7 +110,7 @@ const UsersListPage: React.FC = () => {
       async () => {
         setIsConfirmDialogOpen(false);
         try {
-          await deleteUser(u.id);
+          await userService.deleteUser(u.id);
           setUsers((prev) =>
             prev.map((it) => (it.id === u.id ? { ...it, isActive: false } : it))
           );
@@ -155,7 +131,7 @@ const UsersListPage: React.FC = () => {
       async () => {
         setIsConfirmDialogOpen(false);
         try {
-          await restoreUser(u.id);
+          await userService.restoreUser(u.id);
           setUsers((prev) =>
             prev.map((it) => (it.id === u.id ? { ...it, isActive: true } : it))
           );
@@ -374,18 +350,30 @@ const UsersListPage: React.FC = () => {
       </div>
 
       {/* Dialogs */}
-      <Dialog
+
+      <Modal
         isOpen={isConfirmDialogOpen}
         onClose={() => setIsConfirmDialogOpen(false)}
-        onConfirm={onConfirm}
+        type="info"
         title={dialogTitle}
         message={dialogMessage}
+        onCancel={() => setIsConfirmDialogOpen(false)}
+        cancelText="Hủy"
+        onConfirm={() => {
+          onConfirm();
+          setIsConfirmDialogOpen(false);
+        }}
+        confirmText="Xác nhận"
       />
-      <SuccessDialog
+
+      <Modal
         isOpen={isSuccessDialogOpen}
         onClose={() => setIsSuccessDialogOpen(false)}
+        type="success"
         title={dialogTitle}
         message={dialogMessage}
+        onCancel={() => setIsSuccessDialogOpen(false)}
+        cancelText="Đóng"
       />
 
       {/* Modal Thêm/Sửa (nếu có) */}

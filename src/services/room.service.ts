@@ -60,7 +60,7 @@ const toIso = (v?: Date | string) =>
 export type RoomCreate = {
   name: string;
   cinemaId: string;
-  seatLayout: SeatCell[];
+  seatLayout?: SeatCell[];
   vipPrice: number;
   couplePrice: number;
 };

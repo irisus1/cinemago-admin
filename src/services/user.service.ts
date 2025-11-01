@@ -3,14 +3,16 @@ import axios from "axios";
 import api from "@/config/api";
 
 export interface User {
-  id?: string;
+  id: string;
   fullname: string;
   email: string;
   gender: string;
   role: "ADMIN" | "USER";
   password?: string;
-  isActive?: boolean;
+  isActive: boolean;
   createdAt?: string;
+  avatarUrl: string;
+  updatedAt?: string;
 }
 
 export type UserParams = {
@@ -113,6 +115,24 @@ class UserService {
     } catch (e: unknown) {
       const msg = getMsg(e, "Không thể khôi phục người dùng.");
       console.error("Restore user error:", e);
+      throw new Error(msg);
+    }
+  }
+
+  async updateProfile(form: FormData): Promise<User> {
+    try {
+      const { data } = await api.put<{ data: User; message?: string }>(
+        "/users/profile",
+        form,
+        {
+          // Quan trọng: override JSON default để axios tự gắn boundary
+          headers: { "Content-Type": "multipart/form-data" },
+        }
+      );
+      return data.data;
+    } catch (e: unknown) {
+      const msg = getMsg(e, "Không thể cập nhật hồ sơ người dùng.");
+      console.error("Update profile error:", e);
       throw new Error(msg);
     }
   }

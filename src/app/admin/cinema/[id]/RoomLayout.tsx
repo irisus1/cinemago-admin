@@ -6,12 +6,7 @@ import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import {
-  SeatType,
-  Room,
-  updateRoom,
-  UpdateRoomDto,
-} from "@/services/RoomService";
+import { roomService, type Room, RoomUpdate, SeatType } from "@/services";
 import { on } from "events";
 
 /* ====================== Types ====================== */
@@ -20,8 +15,7 @@ type SeatTypeKey = "normal" | "vip" | "couple" | "empty";
 type SeatCell = { type: SeatTypeKey; pairId?: string | null };
 type LayoutGrid = SeatCell[][];
 
-type SeatRecordType = SeatType | "NORMAL" | "VIP" | "COUPLE" | "EMPTY";
-type SeatRecord = { row: string; col: number; type: SeatRecordType };
+type SeatRecord = { row: string; col: number; type: SeatType };
 
 // CHỈ cần list phẳng hoặc grid 2D
 type SeatLayoutProp = LayoutGrid | SeatRecord[];
@@ -67,7 +61,7 @@ const SEAT_TYPES = [
   },
 ] as const;
 
-const TYPE_MAP: Record<SeatRecordType, SeatTypeKey> = {
+const TYPE_MAP: Record<SeatType, SeatTypeKey> = {
   NORMAL: "normal",
   VIP: "vip",
   COUPLE: "couple",
@@ -422,7 +416,7 @@ export default function SeatLayoutBuilder({
   };
 
   // convert internal SeatTypeKey to external SeatRecordType
-  const toExternalType = (t: SeatTypeKey): SeatRecordType => {
+  const toExternalType = (t: SeatTypeKey): SeatType => {
     switch (t) {
       case "vip":
         return "VIP";
@@ -455,7 +449,7 @@ export default function SeatLayoutBuilder({
     const vipFromRoom = room?.VIP;
 
     const coupleFromRoom = room?.COUPLE;
-    const payload: UpdateRoomDto = {
+    const payload: RoomUpdate = {
       name: room?.name,
       cinemaId: room?.cinemaId,
       vipPrice: vipFromRoom ?? undefined,
@@ -467,7 +461,7 @@ export default function SeatLayoutBuilder({
 
     try {
       if (!room?.id) throw new Error("Room ID is missing");
-      await updateRoom(room?.id, payload);
+      await roomService.updateRoom(room?.id, payload);
 
       // Đồng bộ UI
 

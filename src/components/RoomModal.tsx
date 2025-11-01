@@ -12,11 +12,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { Room } from "@/services/RoomService";
+import { roomService, type Room, RoomUpdate, RoomCreate } from "@/services";
 import { cn } from "@/lib/utils";
 
 // services tuỳ dự án bạn, đổi tên nếu khác
-import { createRoom, updateRoom, getRoomDetails } from "@/services/RoomService";
 
 export type RoomModalProps = {
   open: boolean;
@@ -24,16 +23,7 @@ export type RoomModalProps = {
   onSuccess?: () => void;
   mode: "create" | "edit";
   cinemaId: string;
-  room?: {
-    id: string;
-    name: string;
-    totalSeat?: number;
-    created?: string;
-    isActive?: boolean;
-    vipPrice?: number | null;
-    couplePrice?: number | null;
-    seatLayout?: SeatCell[];
-  };
+  room?: Room;
 };
 
 type SeatCell = {
@@ -67,9 +57,9 @@ export default function RoomModal({
   const [loading, setLoadingRoom] = useState(false);
 
   const [name, setName] = useState(room?.name ?? "");
-  const [vipBonus, setVipBonus] = useState<number | "">(room?.vipPrice ?? 0);
+  const [vipBonus, setVipBonus] = useState<number | "">(room?.VIP ?? 0);
   const [coupleBonus, setCoupleBonus] = useState<number | "">(
-    room?.couplePrice ?? 0
+    room?.COUPLE ?? 0
   );
 
   // reset khi mở / đổi room
@@ -79,13 +69,11 @@ export default function RoomModal({
     (async () => {
       try {
         setLoadingRoom(true);
-        const res = await getRoomDetails(room.id); // { data: Room }
+        const res = await roomService.getRoomById(room.id); // { data: Room }
         console.log(res);
-
-        const r = res.data.data;
-        setName(r?.name ?? "");
-        setVipBonus(Number(r?.VIP ?? 0));
-        setCoupleBonus(Number(r?.COUPLE ?? 0));
+        setName(res?.name ?? "");
+        setVipBonus(Number(res?.VIP ?? 0));
+        setCoupleBonus(Number(res?.COUPLE ?? 0));
       } catch (e) {
         console.log("Không tải được thông tin phòng");
       } finally {
@@ -98,23 +86,27 @@ export default function RoomModal({
     if (!name.trim()) return;
     setSaving(true);
     try {
-      const payload: Room = {
-        id: room?.id || "",
+      const payloadBase = {
         cinemaId,
         name: name.trim(),
         vipPrice: Number(vipBonus || 0),
         couplePrice: Number(coupleBonus || 0),
       };
 
-      console.log("edit create payload: ", payload);
+      console.log("edit create payload: ", payloadBase);
 
       if (mode === "create") {
-        await createRoom({
-          ...payload,
-          seatLayout: makeBaseLayout5x5(), // base 5x5 A..E x 1..5, type: EMPTY
-        });
+        const payloadCreate: RoomCreate = {
+          ...payloadBase,
+          seatLayout: makeBaseLayout5x5(), // A..E x 1..5, type: EMPTY
+        };
+        await roomService.createRoom(payloadCreate);
       } else if (room?.id) {
-        await updateRoom(room.id, { ...payload, seatLayout: room.seatLayout }); // không đụng layout khi edit metadata
+        const payloadUpdate: RoomUpdate = {
+          ...payloadBase,
+          seatLayout: room.seatLayout, // A..E x 1..5, type: EMPTY
+        };
+        await roomService.updateRoom(room.id, payloadUpdate); // không đụng layout khi edit metadata
       }
 
       onSuccess?.();

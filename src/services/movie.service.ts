@@ -1,5 +1,6 @@
 import api from "@/config/api";
 import axios from "axios";
+import type { Genre } from "./genre.service";
 
 // ===== Types =====
 export interface Movie {
@@ -8,7 +9,7 @@ export interface Movie {
   description: string;
   duration: number;
   releaseDate: string; // BE trả Date -> FE nhận string ISO
-  genres: string[]; // lưu id/slug; tùy BE bạn có thể đổi
+  genres: Genre[]; // lưu id/slug; tùy BE bạn có thể đổi
   thumbnail: string;
   trailerUrl?: string;
   trailerPath?: string;
