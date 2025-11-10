@@ -2,6 +2,7 @@ import axios from "axios";
 import api from "@/config/api";
 import { jwtDecode } from "jwt-decode";
 import type { User } from "./user.service";
+import { ACCESS_TOKEN_KEY } from "@/constants/auth";
 import { log } from "console";
 
 export interface LoginResponse {
@@ -36,7 +37,7 @@ class AuthService {
       });
 
       if (data.accessToken) {
-        localStorage.setItem("access_token", data.accessToken);
+        localStorage.setItem(ACCESS_TOKEN_KEY, data.accessToken);
         api.defaults.headers.common.Authorization = `Bearer ${data.accessToken}`;
       }
       if (data.refreshToken) this.setRefreshCookie(data.refreshToken); //  lưu refresh vào cookie
@@ -88,7 +89,7 @@ class AuthService {
       }>("/auth/refresh-token", { refreshToken });
 
       if (data.accessToken)
-        localStorage.setItem("access_token", data.accessToken);
+        localStorage.setItem(ACCESS_TOKEN_KEY, data.accessToken);
       if (data.refreshToken) this.setRefreshCookie(data.refreshToken);
 
       return { accessToken: data.accessToken };
@@ -101,11 +102,11 @@ class AuthService {
 
   // === Local token helpers ===
   getToken() {
-    return localStorage.getItem("access_token");
+    return localStorage.getItem(ACCESS_TOKEN_KEY);
   }
 
   clearLocalAuth() {
-    localStorage.removeItem("access_token");
+    localStorage.removeItem(ACCESS_TOKEN_KEY);
     localStorage.removeItem("user");
   }
 
@@ -126,17 +127,17 @@ class AuthService {
   // === Cookie helpers ===
   setRefreshCookie(token: string) {
     const exp = 7 * 24 * 60 * 60; // 7 ngày
-    document.cookie = `refresh_token=${token}; Max-Age=${exp}; Path=/; SameSite=Strict; Secure`;
+    document.cookie = `refreshToken=${token}; Max-Age=${exp}; Path=/; SameSite=Strict; Secure`;
   }
 
   getRefreshCookie(): string | null {
-    const match = document.cookie.match(/(^| )refresh_token=([^;]+)/);
+    const match = document.cookie.match(/(^| )refreshToken=([^;]+)/);
     return match ? match[2] : null;
   }
 
   deleteRefreshCookie() {
     document.cookie =
-      "refresh_token=; Max-Age=0; Path=/; SameSite=Strict; Secure";
+      "refreshToken=; Max-Age=0; Path=/; SameSite=Strict; Secure";
   }
 
   // === Token expiration ===

@@ -6,6 +6,7 @@ import Sidebar from "@/components/Sidebar";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { adminTabs } from "@/constants/constants";
+import { ACCESS_TOKEN_KEY } from "@/constants/auth";
 
 export default function AdminLayout({
   children,
@@ -17,7 +18,7 @@ export default function AdminLayout({
   const router = useRouter();
 
   useEffect(() => {
-    if (!localStorage.getItem("access_token")) {
+    if (!localStorage.getItem(ACCESS_TOKEN_KEY)) {
       alert("Có lỗi xác thực, vui lòng đăng nhập lại");
       logout();
       router.push("/login");

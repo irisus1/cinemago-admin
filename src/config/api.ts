@@ -22,6 +22,7 @@ import axios, {
   AxiosRequestConfig,
   AxiosResponse,
 } from "axios";
+import { ACCESS_TOKEN_KEY } from "@/constants/auth";
 
 const api: AxiosInstance = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/v1",
@@ -45,7 +46,9 @@ const processQueue = (error: unknown, token: string | null = null) => {
 //  Intercept request: gắn accessToken vào header
 api.interceptors.request.use((config) => {
   const token =
-    typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+    typeof window !== "undefined"
+      ? localStorage.getItem(ACCESS_TOKEN_KEY)
+      : null;
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -96,7 +99,7 @@ api.interceptors.response.use(
         if (!newAccessToken)
           throw new Error("No accessToken in refresh response");
 
-        localStorage.setItem("accessToken", newAccessToken);
+        localStorage.setItem(ACCESS_TOKEN_KEY, newAccessToken);
         processQueue(null, newAccessToken);
 
         if (originalRequest.headers)
@@ -105,7 +108,7 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
-        localStorage.removeItem("accessToken");
+        localStorage.removeItem(ACCESS_TOKEN_KEY);
         if (typeof window !== "undefined") {
           window.location.href = "/login";
         }
