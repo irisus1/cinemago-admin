@@ -12,6 +12,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { FiEdit2, FiTrash2 } from "react-icons/fi";
 import { BiRefresh } from "react-icons/bi";
 import { Badge } from "@/components/ui/badge";
+
 import {
   Select,
   SelectTrigger,
@@ -22,6 +23,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import Table, { Column } from "@/components/Table";
+
 import { fetchNamesFromPaginated, PageResp, HasIdName } from "./helper";
 
 import { Modal } from "@/components/Modal";
@@ -36,9 +38,11 @@ import {
 import { da } from "date-fns/locale";
 
 export default function ShowtimesCard({ movieId }: { movieId: string }) {
+
   const [showtimes, setShowtimes] = useState<ShowTime[]>([]);
   const [loadingShow, setLoadingShow] = useState(false);
   const [filterLang, setFilterLang] = useState<string | undefined>(undefined);
+
 
   const [open, setOpen] = useState(false);
   const [editShowtime, setEditShowtme] = useState<ShowTime | null>(null);
@@ -100,6 +104,7 @@ export default function ShowtimesCard({ movieId }: { movieId: string }) {
       try {
         setLoadingShow(true);
 
+
         // GỌI API có page/limit
         const res = await showTimeService.getShowTimes({
           movieId: movieId,
@@ -145,6 +150,7 @@ export default function ShowtimesCard({ movieId }: { movieId: string }) {
 
         if (!cancelled) setShowtimes(enriched);
         console.log(enriched);
+
       } finally {
         if (!cancelled) setLoadingShow(false);
       }
@@ -152,6 +158,7 @@ export default function ShowtimesCard({ movieId }: { movieId: string }) {
     return () => {
       cancelled = true;
     };
+
     // thêm page, pageSize, reloadTick vào deps
   }, [movieId, page, pageSize, getCinemasPage, getRoomsPage, reloadTick]);
 
@@ -258,7 +265,9 @@ export default function ShowtimesCard({ movieId }: { movieId: string }) {
         render: (v) =>
           v
             ? Intl.DateTimeFormat("vi-VN", {
+
                 timeZone: "UTC",
+
                 hour: "2-digit",
                 minute: "2-digit",
                 day: "2-digit",
@@ -273,7 +282,9 @@ export default function ShowtimesCard({ movieId }: { movieId: string }) {
         render: (v) =>
           v
             ? Intl.DateTimeFormat("vi-VN", {
+
                 timeZone: "UTC",
+
                 hour: "2-digit",
                 minute: "2-digit",
                 day: "2-digit",
@@ -288,6 +299,7 @@ export default function ShowtimesCard({ movieId }: { movieId: string }) {
         render: (v) =>
           v == null ? "—" : new Intl.NumberFormat("vi-VN").format(Number(v)),
       },
+
       {
         header: "Phụ đề",
         key: "subtitle",
@@ -331,11 +343,13 @@ export default function ShowtimesCard({ movieId }: { movieId: string }) {
           </div>
         ),
       },
+
     ],
     []
   );
 
   return (
+
     <div>
       <Card className="shadow-sm">
         {/* Header: Title (dòng 1) + Controls row (dòng 2) */}
@@ -467,5 +481,6 @@ export default function ShowtimesCard({ movieId }: { movieId: string }) {
         }}
       />
     </div>
+
   );
 }

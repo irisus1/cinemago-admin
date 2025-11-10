@@ -3,8 +3,10 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import MovieForm from "@/components/MovieForm";
+
 import ShowtimesCard from "./ShowTimeCard";
 import { movieService, type Movie } from "@/services";
+
 
 export default function MovieDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -16,8 +18,10 @@ export default function MovieDetailPage() {
     (async () => {
       try {
         setLoadingMovie(true);
+
         const res = await movieService.getMovieById(id);
         if (!cancelled) setMovie(res);
+
       } finally {
         if (!cancelled) setLoadingMovie(false);
       }

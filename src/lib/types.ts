@@ -1,5 +1,6 @@
 export * from "./movie";
 
+
 export type Movie = {
   id: string;
   title: string;
@@ -41,3 +42,4 @@ export type PaymentIntent = {
   amount: number;
   expiresAt: string;
 };
+
