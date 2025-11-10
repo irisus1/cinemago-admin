@@ -3,9 +3,7 @@ import { Fragment, useState } from "react";
 import { Dialog, Transition } from "@headlessui/react";
 import { useEffect } from "react";
 // đổi sang service thật của bạn
-import { addGenre, updateGenre } from "@/services/MovieService";
-
-type Genre = { id?: string; name: string; description?: string };
+import { genreService, type Genre } from "@/services";
 
 export default function GenreModal({
   open,
@@ -35,17 +33,20 @@ export default function GenreModal({
       setName("");
       setDescription("");
     }
-  }, [open, mode, genre?.id]);
+  }, [open, mode, genre]);
 
   async function handleSubmit() {
     if (!valid) return;
     try {
       setLoading(true);
       if (mode === "create") {
-        await addGenre({ name: name.trim(), description: description.trim() });
+        await genreService.addGenre({
+          name: name.trim(),
+          description: description.trim(),
+        });
       } else {
         if (!genre?.id) throw new Error("Thiếu ID");
-        await updateGenre(genre.id, {
+        await genreService.updateGenre(genre.id, {
           name: name.trim(),
           description: description.trim(),
         });

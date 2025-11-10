@@ -19,37 +19,23 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { BiArrowBack } from "react-icons/bi";
 import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon, X, Check, ChevronsUpDown, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { getAllGenres } from "@/services/MovieService";
-import SuccessDialog from "./SuccessDialog";
-import ConfirmDialog from "./ConfirmDialog";
-import FailedDialog from "./FailedDialog";
-import { addMovie, updateMovie } from "@/services/MovieService";
 import RefreshLoader from "./Loading";
-
-export type Genre = { id: string; name: string; [k: string]: unknown };
-export type Movie = {
-  id?: string;
-  title: string;
-  description: string;
-  duration: number;
-  rating?: number;
-  genres: Genre[];
-  trailerUrl?: string; // URL hiện có
-  thumbnail?: string; // URL hiện có
-  releaseDate?: string; // ISO
-  isActive?: boolean;
-};
+import { Modal } from "./Modal";
+import { genreService, movieService, type Genre, Movie } from "@/services";
 
 export default function MovieForm({
   mode,
   film,
+  readOnly = false,
   onSuccess,
 }: {
-  mode: "create" | "edit";
+  mode: "create" | "edit" | "view";
+  readOnly?: boolean;
   film?: Movie;
   onSuccess?: () => void;
 }) {
@@ -63,6 +49,11 @@ export default function MovieForm({
   const [trailerUrl, setTrailerUrl] = useState<string>("");
   const [thumbUrl, setThumbUrl] = useState<string | undefined>(undefined);
   const [thumbFile, setThumbFile] = useState<File | null>(null);
+  const [status, setStatus] = useState<"COMING_SOON" | "SHOWING" | "ENDED">(
+    "COMING_SOON"
+  );
+  const [openStatusBox, setOpenStatusBox] = useState(false);
+
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [trailerFile, setTrailerFile] = useState<File | null>(null);
@@ -92,20 +83,23 @@ export default function MovieForm({
     if (!film) return;
     setTitle(film.title ?? "");
     setDescription(film.description ?? "");
-    setDuration(film.duration ?? "");
+    setDuration(film.duration ? String(film.duration) : "");
     setReleaseDate(film.releaseDate ? new Date(film.releaseDate) : undefined);
     // setIsActive(Boolean(film.isActive));
     setGenres(film.genres ?? []);
     setTrailerUrl(film.trailerUrl ?? "");
     setThumbUrl(film.thumbnail ?? undefined);
+    setStatus(
+      (film.status as "COMING_SOON" | "SHOWING" | "ENDED") ?? "COMING_SOON"
+    );
   }, [film]);
 
   // ======== fetch genres bên trong component ========
   useEffect(() => {
     (async () => {
       try {
-        const res = await getAllGenres();
-        const list: Genre[] = res?.data?.data ?? res?.data ?? [];
+        const res = await genreService.getAllGenres();
+        const list: Genre[] = res?.data ?? [];
         setAllGenres(list);
       } catch (e) {
         console.error("getAllGenres error", e);
@@ -143,13 +137,20 @@ export default function MovieForm({
   };
 
   const onChangeTrailerUrl = (v: string) => {
-    setTrailerUrl(v);
-    if (v.trim()) {
+    let url = v.trim();
+    if (url.includes("youtube.com/watch?v=")) {
+      const id = new URL(url).searchParams.get("v");
+      if (id) url = `https://www.youtube.com/embed/${id}`;
+    } else if (url.includes("youtu.be/")) {
+      const id = url.split("youtu.be/")[1]?.split("?")[0];
+      if (id) url = `https://www.youtube.com/embed/${id}`;
+    }
+    setTrailerUrl(url);
+    if (url) {
       setTrailerMode("url");
       setTrailerFile(null);
-    } // chỉ 1 trong 2
+    }
   };
-
   // ======== genre handlers ========
   const addGenre = (g: Genre) =>
     setGenres((prev) =>
@@ -189,16 +190,17 @@ export default function MovieForm({
     else if (thumbUrl) fd.append("thumbnailUrl", thumbUrl);
     if (trailerFile) fd.append("trailer", trailerFile);
     else if (trailerUrl) fd.append("trailerUrl", trailerUrl);
+    fd.append("status", status);
 
     console.log(fd.get("duration"));
 
     try {
       if (mode === "edit") {
-        await updateMovie(film?.id || "", fd);
+        await movieService.updateMovie(film?.id || "", fd);
         setDialogTitle("Thành công");
         setDialogMsg("Cập nhật thành công");
       } else {
-        await addMovie(fd);
+        await movieService.addMovie(fd);
         setDialogTitle("Thành công");
         setDialogMsg("Tạo phim thành công");
       }
@@ -219,14 +221,26 @@ export default function MovieForm({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">
-            {mode === "edit" ? "Chỉnh sửa phim" : "Thêm phim"}
+            {mode === "edit"
+              ? "Chỉnh sửa phim"
+              : mode === "create"
+              ? "Thêm phim"
+              : "Xem chi tiết phim"}
           </h1>
-          <p className="text-sm text-muted-foreground">
-            Cập nhật poster, trailer và thông tin chi tiết.
-          </p>
         </div>
       </div>
-
+      {readOnly && (
+        <button
+          type="button"
+          onClick={() => history.back()}
+          className="inline-flex items-center gap-2 h-10 px-4 rounded-lg border hover:bg-gray-50 bg-white"
+          aria-label="Quay lại"
+          title="Quay lại"
+        >
+          <BiArrowBack className="text-xl" />
+          Quay lại
+        </button>
+      )}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left */}
         <div className="lg:col-span-4 space-y-6">
@@ -242,6 +256,7 @@ export default function MovieForm({
                 accept="image/*"
                 className="hidden"
                 onChange={onPickThumb}
+                disabled={readOnly}
               />
 
               {/* 2) Ảnh đóng vai trò nút chọn file */}
@@ -308,19 +323,21 @@ export default function MovieForm({
             <CardHeader>
               <CardTitle>Thông tin</CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xl">
-              <div className="md:col-span-2 space-y-2">
+            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xl">
+              <div className="md:col-span-3 space-y-2">
                 <Label>Tiêu đề</Label>
                 <Input
                   value={title}
+                  disabled={readOnly}
                   onChange={(e) => setTitle(e.target.value)}
                 />
               </div>
 
-              <div className="md:col-span-2 space-y-2">
+              <div className="md:col-span-3 space-y-2">
                 <Label>Mô tả</Label>
                 <Textarea
                   rows={5}
+                  disabled={readOnly}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                 />
@@ -332,6 +349,7 @@ export default function MovieForm({
                   type="number"
                   inputMode="numeric"
                   min={1}
+                  disabled={readOnly}
                   value={duration}
                   onChange={(e) => setDuration(e.target.value)}
                 />
@@ -343,6 +361,7 @@ export default function MovieForm({
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
+                      disabled={readOnly}
                       className={cn(
                         "w-full justify-start",
                         !releaseDate && "text-muted-foreground"
@@ -365,7 +384,88 @@ export default function MovieForm({
                 </Popover>
               </div>
 
-              <div className="md:col-span-2">
+              <div className="space-y-2">
+                <Label>Trạng thái phim</Label>
+                <Popover open={openStatusBox} onOpenChange={setOpenStatusBox}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={openStatusBox}
+                      disabled={readOnly}
+                      className="w-full justify-between"
+                    >
+                      {status === "COMING_SOON"
+                        ? "Sắp chiếu"
+                        : status === "SHOWING"
+                        ? "Đang chiếu"
+                        : "Đã kết thúc"}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    align="start"
+                    className="p-1 w-[var(--radix-popover-trigger-width)]"
+                  >
+                    <Command>
+                      <CommandList>
+                        <CommandGroup>
+                          <CommandItem
+                            onSelect={() => {
+                              setStatus("COMING_SOON");
+                              setOpenStatusBox(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                status === "COMING_SOON"
+                                  ? "opacity-100"
+                                  : "opacity-0"
+                              )}
+                            />
+                            Sắp chiếu
+                          </CommandItem>
+
+                          <CommandItem
+                            onSelect={() => {
+                              setStatus("SHOWING");
+                              setOpenStatusBox(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                status === "SHOWING"
+                                  ? "opacity-100"
+                                  : "opacity-0"
+                              )}
+                            />
+                            Đang chiếu
+                          </CommandItem>
+
+                          <CommandItem
+                            onSelect={() => {
+                              setStatus("ENDED");
+                              setOpenStatusBox(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                status === "ENDED" ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            Đã kết thúc
+                          </CommandItem>
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="md:col-span-3">
                 <Label className="mb-2 inline-block">Thể loại</Label>
 
                 {/* các tag đã chọn */}
@@ -383,6 +483,7 @@ export default function MovieForm({
                           e.preventDefault();
                           removeGenre(g.id);
                         }}
+                        disabled={readOnly}
                         title="Bỏ chọn"
                       >
                         <X className="h-3 w-3" />
@@ -398,6 +499,7 @@ export default function MovieForm({
                       variant="outline"
                       role="combobox"
                       aria-expanded={openGenreBox}
+                      disabled={readOnly}
                       className="w-full justify-between"
                     >
                       {/* {genres.length
@@ -454,8 +556,17 @@ export default function MovieForm({
             <CardContent className="space-y-3">
               <div className="rounded-2xl overflow-hidden border bg-black">
                 {trailerPreview ? (
-                  // eslint-disable-next-line jsx-a11y/media-has-caption
-                  <video src={trailerPreview} controls className="w-full" />
+                  trailerPreview.includes("youtube.com/embed/") ? (
+                    <iframe
+                      src={trailerPreview}
+                      className="w-full aspect-video"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    ></iframe>
+                  ) : (
+                    // eslint-disable-next-line jsx-a11y/media-has-caption
+                    <video src={trailerPreview} controls className="w-full" />
+                  )
                 ) : (
                   <div className="aspect-video grid place-items-center text-muted-foreground">
                     Chưa có trailer
@@ -469,7 +580,7 @@ export default function MovieForm({
                   type="file"
                   accept="video/*"
                   onChange={onPickTrailer}
-                  disabled={trailerMode === "url" && !!trailerUrl} // khóa khi đang nhập URL
+                  disabled={(trailerMode === "url" && !!trailerUrl) || readOnly} // khóa khi đang nhập URL
                 />
                 {trailerFile && (
                   <Button
@@ -491,56 +602,74 @@ export default function MovieForm({
                   placeholder="https://…"
                   value={trailerUrl}
                   onChange={(e) => onChangeTrailerUrl(e.target.value)}
-                  disabled={trailerMode === "file" && !!trailerFile} // khóa khi đã chọn file
+                  disabled={
+                    (trailerMode === "file" && !!trailerFile) || readOnly
+                  } // khóa khi đã chọn file
                 />
               </div>
             </CardContent>
           </Card>
         </div>
       </div>
+      {readOnly ? null : (
+        <div className="flex items-center justify-end gap-2">
+          <Button variant="outline" onClick={() => history.back()}>
+            Huỷ
+          </Button>
 
-      <div className="flex items-center justify-end gap-2">
-        <Button variant="outline" onClick={() => history.back()}>
-          Huỷ
-        </Button>
+          <Button
+            disabled={!isValid}
+            onClick={() => {
+              setDialogTitle(
+                mode === "create" ? "Xác nhận thêm phim" : "Xác nhận cập nhật"
+              );
+              setDialogMsg(
+                mode === "create" ? "Thêm phim mới?" : "Lưu thay đổi?"
+              );
+              setConfirmOpen(true);
+            }}
+            variant={isValid ? "default" : "ghost"}
+            title={isValid ? "" : "Điền đủ thông tin để lưu"}
+          >
+            <Check className="mr-2 h-4 w-4" />
+            {mode === "edit" ? "Lưu thay đổi" : "Tạo phim"}
+          </Button>
+        </div>
+      )}
 
-        <Button
-          disabled={!isValid}
-          onClick={() => {
-            setDialogTitle(
-              mode === "create" ? "Xác nhận thêm phim" : "Xác nhận cập nhật"
-            );
-            setDialogMsg(
-              mode === "create" ? "Thêm phim mới?" : "Lưu thay đổi?"
-            );
-            setConfirmOpen(true);
-          }}
-          variant={isValid ? "default" : "ghost"}
-          title={isValid ? "" : "Điền đủ thông tin để lưu"}
-        >
-          <Check className="mr-2 h-4 w-4" />
-          {mode === "edit" ? "Lưu thay đổi" : "Tạo phim"}
-        </Button>
-      </div>
-
-      <ConfirmDialog
+      <Modal
         isOpen={confirmOpen}
         onClose={() => setConfirmOpen(false)}
-        onConfirm={handleSubmit}
+        type="info"
         title={dialogTitle}
         message={dialogMsg}
+        onCancel={() => setConfirmOpen(false)}
+        cancelText="Hủy"
+        onConfirm={() => {
+          handleSubmit();
+          setConfirmOpen(false);
+        }}
+        confirmText="Xác nhận"
       />
-      <SuccessDialog
+
+      <Modal
         isOpen={successOpen}
         onClose={() => setSuccessOpen(false)}
+        type="success"
         title={dialogTitle}
         message={dialogMsg}
+        onCancel={() => setSuccessOpen(false)}
+        cancelText="Đóng"
       />
-      <FailedDialog
+
+      <Modal
         isOpen={failOpen}
         onClose={() => setFailOpen(false)}
+        type="error"
         title={dialogTitle}
         message={dialogMsg}
+        onCancel={() => setFailOpen(false)}
+        cancelText="Đóng"
       />
       <RefreshLoader isOpen={loading} />
     </div>
