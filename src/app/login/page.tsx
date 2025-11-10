@@ -38,9 +38,8 @@ export default function LoginPage() {
     try {
       setLoading(true);
       await login(formData.username, formData.password);
-      toast.success("Đăng nhập thành công!");
 
-      router.replace("/admin/movies");
+      router.replace("/admin/dashboard");
       // router.push("/admin"); // chuyển trang
     } catch {
       toast.error("Đăng nhập thất bại!");

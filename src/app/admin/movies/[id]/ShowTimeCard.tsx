@@ -22,34 +22,18 @@ import {
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import Table, { Column } from "@/components/Table";
-import {
-  getShowTimesByMovieId,
-  deleteShowTime,
-  restoreShowTime,
-} from "@/services/ShowtimeService";
-import { getCinemaById, getAllCinemas } from "@/services/CinemaService";
-import { getAllRooms } from "@/services/RoomService";
 import { fetchNamesFromPaginated, PageResp, HasIdName } from "./helper";
-import Dialog from "@/components/ConfirmDialog";
-import SuccessDialog from "@/components/SuccessDialog";
-import ShowTimeModal from "@/components/ShowtimeModal";
 
-type ShowTime = {
-  id: string;
-  cinemaName: string;
-  cinemaId: string;
-  format: string;
-  roomId: string;
-  roomName: string;
-  startTime: string; // ISO
-  endTime?: string; // ISO
-  price?: number;
-  status?: string;
-  subtitle?: boolean;
-  // các field ngôn ngữ có thể khác nhau tùy backend:
-  language?: string;
-  isActive?: boolean;
-};
+import { Modal } from "@/components/Modal";
+import ShowTimeModal from "@/components/ShowtimeModal";
+import {
+  cinemaService,
+  roomService,
+  showTimeService,
+  type ShowTime,
+  PaginationMeta,
+} from "@/services";
+import { da } from "date-fns/locale";
 
 export default function ShowtimesCard({ movieId }: { movieId: string }) {
   const [showtimes, setShowtimes] = useState<ShowTime[]>([]);
@@ -64,6 +48,10 @@ export default function ShowtimesCard({ movieId }: { movieId: string }) {
   const [dialogMessage, setDialogMessage] = useState<React.ReactNode>("");
   const [reloadTick, setReloadTick] = useState(0);
   const [onConfirm, setOnConfirm] = useState<() => void>(() => () => {});
+
+  const [page, setPage] = useState(1); // 1-based
+  const [pageSize, setPageSize] = useState(6); // limit
+  const [totalItems, setTotalItems] = useState(0);
 
   const cinemaCache = useRef(new Map<string, string>());
   const roomCache = useRef(new Map<string, string>());
@@ -80,14 +68,13 @@ export default function ShowtimesCard({ movieId }: { movieId: string }) {
   // Nếu có endpoint bulk:
   const getCinemasPage = useCallback(
     async (page: number, limit: number): Promise<PageResp<HasIdName>> => {
-      const res = await getAllCinemas({ page, limit });
-      const raw = (res.data?.data ?? []) as Array<{
-        id: string | number;
-        name: string;
-      }>;
+      const res = await cinemaService.getAllCinemas({ page, limit });
+
+      const { data, pagination } = res;
+
       return {
-        data: raw.map((x) => ({ id: String(x.id), name: x.name })),
-        pagination: res.data?.pagination,
+        data: data.map((x) => ({ id: String(x.id), name: x.name })),
+        pagination: pagination,
       };
     },
     []
@@ -95,14 +82,13 @@ export default function ShowtimesCard({ movieId }: { movieId: string }) {
 
   const getRoomsPage = useCallback(
     async (page: number, limit: number): Promise<PageResp<HasIdName>> => {
-      const res = await getAllRooms({ page, limit });
-      const raw = (res.data?.data ?? []) as Array<{
-        id: string | number;
-        name: string;
-      }>;
+      const res = await roomService.getRooms({ page, limit });
+
+      const { data, pagination } = res;
+
       return {
-        data: raw.map((x) => ({ id: String(x.id), name: x.name })),
-        pagination: res.data?.pagination,
+        data: data.map((x) => ({ id: String(x.id), name: x.name })),
+        pagination: pagination,
       };
     },
     []
@@ -113,18 +99,34 @@ export default function ShowtimesCard({ movieId }: { movieId: string }) {
     (async () => {
       try {
         setLoadingShow(true);
-        const res = await getShowTimesByMovieId({ movieid: movieId });
-        const raw = (res.data?.data || []) as ShowTime[];
 
+        // GỌI API có page/limit
+        const res = await showTimeService.getShowTimes({
+          movieId: movieId,
+          page,
+          limit: pageSize,
+        });
+
+        const { data, pagination } = res;
+
+        // Ưu tiên lấy totalItems/total từ backend nếu có
+        const limitFromServer = (pagination.pageSize ?? pageSize) || pageSize;
+        const totalFromServer = (pagination.totalItems ?? 0) as number;
+
+        // fallback: nếu backend chưa trả total, ước lượng theo độ dài trang hiện tại
+        const totalFallback =
+          typeof totalFromServer === "number" && totalFromServer > 0
+            ? totalFromServer
+            : (page - 1) * limitFromServer + data.length;
+
+        if (!cancelled) setTotalItems(totalFallback);
+
+        // === phần enrich tên rạp/phòng (giữ nguyên) ===
         const needCinemaIds = new Set(
-          raw
-            .filter((s) => !s.cinemaName && s.cinemaId)
-            .map((s) => String(s.cinemaId))
+          data.filter((s) => s.cinemaId).map((s) => String(s.cinemaId))
         );
         const needRoomIds = new Set(
-          raw
-            .filter((s) => !s.roomName && s.roomId)
-            .map((s) => String(s.roomId))
+          data.filter((s) => s.roomId).map((s) => String(s.roomId))
         );
 
         const [cinemaMapNew, roomMapNew] = await Promise.all([
@@ -132,19 +134,17 @@ export default function ShowtimesCard({ movieId }: { movieId: string }) {
           fetchNamesFromPaginated(needRoomIds, getRoomsPage, 200),
         ]);
 
-        // Cập nhật cache global
         cinemaMapNew.forEach((v, k) => cinemaCache.current.set(k, v));
         roomMapNew.forEach((v, k) => roomCache.current.set(k, v));
 
-        // Join tên vào danh sách
-        const enriched = raw.map((s) => ({
+        const enriched = data.map((s) => ({
           ...s,
-          cinemaName:
-            s.cinemaName || cinemaCache.current.get(String(s.cinemaId)) || "",
-          roomName: s.roomName || roomCache.current.get(String(s.roomId)) || "",
+          cinemaName: cinemaCache.current.get(String(s.cinemaId)) || "",
+          roomName: roomCache.current.get(String(s.roomId)) || "",
         }));
 
         if (!cancelled) setShowtimes(enriched);
+        console.log(enriched);
       } finally {
         if (!cancelled) setLoadingShow(false);
       }
@@ -152,7 +152,8 @@ export default function ShowtimesCard({ movieId }: { movieId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [movieId, getCinemasPage, getRoomsPage, reloadTick]);
+    // thêm page, pageSize, reloadTick vào deps
+  }, [movieId, page, pageSize, getCinemasPage, getRoomsPage, reloadTick]);
 
   const langOptions = useMemo(() => {
     const set = new Set(
@@ -175,6 +176,10 @@ export default function ShowtimesCard({ movieId }: { movieId: string }) {
       (s) => ((s.language && s.language.trim()) || "Unknown") === filterLang
     );
   }, [showtimes, filterLang]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [filterLang, movieId]);
 
   const handleAddOpen = () => {
     setEditShowtme(null);
@@ -208,7 +213,7 @@ export default function ShowtimesCard({ movieId }: { movieId: string }) {
       async () => {
         setIsConfirmDialogOpen(false);
         try {
-          await deleteShowTime(showtime.id);
+          await showTimeService.deleteShowTime(showtime.id);
           patchShowtime(showtime.id, { isActive: false });
           setReloadTick((x) => x + 1);
           setDialogTitle("Thành công");
@@ -228,7 +233,7 @@ export default function ShowtimesCard({ movieId }: { movieId: string }) {
       async () => {
         setIsConfirmDialogOpen(false);
         try {
-          await restoreShowTime(showtime.id);
+          await showTimeService.restoreShowTime(showtime.id);
           patchShowtime(showtime.id, { isActive: true });
           setReloadTick((x) => x + 1);
           setDialogTitle("Thành công");
@@ -247,13 +252,13 @@ export default function ShowtimesCard({ movieId }: { movieId: string }) {
       { header: "Phòng", key: "roomName" },
       { header: "Ngôn ngữ", key: "language" },
       { header: "Định dạng", key: "format" },
-      { header: "Phụ đề", key: "format" },
       {
         header: "Bắt đầu",
         key: "startTime",
         render: (v) =>
           v
             ? Intl.DateTimeFormat("vi-VN", {
+                timeZone: "UTC",
                 hour: "2-digit",
                 minute: "2-digit",
                 day: "2-digit",
@@ -268,6 +273,7 @@ export default function ShowtimesCard({ movieId }: { movieId: string }) {
         render: (v) =>
           v
             ? Intl.DateTimeFormat("vi-VN", {
+                timeZone: "UTC",
                 hour: "2-digit",
                 minute: "2-digit",
                 day: "2-digit",
@@ -329,8 +335,6 @@ export default function ShowtimesCard({ movieId }: { movieId: string }) {
     []
   );
 
-  console.log(showtimes);
-
   return (
     <div>
       <Card className="shadow-sm">
@@ -374,27 +378,82 @@ export default function ShowtimesCard({ movieId }: { movieId: string }) {
               Đang tải suất chiếu…
             </div>
           ) : (
-            <Table
-              columns={columns}
-              data={filteredShowtimes}
-              getRowKey={(r) => r.id}
-            />
+            <>
+              <Table
+                columns={columns}
+                data={filteredShowtimes}
+                getRowKey={(r) => r.id}
+              />
+              <div className="mt-3 flex items-center justify-center gap-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1 || loadingShow}
+                >
+                  Trước
+                </Button>
+
+                {(() => {
+                  const totalPages = Math.max(
+                    1,
+                    Math.ceil(totalItems / pageSize)
+                  );
+                  return (
+                    <span className="text-sm">
+                      Trang {page} / {totalPages}
+                    </span>
+                  );
+                })()}
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const totalPages = Math.max(
+                      1,
+                      Math.ceil(totalItems / pageSize)
+                    );
+                    setPage((p) => Math.min(totalPages, p + 1));
+                  }}
+                  disabled={
+                    loadingShow ||
+                    page >= Math.max(1, Math.ceil(totalItems / pageSize))
+                  }
+                >
+                  Sau
+                </Button>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
-      <Dialog
+
+      <Modal
         isOpen={isConfirmDialogOpen}
         onClose={() => setIsConfirmDialogOpen(false)}
-        onConfirm={onConfirm}
+        type="info"
         title={dialogTitle}
         message={dialogMessage}
+        onCancel={() => setIsConfirmDialogOpen(false)}
+        cancelText="Hủy"
+        onConfirm={() => {
+          onConfirm();
+          setIsConfirmDialogOpen(false);
+        }}
+        confirmText="Xác nhận"
       />
-      <SuccessDialog
+
+      <Modal
         isOpen={isSuccessDialogOpen}
         onClose={() => setIsSuccessDialogOpen(false)}
+        type="success"
         title={dialogTitle}
         message={dialogMessage}
+        onCancel={() => setIsSuccessDialogOpen(false)}
+        cancelText="Đóng"
       />
+
       <ShowTimeModal
         open={open}
         onClose={() => setOpen(false)}
@@ -402,9 +461,9 @@ export default function ShowtimesCard({ movieId }: { movieId: string }) {
         showtime={editShowtime || undefined}
         movieId={movieId}
         onSuccess={async () => {
-          setOpen(false);
-          setEditShowtme(null);
-          // await fetchGenres(); // reload list
+          // setOpen(false);
+          // setEditShowtme(null);
+          setReloadTick((x) => x + 1);
         }}
       />
     </div>

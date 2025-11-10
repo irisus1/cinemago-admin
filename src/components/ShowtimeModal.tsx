@@ -19,26 +19,18 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { toast } from "sonner";
+import {
+  cinemaService,
+  showTimeService,
+  roomService,
+  movieService,
+  type Cinema,
+  ShowTime,
+} from "@/services";
 
 // ===== Types =====
-type Cinema = { id: string; name: string; provinceName?: string };
 type Room = { id: string; name: string; seats?: number };
-type ShowTime = {
-  id?: string;
-  cinemaName: string;
-  cinemaId: string;
-  format: string;
-  roomId: string;
-  roomName: string;
-  startTime: string; // ISO
-  endTime?: string; // ISO
-  price?: number;
-  status?: string;
-  subtitle?: boolean;
-  // các field ngôn ngữ có thể khác nhau tùy backend:
-  language?: string;
-  isActive?: boolean;
-};
 
 type Props = {
   open: boolean;
@@ -46,34 +38,8 @@ type Props = {
   mode: "create" | "edit";
   movieId: string;
   showtime?: ShowTime; // dùng khi edit
-  onSuccess?: () => void; // gọi sau khi create/update OK
+  onSuccess?: () => void; // callback sau khi lưu OK
 };
-
-// ===== Services (thay bằng service thực tế của bạn) =====
-async function getAllCinemas() {
-  return await fetch("/api/cinemas").then((r) => r.json());
-}
-async function getRoomsByCinemaId(cinemaId: string) {
-  return await fetch(`/api/cinemas/${cinemaId}/rooms`).then((r) => r.json());
-}
-async function createShowtime(movieId: string, body: Omit<ShowTime, "id">) {
-  const r = await fetch(`/api/movies/${movieId}/showtimes`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!r.ok) throw new Error("Create failed");
-  return r.json();
-}
-async function updateShowtime(showtimeId: string, body: Omit<ShowTime, "id">) {
-  const r = await fetch(`/api/showtimes/${showtimeId}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!r.ok) throw new Error("Update failed");
-  return r.json();
-}
 
 // ===== Helpers =====
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -84,6 +50,19 @@ const toIsoLocal = (d: string, t: string) => {
   return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(
     dt.getDate()
   )}T${pad(dt.getHours())}:${pad(dt.getMinutes())}:00`;
+};
+const addMinutesIsoLocal = (iso: string, mins: number) => {
+  const [datePart, timePart] = iso.split("T");
+  const [Y, M, D] = datePart.split("-").map(Number);
+  const [H, Min] = timePart.split(":").map(Number);
+  const dt = new Date(Y, M - 1, D, H, Min, 0, 0);
+  dt.setMinutes(dt.getMinutes() + mins);
+  const y = dt.getFullYear();
+  const m = pad(dt.getMonth() + 1);
+  const d2 = pad(dt.getDate());
+  const h2 = pad(dt.getHours());
+  const mi2 = pad(dt.getMinutes());
+  return { date: `${y}-${m}-${d2}`, time: `${h2}:${mi2}` };
 };
 
 export default function ShowtimeModal({
@@ -97,6 +76,7 @@ export default function ShowtimeModal({
   const [loading, setLoading] = useState(false);
   const [cinemas, setCinemas] = useState<Cinema[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
+  const [duration, setDuration] = useState<number | null>(null);
 
   // ----- form state -----
   const [cinemaId, setCinemaId] = useState("");
@@ -110,6 +90,25 @@ export default function ShowtimeModal({
   const [format, setFormat] = useState("2D");
   const [subtitle, setSubtitle] = useState(false);
 
+  // Load duration theo movieId khi open
+  useEffect(() => {
+    if (!open || !movieId) return;
+    let alive = true;
+    (async () => {
+      try {
+        const m = await movieService.getMovieById(movieId);
+        // giả sử response: { data: { duration: number } }
+        if (alive) setDuration(m?.duration ?? null);
+      } catch {
+        if (alive) toast.error("Không tải được thời lượng phim");
+        setDuration(null);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [open, movieId]);
+
   // Reset/đổ dữ liệu khi mở modal
   useEffect(() => {
     if (!open) return;
@@ -118,15 +117,17 @@ export default function ShowtimeModal({
       setRoomId(showtime.roomId ?? "");
       setPrice(showtime.price != null ? String(showtime.price) : "");
       const s = new Date(showtime.startTime);
-      const e = new Date(showtime.endTime ?? "");
+      const e = showtime.endTime ? new Date(showtime.endTime) : null;
       setStartDate(
         `${s.getFullYear()}-${pad(s.getMonth() + 1)}-${pad(s.getDate())}`
       );
       setStartTime(`${pad(s.getHours())}:${pad(s.getMinutes())}`);
       setEndDate(
-        `${e.getFullYear()}-${pad(e.getMonth() + 1)}-${pad(e.getDate())}`
+        e
+          ? `${e.getFullYear()}-${pad(e.getMonth() + 1)}-${pad(e.getDate())}`
+          : ""
       );
-      setEndTime(`${pad(e.getHours())}:${pad(e.getMinutes())}`);
+      setEndTime(e ? `${pad(e.getHours())}:${pad(e.getMinutes())}` : "");
       setLanguage(showtime.language ?? "English");
       setFormat(showtime.format ?? "2D");
       setSubtitle(Boolean(showtime.subtitle));
@@ -149,14 +150,18 @@ export default function ShowtimeModal({
   // Load cinemas khi mở modal
   useEffect(() => {
     if (!open) return;
-    let cancelled = false;
+    let alive = true;
     (async () => {
-      const res = await getAllCinemas();
-      const data: Cinema[] = res?.data?.data ?? res ?? [];
-      if (!cancelled) setCinemas(data);
+      try {
+        const res = await cinemaService.getAllCinemas();
+        const data = res.data ?? [];
+        if (alive) setCinemas(data);
+      } catch (e: any) {
+        if (alive) toast.error(e?.message || "Không tải được danh sách rạp");
+      }
     })();
     return () => {
-      cancelled = true;
+      alive = false;
     };
   }, [open]);
 
@@ -167,71 +172,101 @@ export default function ShowtimeModal({
       if (roomId) setRoomId("");
       return;
     }
-    let cancelled = false;
+    let alive = true;
     (async () => {
-      const res = await getRoomsByCinemaId(cinemaId);
-      const data: Room[] = res?.data?.data ?? res ?? [];
-      if (!cancelled) {
+      try {
+        const res = await roomService.getRooms({ cinemaId });
+        const data = res.data ?? [];
+        if (!alive) return;
         setRooms(data);
         if (!data.some((r) => r.id === roomId)) setRoomId("");
+      } catch {
+        if (alive) toast.error("Không tải được danh sách phòng");
       }
     })();
     return () => {
-      cancelled = true;
+      alive = false;
     };
-  }, [open, cinemaId]);
+  }, [open, cinemaId, roomId]);
+
+  // Tự động tính end khi start đổi & có duration
+  useEffect(() => {
+    if (!startDate || !startTime || duration == null) return;
+    const startIso = toIsoLocal(startDate, startTime);
+    const { date, time } = addMinutesIsoLocal(startIso, duration);
+    setEndDate(date);
+    setEndTime(time);
+  }, [startDate, startTime, duration]);
 
   const canSubmit = useMemo(() => {
     if (!cinemaId || !roomId) return false;
-    if (!startDate || !startTime || !endDate || !endTime) return false;
+    if (!startDate || !startTime) return false;
     if (price !== "" && Number.isNaN(Number(price))) return false;
+    if (duration == null) return false;
     const startIso = toIsoLocal(startDate, startTime);
-    const endIso = toIsoLocal(endDate, endTime);
+    const endX = addMinutesIsoLocal(startIso, duration);
+    const endIso = toIsoLocal(endX.date, endX.time);
     return new Date(startIso).getTime() < new Date(endIso).getTime();
-  }, [cinemaId, roomId, startDate, startTime, endDate, endTime, price]);
+  }, [cinemaId, roomId, startDate, startTime, duration, price]);
 
+  // 1 nút Lưu duy nhất:
+  // - create: lưu xong reset start & giữ modal (toast)
+  // - edit: lưu xong đóng modal (toast)
   const submit = useCallback(async () => {
     if (!canSubmit) return;
     try {
       setLoading(true);
-      const body: Omit<ShowTime, "id"> = {
-        cinemaId,
+      const startIso = toIsoLocal(startDate, startTime);
+      const endX = addMinutesIsoLocal(startIso, duration as number);
+      const body = {
         roomId,
-        price: price === "" ? undefined : Number(price),
-        startTime: toIsoLocal(startDate, startTime),
-        endTime: toIsoLocal(endDate, endTime),
+        movieId,
+        price: Number(price),
+        startTime: startIso,
+        endTime: toIsoLocal(endX.date, endX.time),
         language,
         format,
         subtitle,
       };
+
       if (mode === "edit" && showtime?.id) {
-        await updateShowtime(showtime.id, body);
-      } else {
-        await createShowtime(movieId, body);
+        await showTimeService.updateShowTime(showtime.id, body);
+        toast.success("Cập nhật suất chiếu thành công");
+        onSuccess?.();
+        onClose();
+        return;
       }
+
+      console.log(body);
+
+      await showTimeService.createShowTime(body);
+      toast.success("Tạo suất chiếu thành công. Bạn có thể tiếp tục thêm mới.");
       onSuccess?.();
-      onClose();
-    } catch (e) {
-      console.error(e);
-      // bạn có thể thay bằng toast
-      alert(`${mode === "edit" ? "Cập nhật" : "Tạo"} suất chiếu thất bại`);
+
+      // Giữ nguyên rạp/phòng/…; reset thời gian để nhập tiếp
+      setStartDate("");
+      setStartTime("");
+      setEndDate("");
+      setEndTime("");
+    } catch {
+      toast.error(
+        `${mode === "edit" ? "Cập nhật" : "Tạo"} suất chiếu thất bại`
+      );
     } finally {
       setLoading(false);
     }
   }, [
     canSubmit,
-    cinemaId,
+    duration,
     roomId,
+    movieId,
     price,
     startDate,
     startTime,
-    endDate,
-    endTime,
     language,
     format,
     subtitle,
     mode,
-    movieId,
     showtime?.id,
     onSuccess,
     onClose,
@@ -253,7 +288,7 @@ export default function ShowtimeModal({
 
         {/* Form */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* 1) RẠP — 1 hàng, full width */}
+          {/* 1) RẠP — full width */}
           <div className="md:col-span-2 min-w-0">
             <Label>Rạp</Label>
             <Select value={cinemaId} onValueChange={setCinemaId}>
@@ -264,14 +299,14 @@ export default function ShowtimeModal({
                 {cinemas.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
                     {c.name}
-                    {c.provinceName ? ` (${c.provinceName})` : ""}
+                    {c.city ? `  - ${c.city}` : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
-          {/* 2) PHÒNG + GIÁ — cùng hàng */}
+          {/* 2) PHÒNG + GIÁ */}
           <div className="min-w-0">
             <Label>Phòng</Label>
             <Select
@@ -294,6 +329,7 @@ export default function ShowtimeModal({
               </SelectContent>
             </Select>
           </div>
+
           <div className="min-w-0">
             <Label>Giá (₫)</Label>
             <Input
@@ -305,7 +341,7 @@ export default function ShowtimeModal({
             />
           </div>
 
-          {/* 3) NGÀY/GIỜ BẮT ĐẦU — giữ nguyên */}
+          {/* 3) NGÀY/GIỜ BẮT ĐẦU */}
           <div className="min-w-0">
             <Label>Ngày bắt đầu</Label>
             <Input
@@ -325,14 +361,14 @@ export default function ShowtimeModal({
             />
           </div>
 
-          {/* 4) NGÀY/GIỜ KẾT THÚC — giữ nguyên */}
+          {/* 4) NGÀY/GIỜ KẾT THÚC */}
           <div className="min-w-0">
             <Label>Ngày kết thúc</Label>
             <Input
               className="mt-1 h-10 w-full"
               type="date"
               value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
+              readOnly
             />
           </div>
           <div className="min-w-0">
@@ -341,11 +377,11 @@ export default function ShowtimeModal({
               className="mt-1 h-10 w-full"
               type="time"
               value={endTime}
-              onChange={(e) => setEndTime(e.target.value)}
+              readOnly
             />
           </div>
 
-          {/* 5) NGÔN NGỮ + ĐỊNH DẠNG — cùng hàng */}
+          {/* 5) NGÔN NGỮ + ĐỊNH DẠNG */}
           <div className="min-w-0">
             <Label>Ngôn ngữ</Label>
             <Select value={language} onValueChange={setLanguage}>
@@ -375,7 +411,7 @@ export default function ShowtimeModal({
             </Select>
           </div>
 
-          {/* 6) PHỤ ĐỀ — 1 hàng, full width */}
+          {/* 6) PHỤ ĐỀ */}
           <div className="md:col-span-2">
             <div className="flex w-full items-center justify-between rounded-lg border p-3">
               <div className="min-w-0">
@@ -398,7 +434,7 @@ export default function ShowtimeModal({
             Hủy
           </Button>
           <Button onClick={submit} disabled={!canSubmit || loading}>
-            {loading ? "Đang lưu..." : mode === "edit" ? "Cập nhật" : "Tạo mới"}
+            {loading ? "Đang lưu..." : mode === "edit" ? "Cập nhật" : "Lưu"}
           </Button>
         </DialogFooter>
       </DialogContent>

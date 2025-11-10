@@ -2,17 +2,7 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { Dialog, Transition } from "@headlessui/react";
 // đổi sang service thật của bạn
-import { addCinema, updateCinema } from "@/services/CinemaService";
-
-type Cinema = {
-  id: string;
-  name: string;
-  address: string;
-  city: string;
-  longitude: number | null;
-  latitude: number | null;
-  isActive: boolean;
-};
+import { cinemaService, type Cinema } from "@/services";
 
 export default function CinemaModal({
   open,
@@ -86,10 +76,10 @@ export default function CinemaModal({
       };
 
       if (mode === "create") {
-        await addCinema(payload);
+        await cinemaService.addCinema(payload);
       } else {
         if (!cinema?.id) throw new Error("Thiếu ID rạp");
-        await updateCinema(cinema.id, payload);
+        await cinemaService.updateCinema(cinema.id, payload);
       }
 
       onSuccess?.();

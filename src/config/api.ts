@@ -1,94 +1,125 @@
-import axios from "axios";
-import { getCookie, setCookie, deleteCookie } from "@/utils/auth";
+// import axios from "axios";
 
-const api = axios.create({
+// const api = axios.create({
+//   baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/v1",
+//   withCredentials: true,
+// });
+
+// api.interceptors.request.use((config) => {
+//   const token =
+//     typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+//   if (token) {
+//     config.headers.Authorization = `Bearer ${token}`;
+//   }
+//   return config;
+// });
+
+// export default api;
+
+import axios, {
+  AxiosError,
+  AxiosInstance,
+  AxiosRequestConfig,
+  AxiosResponse,
+} from "axios";
+import { ACCESS_TOKEN_KEY } from "@/constants/auth";
+
+const api: AxiosInstance = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/v1",
-  withCredentials: true,
+  withCredentials: true, // cookie cho refresh token
 });
 
+let isRefreshing = false;
+let failedQueue: {
+  resolve: (token: string) => void;
+  reject: (err: unknown) => void;
+}[] = [];
+
+const processQueue = (error: unknown, token: string | null = null) => {
+  failedQueue.forEach((prom) => {
+    if (token) prom.resolve(token);
+    else prom.reject(error);
+  });
+  failedQueue = [];
+};
+
+//  Intercept request: gắn accessToken vào header
 api.interceptors.request.use((config) => {
   const token =
-    typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-  if (token) {
+    typeof window !== "undefined"
+      ? localStorage.getItem(ACCESS_TOKEN_KEY)
+      : null;
+  if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
 
-// let isRefreshing = false;
-// let failedQueue: any[] = [];
+//  Intercept response: tự refresh khi 401
+api.interceptors.response.use(
+  (response: AxiosResponse) => response,
+  async (error: AxiosError) => {
+    const originalRequest = error.config as AxiosRequestConfig & {
+      _retry?: boolean;
+    };
+    if (!originalRequest || originalRequest._retry) throw error;
 
-// const processQueue = (error: any, token: string | null = null) => {
-//   failedQueue.forEach((prom) => {
-//     if (error) {
-//       prom.reject(error);
-//     } else {
-//       prom.resolve(token);
-//     }
-//   });
-//   failedQueue = [];
-// };
+    // Nếu token hết hạn (401)
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
 
-// api.interceptors.response.use(
-//   (response) => response,
-//   async (error) => {
-//     const originalRequest = error.config;
+      if (isRefreshing) {
+        //  Đợi refresh token hiện tại xong rồi retry
+        return new Promise((resolve, reject) => {
+          failedQueue.push({
+            resolve: (token) => {
+              if (originalRequest.headers)
+                originalRequest.headers.Authorization = `Bearer ${token}`;
+              resolve(api(originalRequest));
+            },
+            reject,
+          });
+        });
+      }
 
-//     if (error.response?.status === 401 && !originalRequest._retry) {
-//       if (isRefreshing) {
-//         return new Promise(function (resolve, reject) {
-//           failedQueue.push({ resolve, reject });
-//         })
-//           .then((token) => {
-//             originalRequest.headers.Authorization = `Bearer ${token}`;
-//             return api(originalRequest);
-//           })
-//           .catch((err) => {
-//             return Promise.reject(err);
-//           });
-//       }
+      isRefreshing = true;
 
-//       originalRequest._retry = true;
-//       isRefreshing = true;
+      try {
+        const refreshResponse = await axios.post(
+          `${
+            process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/v1"
+          }/auth/refresh-token`,
+          {},
+          { withCredentials: true }
+        );
 
-//       try {
-//         const refreshToken = getCookie("refreshToken");
+        const newAccessToken = refreshResponse.data?.accessToken as
+          | string
+          | undefined;
+        if (!newAccessToken)
+          throw new Error("No accessToken in refresh response");
 
-//         if (!refreshToken) {
-//           throw new Error("No refresh token found");
-//         }
+        localStorage.setItem(ACCESS_TOKEN_KEY, newAccessToken);
+        processQueue(null, newAccessToken);
 
-//         const res = await axios.post(
-//           `${
-//             process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/v1"
-//           }/auth/refresh-token`,
-//           { refreshToken: refreshToken },
-//           { withCredentials: true }
-//         );
+        if (originalRequest.headers)
+          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
 
-//         const { accessToken, refreshToken: newRefresh } = res.data;
+        return api(originalRequest);
+      } catch (refreshError) {
+        processQueue(refreshError, null);
+        localStorage.removeItem(ACCESS_TOKEN_KEY);
+        if (typeof window !== "undefined") {
+          window.location.href = "/login";
+        }
+        throw refreshError;
+      } finally {
+        isRefreshing = false;
+      }
+    }
 
-//         localStorage.setItem("accessToken", accessToken);
-//         setCookie("refreshToken", newRefresh, { days: 7 });
-
-//         api.defaults.headers.Authorization = `Bearer ${accessToken}`;
-//         processQueue(null, accessToken);
-
-//         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-//         return api(originalRequest);
-//       } catch (err) {
-//         processQueue(err, null);
-//         localStorage.removeItem("accessToken");
-//         deleteCookie("refreshToken");
-//         window.location.href = "/login";
-//         return Promise.reject(err);
-//       } finally {
-//         isRefreshing = false;
-//       }
-//     }
-
-//     return Promise.reject(error);
-//   }
-// );
+    throw error;
+  }
+);
 
 export default api;

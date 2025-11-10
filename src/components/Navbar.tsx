@@ -40,21 +40,6 @@ const Navbar = () => {
           {formatDateTime(time)}
         </p>
       </div>
-
-      {/* <div className="flex items-center space-x-4">
-        {token && (
-          <button
-            onClick={() => {
-              logout();
-              router.push("/login"); // đổi thành route login của bạn
-            }}
-            className="p-2 text-gray-600 hover:text-gray-800"
-          >
-            <FiUser className="w-6 h-6" />
-            <span className="ml-2">Đăng xuất</span>
-          </button>
-        )}
-      </div> */}
     </div>
   );
 };

@@ -6,5 +6,5 @@ export default async function Root() {
   const cookieStore = await cookies(); // <— await
   const token = cookieStore.get("accessToken")?.value;
 
-  redirect(token ? "/admin/movies" : "/login");
+  redirect(token ? "/admin/dashboard" : "/login");
 }

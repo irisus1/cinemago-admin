@@ -6,40 +6,11 @@ import { useRouter } from "next/navigation";
 import Table, { Column } from "@/components/Table";
 import { FiEdit2, FiTrash2, FiEye } from "react-icons/fi";
 import { BiRefresh } from "react-icons/bi";
-import Dialog from "@/components/ConfirmDialog";
-import SuccessDialog from "@/components/SuccessDialog";
+
 import RefreshLoader from "@/components/Loading";
+import { Modal } from "@/components/Modal";
 import CinemaModal from "@/components/CinemaModal";
-import {
-  getAllCinemas,
-  deleteCinema,
-  restoreCinema,
-} from "@/services/CinemaService";
-
-// ===== Types =====
-type Cinema = {
-  id: string;
-  name: string;
-  address: string;
-  city: string;
-  longitude: number | null;
-  latitude: number | null;
-  isActive: boolean;
-};
-
-type ApiPagination = {
-  totalItems: number;
-  totalPages: number;
-  currentPage: number;
-  pageSize: number;
-  hasNextPage: boolean;
-  hasPrevPage: boolean;
-};
-
-type ApiResponse<T> = {
-  data: T[];
-  pagination: ApiPagination;
-};
+import { cinemaService, type Cinema, PaginationMeta } from "@/services";
 
 type Mode = "server" | "client";
 
@@ -48,7 +19,7 @@ const CinemasListPage: React.FC = () => {
 
   // ===== Server data + pagination =====
   const [cinemas, setCinemas] = useState<Cinema[]>([]); // 1 trang từ server
-  const [pagination, setPagination] = useState<ApiPagination | null>(null);
+  const [pagination, setPagination] = useState<PaginationMeta | null>(null);
   const [page, setPage] = useState(1);
   const [limit] = useState(5);
 
@@ -81,21 +52,18 @@ const CinemasListPage: React.FC = () => {
   const fetchPage = async (toPage = page) => {
     setLoading(true);
     try {
-      const res = await getAllCinemas({
+      const res = await cinemaService.getAllCinemas({
         page: toPage,
         limit,
         search: nameKw.trim() || undefined, // BE chỉ lọc theo tên rạp
       });
-      const payload = res.data as ApiResponse<Cinema>;
-      setCinemas(payload?.data ?? []);
-      setPagination(payload?.pagination ?? null);
+
+      setCinemas(res?.data ?? []);
+      setPagination(res?.pagination ?? null);
 
       // nếu BE normalize currentPage
-      if (
-        payload?.pagination?.currentPage &&
-        payload.pagination.currentPage !== page
-      ) {
-        setPage(payload.pagination.currentPage);
+      if (res?.pagination?.currentPage && res.pagination.currentPage !== page) {
+        setPage(res.pagination.currentPage);
       }
     } catch (err) {
       console.error("Error fetching cinemas:", err);
@@ -118,12 +86,12 @@ const CinemasListPage: React.FC = () => {
       let pageSizeLocal = opts?.pageSize ?? limit;
 
       while (true) {
-        const res = await getAllCinemas({
+        const res = await cinemaService.getAllCinemas({
           page: nextPage,
           limit: pageSizeLocal,
           search: opts?.search?.trim() || undefined, // vẫn áp dụng search theo tên ở BE
         });
-        const { data, pagination } = res.data as ApiResponse<Cinema>;
+        const { data, pagination } = res;
         result.push(...(data ?? []));
 
         // nếu BE trả pageSize khác tham số, đồng bộ lại để bước nhảy ổn định
@@ -230,15 +198,11 @@ const CinemasListPage: React.FC = () => {
   const handleDelete = (g: Cinema) => {
     openConfirm(
       "Xác nhận xóa",
-      <>
-        Bạn có chắc chắn muốn xóa rạp phim này không?
-        <br />
-        Việc này không thể hoàn tác.
-      </>,
+      <>Bạn có chắc chắn muốn xóa rạp phim này không?</>,
       async () => {
         setIsConfirmDialogOpen(false);
         try {
-          await deleteCinema(g.id);
+          await cinemaService.deleteCinema(g.id);
           if (mode === "server") {
             await fetchPage();
           } else {
@@ -261,7 +225,7 @@ const CinemasListPage: React.FC = () => {
       async () => {
         setIsConfirmDialogOpen(false);
         try {
-          await restoreCinema(g.id);
+          await cinemaService.restoreCinema(g.id);
           if (mode === "server") {
             await fetchPage();
           } else {
@@ -301,6 +265,7 @@ const CinemasListPage: React.FC = () => {
     },
     {
       header: "Hành động",
+      className: "text-right w-[120px]",
       key: "actions",
       render: (_: unknown, row: Cinema) => (
         <div className="flex space-x-3">
@@ -476,18 +441,30 @@ const CinemasListPage: React.FC = () => {
       </div>
 
       {/* Confirm & Success */}
-      <Dialog
+
+      <Modal
         isOpen={isConfirmDialogOpen}
         onClose={() => setIsConfirmDialogOpen(false)}
-        onConfirm={onConfirm}
+        type="info"
         title={dialogTitle}
         message={dialogMessage}
+        onCancel={() => setIsConfirmDialogOpen(false)}
+        cancelText="Hủy"
+        onConfirm={() => {
+          onConfirm();
+          setIsConfirmDialogOpen(false);
+        }}
+        confirmText="Xác nhận"
       />
-      <SuccessDialog
+
+      <Modal
         isOpen={isSuccessDialogOpen}
         onClose={() => setIsSuccessDialogOpen(false)}
+        type="success"
         title={dialogTitle}
         message={dialogMessage}
+        onCancel={() => setIsSuccessDialogOpen(false)}
+        cancelText="Đóng"
       />
 
       {/* Modal Thêm/Sửa */}

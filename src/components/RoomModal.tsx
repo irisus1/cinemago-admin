@@ -12,11 +12,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { Room } from "@/services/RoomService";
+import { roomService, type Room, RoomUpdate, RoomCreate } from "@/services";
 import { cn } from "@/lib/utils";
 
 // services tuỳ dự án bạn, đổi tên nếu khác
-import { createRoom, updateRoom } from "@/services/RoomService";
 
 export type RoomModalProps = {
   open: boolean;
@@ -24,16 +23,7 @@ export type RoomModalProps = {
   onSuccess?: () => void;
   mode: "create" | "edit";
   cinemaId: string;
-  room?: {
-    id: string;
-    name: string;
-    totalSeat?: number;
-    created?: string;
-    isActive?: boolean;
-    vipPrice?: number | null;
-    couplePrice?: number | null;
-    seatLayout?: SeatCell[];
-  };
+  room?: Room;
 };
 
 type SeatCell = {
@@ -64,40 +54,59 @@ export default function RoomModal({
   console.log(room);
 
   const [saving, setSaving] = useState(false);
-  const [showLayout, setShowLayout] = useState(false);
+  const [loading, setLoadingRoom] = useState(false);
 
   const [name, setName] = useState(room?.name ?? "");
-  const [vipBonus, setVipBonus] = useState<number | "">(room?.vipPrice ?? 0);
+  const [vipBonus, setVipBonus] = useState<number | "">(room?.VIP ?? 0);
   const [coupleBonus, setCoupleBonus] = useState<number | "">(
-    room?.couplePrice ?? 0
+    room?.COUPLE ?? 0
   );
 
   // reset khi mở / đổi room
   useEffect(() => {
-    if (!open) return;
-    setName(room?.name ?? "");
-    setVipBonus(room?.vipPrice ?? 0);
-    setCoupleBonus(room?.couplePrice ?? 0);
-  }, [open, room]);
+    if (!open || !room?.id) return;
+
+    (async () => {
+      try {
+        setLoadingRoom(true);
+        const res = await roomService.getRoomById(room.id); // { data: Room }
+        console.log(res);
+        setName(res?.name ?? "");
+        setVipBonus(Number(res?.VIP ?? 0));
+        setCoupleBonus(Number(res?.COUPLE ?? 0));
+      } catch (e) {
+        console.log("Không tải được thông tin phòng");
+      } finally {
+        setLoadingRoom(false);
+      }
+    })();
+  }, [open, room?.id]);
 
   const handleSave = async () => {
     if (!name.trim()) return;
     setSaving(true);
     try {
-      const payload: Room = {
+      const payloadBase = {
         cinemaId,
         name: name.trim(),
         vipPrice: Number(vipBonus || 0),
         couplePrice: Number(coupleBonus || 0),
       };
 
+      console.log("edit create payload: ", payloadBase);
+
       if (mode === "create") {
-        await createRoom({
-          ...payload,
-          seatLayout: makeBaseLayout5x5(), // base 5x5 A..E x 1..5, type: EMPTY
-        });
+        const payloadCreate: RoomCreate = {
+          ...payloadBase,
+          seatLayout: makeBaseLayout5x5(), // A..E x 1..5, type: EMPTY
+        };
+        await roomService.createRoom(payloadCreate);
       } else if (room?.id) {
-        await updateRoom(room.id, { ...payload, seatLayout: room.seatLayout }); // không đụng layout khi edit metadata
+        const payloadUpdate: RoomUpdate = {
+          ...payloadBase,
+          seatLayout: room.seatLayout, // A..E x 1..5, type: EMPTY
+        };
+        await roomService.updateRoom(room.id, payloadUpdate); // không đụng layout khi edit metadata
       }
 
       onSuccess?.();
@@ -169,7 +178,10 @@ export default function RoomModal({
             <Button variant="ghost" onClick={onClose} disabled={saving}>
               Hủy
             </Button>
-            <Button onClick={handleSave} disabled={saving || !name.trim()}>
+            <Button
+              onClick={handleSave}
+              disabled={saving || !name.trim() || loading}
+            >
               {saving
                 ? "Đang lưu..."
                 : mode === "create"

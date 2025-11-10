@@ -7,34 +7,18 @@ import { useRouter } from "next/navigation";
 import Table, { Column } from "@/components/Table";
 import { FiEdit2, FiTrash2, FiEye } from "react-icons/fi";
 import { BiRefresh } from "react-icons/bi";
-import Dialog from "@/components/ConfirmDialog";
-import SuccessDialog from "@/components/SuccessDialog";
 import RefreshLoader from "@/components/Loading";
 import {
-  getAllMovies,
-  deleteMovie,
-  restoreMovie,
-  getAllGenres,
-  updateMovieStatus,
-} from "@/services/MovieService";
+  genreService,
+  movieService,
+  type Movie,
+  Genre,
+  PaginationMeta,
+} from "@/services";
 import GenreMultiSelect from "@/components/GenreMultiSelect";
 import { Modal } from "@/components/Modal";
-import { X } from "lucide-react";
 
 // ===== Types =====
-type movie = {
-  id: string;
-  title: string;
-  description: string;
-  duration: number;
-  rating: number;
-  genres?: Genre[];
-  trailerUrl: string;
-  thumbnail: string;
-  releaseDate: string; // ISO date string
-  isActive?: boolean;
-  status: string;
-};
 
 const VI_MOVIE_STATUS = {
   COMING_SOON: "Sắp chiếu",
@@ -42,11 +26,7 @@ const VI_MOVIE_STATUS = {
   ENDED: "Đã kết thúc",
 } as const;
 
-type Genre = { id: string; name: string; description: string };
-
-type PageMeta = { totalPages: number; pageSize: number; totalItems: number };
-
-const limit = 1; // << CHANGED: kích thước trang cố định
+const limit = 7; // << CHANGED: kích thước trang cố định
 
 const MoviesListPage: React.FC = () => {
   const router = useRouter();
@@ -62,7 +42,7 @@ const MoviesListPage: React.FC = () => {
 
   // ------------ Paging & Search (NEW) ------------
   const [page, setPage] = useState(1);
-  const [rows, setRows] = useState<movie[]>([]);
+  const [rows, setRows] = useState<Movie[]>([]);
   const [totalPages, setTotalPages] = useState(1);
   const [hasPrev, setHasPrev] = useState(false);
   const [hasNext, setHasNext] = useState(false);
@@ -74,8 +54,8 @@ const MoviesListPage: React.FC = () => {
 
   const [searchPage, setSearchPage] = useState(1);
   const [searchTotalPages, setSearchTotalPages] = useState(1);
-  const [searchAll, setSearchAll] = useState<movie[]>([]);
-  const SEARCH_LIMIT = 1; // số mục trên mỗi trang khi search
+  const [searchAll, setSearchAll] = useState<Movie[]>([]);
+  const SEARCH_LIMIT = 7; // số mục trên mỗi trang khi search
 
   //------------ Filter states ------------
   const [genreIds, setGenreIds] = useState<string[]>([]); // nhiều thể loại
@@ -92,10 +72,10 @@ const MoviesListPage: React.FC = () => {
   const isSearchMode = hasAnyFilter;
 
   // ------------ cache ------------
-  const pageCache = useRef(new Map<number, movie[]>()); // page -> rows
-  const metaRef = useRef<PageMeta | null>(null); // meta phân trang mới nhất
+  const pageCache = useRef(new Map<number, Movie[]>()); // page -> rows
+  const metaRef = useRef<PaginationMeta | null>(null); // meta phân trang mới nhất
   const inFlight = useRef(
-    new Map<number, Promise<{ data: movie[]; meta: PageMeta }>>()
+    new Map<number, Promise<{ data: Movie[]; meta: PaginationMeta }>>()
   );
 
   function clearCache() {
@@ -105,18 +85,8 @@ const MoviesListPage: React.FC = () => {
   }
 
   const fetchPage = useCallback(async (p: number) => {
-    const res = await getAllMovies({ page: p, limit });
-    const { data, pagination } = res.data as {
-      data: movie[];
-      pagination: {
-        totalItems: number;
-        totalPages: number;
-        currentPage: number;
-        pageSize: number;
-        hasNextPage: boolean;
-        hasPrevPage: boolean;
-      };
-    };
+    const res = await movieService.getAllMovies({ page: p, limit });
+    const { data, pagination } = res;
     console.log(data);
 
     return { data: data ?? [], pagination };
@@ -146,7 +116,7 @@ const MoviesListPage: React.FC = () => {
       // 3) gọi thật -> lưu cache
       const req = (async () => {
         const { data, pagination } = await fetchPage(p);
-        const meta: PageMeta = {
+        const meta: PaginationMeta = {
           totalItems: pagination.totalItems,
           totalPages: pagination.totalPages,
           pageSize: pagination.pageSize,
@@ -303,9 +273,9 @@ const MoviesListPage: React.FC = () => {
         setGlobalLoading(true);
 
         // Tùy API của bạn: ví dụ trả { data: Genre[] }
-        const res = await getAllGenres();
+        const res = await genreService.getAllGenres();
 
-        const list: Genre[] = res.data?.data as Genre[];
+        const list: Genre[] = res.data ?? [];
 
         if (!cancelled) setAllGenres(list);
       } catch {
@@ -334,11 +304,11 @@ const MoviesListPage: React.FC = () => {
     router.push("/admin/movies/new");
   };
 
-  const handleViewNavigate = (movie: movie) => {
+  const handleViewNavigate = (movie: Movie) => {
     router.push(`/admin/movies/${movie.id}`);
   };
 
-  const handleEditNavigate = (movie: movie) => {
+  const handleEditNavigate = (movie: Movie) => {
     router.push(`/admin/movies/${movie.id}/edit`);
   };
 
@@ -360,7 +330,7 @@ const MoviesListPage: React.FC = () => {
     setIsConfirmDialogOpen(true);
   };
 
-  const applyMoviePatch = (id: movie["id"], patch: Partial<movie>) => {
+  const applyMoviePatch = (id: Movie["id"], patch: Partial<Movie>) => {
     //Cập nhật toàn bộ pageCache
     for (const [k, arr] of pageCache.current.entries()) {
       const idx = arr.findIndex((x) => x.id === id);
@@ -401,7 +371,7 @@ const MoviesListPage: React.FC = () => {
     });
   };
 
-  const handleDelete = (m: movie) => {
+  const handleDelete = (m: Movie) => {
     openConfirm(
       "Xác nhận xóa",
       <>
@@ -412,7 +382,7 @@ const MoviesListPage: React.FC = () => {
       async () => {
         setIsConfirmDialogOpen(false);
         try {
-          await deleteMovie(m.id);
+          await movieService.deleteMovie(m.id);
 
           applyMoviePatch(m.id, { isActive: false });
           setDialogTitle("Thành công");
@@ -425,14 +395,14 @@ const MoviesListPage: React.FC = () => {
     );
   };
 
-  const handleRestore = (m: movie) => {
+  const handleRestore = (m: Movie) => {
     openConfirm(
       "Xác nhận khôi phục",
       <>Bạn có chắc chắn muốn khôi phục phim này không?</>,
       async () => {
         setIsConfirmDialogOpen(false);
         try {
-          await restoreMovie(m.id);
+          await movieService.restoreMovie(m.id);
           applyMoviePatch(m.id, { isActive: true });
           setDialogTitle("Thành công");
           setDialogMessage("Khôi phục phim thành công");
@@ -485,7 +455,7 @@ const MoviesListPage: React.FC = () => {
       setGlobalLoading(true);
 
       //  gọi API cập nhật
-      await updateMovieStatus(ids, bulkStatus);
+      await movieService.updateMovieStatus(ids, bulkStatus);
 
       //  cập nhật UI ngay (optimistic)
       applyLocalStatus(ids, bulkStatus);
@@ -520,7 +490,7 @@ const MoviesListPage: React.FC = () => {
   }
 
   // ===== Table columns =====
-  const columns: Column<movie>[] = [
+  const columns: Column<Movie>[] = [
     {
       header: (
         // checkbox "chọn tất cả" (indeterminate)
@@ -535,7 +505,7 @@ const MoviesListPage: React.FC = () => {
         />
       ),
       key: "__select",
-      render: (_: unknown, row: movie) => (
+      render: (_: unknown, row: Movie) => (
         <input
           type="checkbox"
           aria-label={`Chọn ${row.title}`}
@@ -561,7 +531,7 @@ const MoviesListPage: React.FC = () => {
     {
       header: "Thể loại",
       key: "genres",
-      render: (value: unknown, row: movie) => {
+      render: (value: unknown, row: Movie) => {
         const list = Array.isArray(value)
           ? (value as Genre[])
           : Array.isArray(row.genres)
@@ -574,7 +544,7 @@ const MoviesListPage: React.FC = () => {
     {
       header: "Trạng thái",
       key: "status",
-      render: (_: unknown, m: movie) => (
+      render: (_: unknown, m: Movie) => (
         <span
           className={
             m.status === "NOW_SHOWING"
@@ -592,7 +562,7 @@ const MoviesListPage: React.FC = () => {
     {
       header: "Hành động",
       key: "actions",
-      render: (_: unknown, row: movie) => (
+      render: (_: unknown, row: Movie) => (
         <div className="flex space-x-3">
           {row.isActive ? (
             <>
@@ -766,7 +736,7 @@ const MoviesListPage: React.FC = () => {
       )}
 
       <div className="bg-white rounded-lg shadow-sm overflow-x-auto">
-        <Table<movie> columns={columns} data={rows} getRowKey={(r) => r.id} />{" "}
+        <Table<Movie> columns={columns} data={rows} getRowKey={(r) => r.id} />{" "}
         {(loadingPage || loadingSearch) && (
           <div className="flex items-center gap-2 px-6 py-3 text-sm text-gray-600">
             <span className="inline-block h-4 w-4 rounded-full border-2 border-gray-300 border-t-gray-600 animate-spin" />
@@ -825,29 +795,20 @@ const MoviesListPage: React.FC = () => {
         )}
       </div>
 
-      {/* <Dialog
-        isOpen={isConfirmDialogOpen}
-        onClose={() => setIsConfirmDialogOpen(false)}
-        onConfirm={onConfirm}
-        title={dialogTitle}
-        message={dialogMessage}
-      /> */}
       <Modal
         isOpen={isConfirmDialogOpen}
         onClose={() => setIsConfirmDialogOpen(false)}
         type="info"
         title={dialogTitle}
         message={dialogMessage}
-        onConfirm={onConfirm}
-        confirmText="Đóng"
+        onCancel={() => setIsConfirmDialogOpen(false)}
+        cancelText="Hủy"
+        onConfirm={() => {
+          onConfirm();
+          setIsConfirmDialogOpen(false);
+        }}
+        confirmText="Xác nhận"
       />
-
-      {/* <SuccessDialog
-        isOpen={isSuccessDialogOpen}
-        onClose={() => setIsSuccessDialogOpen(false)}
-        title={dialogTitle}
-        message={dialogMessage}
-      /> */}
 
       <Modal
         isOpen={isSuccessDialogOpen}
