@@ -4,6 +4,7 @@ import { TbTheater } from "react-icons/tb";
 import { FaUserShield } from "react-icons/fa";
 import { LucideTicket } from "lucide-react";
 import { RxDashboard } from "react-icons/rx";
+import { BiFoodMenu } from "react-icons/bi";
 
 export const adminTabs = [
   {
@@ -30,6 +31,11 @@ export const adminTabs = [
     name: "Quản lý rạp chiếu phim",
     path: "/admin/cinema",
     icon: <TbTheater className="w-6 h-6" />,
+  },
+  {
+    name: "Quản lý đồ ăn/uống",
+    path: "/admin/food-drink",
+    icon: <BiFoodMenu className="w-6 h-6" />,
   },
   {
     name: "Đánh giá phim",

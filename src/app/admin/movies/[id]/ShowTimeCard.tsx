@@ -258,6 +258,7 @@ export default function ShowtimesCard({ movieId }: { movieId: string }) {
         render: (v) =>
           v
             ? Intl.DateTimeFormat("vi-VN", {
+                timeZone: "UTC",
                 hour: "2-digit",
                 minute: "2-digit",
                 day: "2-digit",
@@ -272,6 +273,7 @@ export default function ShowtimesCard({ movieId }: { movieId: string }) {
         render: (v) =>
           v
             ? Intl.DateTimeFormat("vi-VN", {
+                timeZone: "UTC",
                 hour: "2-digit",
                 minute: "2-digit",
                 day: "2-digit",
@@ -459,8 +461,8 @@ export default function ShowtimesCard({ movieId }: { movieId: string }) {
         showtime={editShowtime || undefined}
         movieId={movieId}
         onSuccess={async () => {
-          setOpen(false);
-          setEditShowtme(null);
+          // setOpen(false);
+          // setEditShowtme(null);
           setReloadTick((x) => x + 1);
         }}
       />

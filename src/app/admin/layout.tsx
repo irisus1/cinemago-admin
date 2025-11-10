@@ -13,24 +13,24 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const { userDetail, fetchEmployeeDetail, logout } = useAuth();
+  const { user, refreshUser, logout } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!localStorage.getItem("accessToken")) {
+    if (!localStorage.getItem("access_token")) {
       alert("Có lỗi xác thực, vui lòng đăng nhập lại");
       logout();
       router.push("/login");
     }
-    if (!userDetail) {
-      fetchEmployeeDetail().catch((err) => {
+    if (!user) {
+      refreshUser().catch((err) => {
         console.error(err);
         alert("Xác thực thất bại, vui lòng đăng nhập lại");
         logout();
         router.push("/login");
       });
     }
-  }, [userDetail]);
+  }, [user, refreshUser, logout, router]);
 
   return (
     <div className="flex h-screen bg-gray-100">

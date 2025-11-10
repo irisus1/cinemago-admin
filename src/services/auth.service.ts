@@ -1,18 +1,12 @@
-import apiClient from "../lib/axios";
 import axios from "axios";
+import api from "@/config/api";
 import { jwtDecode } from "jwt-decode";
 import type { User } from "./user.service";
-
-// ===== Types khớp với BE hiện tại =====
-export interface LoginRequest {
-  email: string;
-  password: string;
-}
+import { log } from "console";
 
 export interface LoginResponse {
   accessToken: string;
-  refreshToken: string;
-  // nếu BE muốn trả kèm user thì thêm:
+  refreshToken: string; // BE vẫn trả về trong body
   user?: User;
 }
 
@@ -24,257 +18,144 @@ export interface RegisterRequest {
   last_name: string;
 }
 
-export interface RefreshTokenRequest {
-  refreshToken: string; // camelCase theo BE controller
-}
-
-export interface RefreshTokenResponse {
-  accessToken: string;
-  refreshToken: string;
-}
-
-// ===== Helpers =====
 type ApiErrorBody = { message?: string; error?: string };
-
 const getMsg = (e: unknown, fb: string) =>
   axios.isAxiosError<ApiErrorBody>(e)
     ? e.response?.data?.message ?? e.response?.data?.error ?? e.message ?? fb
     : fb;
 
-// /auth/me có thể trả { data: User } hoặc { user: User }
-type MeResponse = { data: User } | { user: User };
-function pickUserFromMe(resp: MeResponse): User {
-  return "data" in resp ? resp.data : resp.user;
-}
-
 type JwtPayloadBase = { exp?: number; iat?: number } & Record<string, unknown>;
 
 class AuthService {
-  /**
-   * Đăng nhập bằng email + password
-   * BE: POST /auth/login -> { accessToken, refreshToken }
-   */
+  // === LOGIN ===
   async login(email: string, password: string): Promise<LoginResponse> {
     try {
-      const { data } = await apiClient.post<LoginResponse>("/auth/login", {
+      const { data } = await api.post<LoginResponse>("/auth/login", {
         email,
         password,
       });
 
-      // Lưu token
-      if (data.accessToken)
+      if (data.accessToken) {
         localStorage.setItem("access_token", data.accessToken);
-      if (data.refreshToken)
-        localStorage.setItem("refresh_token", data.refreshToken);
+        api.defaults.headers.common.Authorization = `Bearer ${data.accessToken}`;
+      }
+      if (data.refreshToken) this.setRefreshCookie(data.refreshToken); //  lưu refresh vào cookie
       if (data.user) localStorage.setItem("user", JSON.stringify(data.user));
 
-      // Không còn "expires_at" từ BE => dùng exp trong JWT
       return data;
-    } catch (e: unknown) {
-      const msg = getMsg(
-        e,
-        "Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin."
-      );
-      console.error("Login error:", e);
-      throw new Error(msg);
+    } catch (e) {
+      throw new Error(getMsg(e, "Đăng nhập thất bại."));
     }
   }
 
-  /**
-   * Đăng ký
-   * BE mẫu của bạn đang trả: { data: user, message }
-   */
+  // === REGISTER ===
   async register(
     body: RegisterRequest
   ): Promise<{ data: User; message: string }> {
     try {
-      const { data } = await apiClient.post<{ data: User; message: string }>(
-        "/auth/register",
+      const { data } = await api.post<{ data: User; message: string }>(
+        "/auth/signup",
         body
       );
       return data;
-    } catch (e: unknown) {
-      const msg = getMsg(e, "Đăng ký thất bại. Vui lòng thử lại.");
-      console.error("Register error:", e);
-      throw new Error(msg);
+    } catch (e) {
+      throw new Error(getMsg(e, "Đăng ký thất bại."));
     }
   }
 
-  /**
-   * Đăng xuất
-   * BE: POST /auth/logout (yêu cầu refreshToken trong body + cần auth)
-   */
+  // === LOGOUT ===
   async logout(): Promise<void> {
     try {
-      const refreshToken = this.getRefreshToken();
-      await apiClient.post("/auth/logout", { refreshToken });
+      const refreshToken = this.getRefreshCookie();
+      await api.post("/auth/logout", { refreshToken });
     } catch (e) {
-      console.error("Logout error:", e);
+      console.warn("Logout error:", e);
     } finally {
       this.clearLocalAuth();
+      this.deleteRefreshCookie();
     }
   }
 
-  private clearLocalAuth() {
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
-    localStorage.removeItem("token_expires_at"); // không dùng nữa nhưng xoá cho sạch
-    localStorage.removeItem("user");
-  }
-
-  /**
-   * Lấy user hiện tại
-   * Ưu tiên /auth/me (chuẩn auth), fallback sang /users/profile nếu cần
-   * Shape hợp lệ: { data: User } hoặc { user: User }
-   */
-  async getCurrentUser(): Promise<User> {
+  // === REFRESH TOKEN ===
+  async refreshAccessToken(): Promise<{ accessToken: string }> {
     try {
-      const res = await apiClient.get<MeResponse>("/auth/me");
-      const user = pickUserFromMe(res.data);
-      localStorage.setItem("user", JSON.stringify(user));
-      return user;
-    } catch (e1: unknown) {
-      // fallback nếu dự án dùng /users/profile
-      try {
-        const res = await apiClient.get<{ data: User }>("/users/profile");
-        const user = res.data.data;
-        localStorage.setItem("user", JSON.stringify(user));
-        return user;
-      } catch (e2: unknown) {
-        const msg = getMsg(e2, "Không thể lấy thông tin người dùng.");
-        console.error("Get current user error:", e1, e2);
-        throw new Error(msg);
-      }
+      const refreshToken = this.getRefreshCookie();
+      if (!refreshToken) throw new Error("No refresh token");
+
+      const { data } = await api.post<{
+        accessToken: string;
+        refreshToken?: string;
+      }>("/auth/refresh-token", { refreshToken });
+
+      if (data.accessToken)
+        localStorage.setItem("access_token", data.accessToken);
+      if (data.refreshToken) this.setRefreshCookie(data.refreshToken);
+
+      return { accessToken: data.accessToken };
+    } catch (e) {
+      this.clearLocalAuth();
+      this.deleteRefreshCookie();
+      throw new Error(getMsg(e, "Không thể làm mới phiên đăng nhập."));
     }
   }
 
-  // ===== Token utils =====
-  isAuthenticated(): boolean {
-    return !!this.getToken();
+  // === Local token helpers ===
+  getToken() {
+    return localStorage.getItem("access_token");
+  }
+
+  clearLocalAuth() {
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("user");
   }
 
   getStoredUser(): User | null {
     const s = localStorage.getItem("user");
     if (!s) return null;
     try {
-      return JSON.parse(s) as User;
+      return JSON.parse(s);
     } catch {
       return null;
     }
   }
 
-  getToken(): string | null {
-    return localStorage.getItem("access_token");
+  isAuthenticated(): boolean {
+    const token = this.getToken();
+    return !!token && !this.isTokenExpired();
+  }
+  // === Cookie helpers ===
+  setRefreshCookie(token: string) {
+    const exp = 7 * 24 * 60 * 60; // 7 ngày
+    document.cookie = `refresh_token=${token}; Max-Age=${exp}; Path=/; SameSite=Strict; Secure`;
   }
 
-  getRefreshToken(): string | null {
-    return localStorage.getItem("refresh_token");
+  getRefreshCookie(): string | null {
+    const match = document.cookie.match(/(^| )refresh_token=([^;]+)/);
+    return match ? match[2] : null;
   }
 
+  deleteRefreshCookie() {
+    document.cookie =
+      "refresh_token=; Max-Age=0; Path=/; SameSite=Strict; Secure";
+  }
+
+  // === Token expiration ===
   isTokenExpired(): boolean {
     const token = this.getToken();
     if (!token) return true;
     const decoded = jwtDecode<JwtPayloadBase>(token);
-    if (!decoded?.exp) return true;
     const now = Math.floor(Date.now() / 1000);
-    return decoded.exp <= now;
+    return !decoded.exp || decoded.exp <= now;
   }
 
-  getTokenRemainingTime(): number {
+  isTokenExpiringSoon(thresholdMinutes = 5): boolean {
     const token = this.getToken();
-    if (!token) return 0;
+    if (!token) return false;
     const decoded = jwtDecode<JwtPayloadBase>(token);
-    if (!decoded?.exp) return 0;
     const now = Math.floor(Date.now() / 1000);
-    return Math.max(0, decoded.exp - now);
-    // có thể lưu vào state để UI countdown
-  }
-
-  isTokenExpiringSoon(minutesThreshold = 5): boolean {
-    const remain = this.getTokenRemainingTime();
-    return remain > 0 && remain < minutesThreshold * 60;
-  }
-
-  getTokenInfo(): JwtPayloadBase | null {
-    const token = this.getToken();
-    if (!token) return null;
-    return jwtDecode<JwtPayloadBase>(token);
-  }
-
-  clearExpiredToken(): void {
-    if (this.isTokenExpired()) {
-      console.warn("Token expired, clearing authentication data");
-      this.clearLocalAuth();
-    }
-  }
-
-  /**
-   * Refresh token
-   * BE: POST /auth/refresh -> { accessToken, refreshToken }
-   * (Route của bạn hiện yêu cầu auth middleware — xem phần BE đề xuất bên dưới)
-   */
-  async refreshAccessToken(): Promise<RefreshTokenResponse> {
-    try {
-      const refreshToken = this.getRefreshToken();
-      if (!refreshToken) throw new Error("No refresh token available");
-
-      const body: RefreshTokenRequest = { refreshToken };
-      const { data } = await apiClient.post<RefreshTokenResponse>(
-        "/auth/refresh",
-        body
-      );
-
-      if (data.accessToken)
-        localStorage.setItem("access_token", data.accessToken);
-      if (data.refreshToken)
-        localStorage.setItem("refresh_token", data.refreshToken);
-
-      // tuỳ bạn, có thể gọi getCurrentUser() để đồng bộ lại user
-      return data;
-    } catch (e: unknown) {
-      console.error("Refresh token error:", e);
-      this.clearExpiredToken();
-      const msg = getMsg(
-        e,
-        "Không thể làm mới phiên đăng nhập. Vui lòng đăng nhập lại."
-      );
-      throw new Error(msg);
-    }
-  }
-
-  // Refresh token helpers
-  isRefreshTokenExpired(): boolean {
-    const rt = this.getRefreshToken();
-    if (!rt) return true;
-    try {
-      const decoded = jwtDecode<JwtPayloadBase>(rt);
-      if (!decoded?.exp) return true;
-      const now = Math.floor(Date.now() / 1000);
-      return decoded.exp < now;
-    } catch {
-      return true;
-    }
-  }
-
-  getRefreshTokenRemainingTime(): number {
-    const rt = this.getRefreshToken();
-    if (!rt) return 0;
-    try {
-      const decoded = jwtDecode<JwtPayloadBase>(rt);
-      if (!decoded?.exp) return 0;
-      const now = Math.floor(Date.now() / 1000);
-      return Math.max(0, decoded.exp - now);
-    } catch {
-      return 0;
-    }
-  }
-
-  getStoredExpiresAt(): Date | null {
-    const s = localStorage.getItem("token_expires_at");
-    if (!s) return null;
-    const d = new Date(s);
-    return Number.isNaN(d.getTime()) ? null : d;
+    if (!decoded.exp) return false;
+    return decoded.exp - now < thresholdMinutes * 60;
   }
 }
 
-export default new AuthService();
+export const authService = new AuthService();

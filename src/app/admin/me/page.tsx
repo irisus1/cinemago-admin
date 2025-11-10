@@ -56,7 +56,6 @@ function passwordScore(pw: string) {
   if (/[^A-Za-z0-9]/.test(pw)) score++;
   return score;
 }
-const scoreLabel = ["Rất yếu", "Yếu", "Khá", "Mạnh", "Rất mạnh"];
 
 // ====== Page ======
 export default function ProfilePage() {
@@ -82,7 +81,7 @@ export default function ProfilePage() {
   const [showCurPw, setShowCurPw] = useState(false);
   const [showNewPw, setShowNewPw] = useState(false);
   const [showCfPw, setShowCfPw] = useState(false);
-  const pwScore = useMemo(() => passwordScore(newPw), [newPw]);
+  const [pwTooLong, setPwTooLong] = useState(false);
 
   // dialogs
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
@@ -436,7 +435,15 @@ export default function ProfilePage() {
                 <Input
                   type={showNewPw ? "text" : "password"}
                   value={newPw}
-                  onChange={(e) => setNewPw(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val.length > 30) {
+                      setPwTooLong(true);
+                      return; // Không cập nhật giá trị
+                    }
+                    setPwTooLong(false);
+                    setNewPw(val);
+                  }}
                   placeholder="Tối thiểu 8 ký tự"
                 />
                 <button
@@ -452,23 +459,11 @@ export default function ProfilePage() {
                   )}
                 </button>
               </div>
-              {/* strength bar */}
-              <div className="h-1 rounded bg-muted">
-                <div
-                  className={cn(
-                    "h-1 rounded",
-                    pwScore <= 1
-                      ? "bg-red-500"
-                      : pwScore === 2
-                      ? "bg-yellow-500"
-                      : "bg-green-500"
-                  )}
-                  style={{ width: `${(pwScore / 4) * 100}%` }}
-                />
-              </div>
-              <div className="text-xs text-muted-foreground">
-                {scoreLabel[pwScore]}
-              </div>
+              {pwTooLong && (
+                <div className="text-xs text-red-600">
+                  Mật khẩu không được vượt quá 30 ký tự
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -477,7 +472,15 @@ export default function ProfilePage() {
                 <Input
                   type={showCfPw ? "text" : "password"}
                   value={cfPw}
-                  onChange={(e) => setCfPw(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val.length > 30) {
+                      setPwTooLong(true);
+                      return; // Không cập nhật giá trị
+                    }
+                    setPwTooLong(false);
+                    setCfPw(val);
+                  }}
                   placeholder="••••••••"
                 />
                 <button

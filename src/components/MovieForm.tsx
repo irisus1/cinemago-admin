@@ -49,6 +49,11 @@ export default function MovieForm({
   const [trailerUrl, setTrailerUrl] = useState<string>("");
   const [thumbUrl, setThumbUrl] = useState<string | undefined>(undefined);
   const [thumbFile, setThumbFile] = useState<File | null>(null);
+  const [status, setStatus] = useState<"COMING_SOON" | "SHOWING" | "ENDED">(
+    "COMING_SOON"
+  );
+  const [openStatusBox, setOpenStatusBox] = useState(false);
+
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [trailerFile, setTrailerFile] = useState<File | null>(null);
@@ -84,6 +89,9 @@ export default function MovieForm({
     setGenres(film.genres ?? []);
     setTrailerUrl(film.trailerUrl ?? "");
     setThumbUrl(film.thumbnail ?? undefined);
+    setStatus(
+      (film.status as "COMING_SOON" | "SHOWING" | "ENDED") ?? "COMING_SOON"
+    );
   }, [film]);
 
   // ======== fetch genres bên trong component ========
@@ -129,13 +137,20 @@ export default function MovieForm({
   };
 
   const onChangeTrailerUrl = (v: string) => {
-    setTrailerUrl(v);
-    if (v.trim()) {
+    let url = v.trim();
+    if (url.includes("youtube.com/watch?v=")) {
+      const id = new URL(url).searchParams.get("v");
+      if (id) url = `https://www.youtube.com/embed/${id}`;
+    } else if (url.includes("youtu.be/")) {
+      const id = url.split("youtu.be/")[1]?.split("?")[0];
+      if (id) url = `https://www.youtube.com/embed/${id}`;
+    }
+    setTrailerUrl(url);
+    if (url) {
       setTrailerMode("url");
       setTrailerFile(null);
-    } // chỉ 1 trong 2
+    }
   };
-
   // ======== genre handlers ========
   const addGenre = (g: Genre) =>
     setGenres((prev) =>
@@ -175,6 +190,7 @@ export default function MovieForm({
     else if (thumbUrl) fd.append("thumbnailUrl", thumbUrl);
     if (trailerFile) fd.append("trailer", trailerFile);
     else if (trailerUrl) fd.append("trailerUrl", trailerUrl);
+    fd.append("status", status);
 
     console.log(fd.get("duration"));
 
@@ -307,8 +323,8 @@ export default function MovieForm({
             <CardHeader>
               <CardTitle>Thông tin</CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xl">
-              <div className="md:col-span-2 space-y-2">
+            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xl">
+              <div className="md:col-span-3 space-y-2">
                 <Label>Tiêu đề</Label>
                 <Input
                   value={title}
@@ -317,7 +333,7 @@ export default function MovieForm({
                 />
               </div>
 
-              <div className="md:col-span-2 space-y-2">
+              <div className="md:col-span-3 space-y-2">
                 <Label>Mô tả</Label>
                 <Textarea
                   rows={5}
@@ -368,7 +384,88 @@ export default function MovieForm({
                 </Popover>
               </div>
 
-              <div className="md:col-span-2">
+              <div className="space-y-2">
+                <Label>Trạng thái phim</Label>
+                <Popover open={openStatusBox} onOpenChange={setOpenStatusBox}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={openStatusBox}
+                      disabled={readOnly}
+                      className="w-full justify-between"
+                    >
+                      {status === "COMING_SOON"
+                        ? "Sắp chiếu"
+                        : status === "SHOWING"
+                        ? "Đang chiếu"
+                        : "Đã kết thúc"}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    align="start"
+                    className="p-1 w-[var(--radix-popover-trigger-width)]"
+                  >
+                    <Command>
+                      <CommandList>
+                        <CommandGroup>
+                          <CommandItem
+                            onSelect={() => {
+                              setStatus("COMING_SOON");
+                              setOpenStatusBox(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                status === "COMING_SOON"
+                                  ? "opacity-100"
+                                  : "opacity-0"
+                              )}
+                            />
+                            Sắp chiếu
+                          </CommandItem>
+
+                          <CommandItem
+                            onSelect={() => {
+                              setStatus("SHOWING");
+                              setOpenStatusBox(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                status === "SHOWING"
+                                  ? "opacity-100"
+                                  : "opacity-0"
+                              )}
+                            />
+                            Đang chiếu
+                          </CommandItem>
+
+                          <CommandItem
+                            onSelect={() => {
+                              setStatus("ENDED");
+                              setOpenStatusBox(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                status === "ENDED" ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            Đã kết thúc
+                          </CommandItem>
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="md:col-span-3">
                 <Label className="mb-2 inline-block">Thể loại</Label>
 
                 {/* các tag đã chọn */}
@@ -459,8 +556,17 @@ export default function MovieForm({
             <CardContent className="space-y-3">
               <div className="rounded-2xl overflow-hidden border bg-black">
                 {trailerPreview ? (
-                  // eslint-disable-next-line jsx-a11y/media-has-caption
-                  <video src={trailerPreview} controls className="w-full" />
+                  trailerPreview.includes("youtube.com/embed/") ? (
+                    <iframe
+                      src={trailerPreview}
+                      className="w-full aspect-video"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    ></iframe>
+                  ) : (
+                    // eslint-disable-next-line jsx-a11y/media-has-caption
+                    <video src={trailerPreview} controls className="w-full" />
+                  )
                 ) : (
                   <div className="aspect-video grid place-items-center text-muted-foreground">
                     Chưa có trailer

@@ -1,51 +1,49 @@
 import React from "react";
-import MovieCard from "./MovieCard"; // đường dẫn tới file bạn vừa chuyển TSX
+import MovieCard from "./MovieCard";
+import type { Movie } from "@/services";
+import { useRouter } from "next/navigation";
 
-interface Genre {
-  id: string;
-  // name: string;
-  // description?: string;
-}
-
-interface Movie {
-  id: string;
-  title: string;
-  description?: string;
-  duration?: number;
-  releaseDate?: string;
-  rating?: number;
-  thumbnail?: string;
-  trailerUrl?: string;
-  genres?: Genre[];
-  status?: string;
-  createdAt?: string;
-  updatedAt?: string;
-}
+type MovieCardItem = Movie & {
+  showtimeMeta?: {
+    formats?: string[];
+    languages?: string[];
+    minPrice?: number | null;
+    earliestStart?: string | null;
+    hasSubtitle?: boolean | null;
+  };
+};
 
 export default function MovieGrid({
   movies,
-  onPick,
+  date,
 }: {
-  movies: Movie[];
-  onPick: (m: Movie) => void;
+  movies: MovieCardItem[];
+  date?: string;
 }) {
+  const router = useRouter();
+
+  const goToTicket = (id?: string | number) => {
+    if (id === undefined || id === null) return;
+    router.push(`/admin/ticket/${id}`);
+  };
+
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 justify-items-center">
       {movies.map((m) => (
         <MovieCard
           key={m.id}
-          filmId={m.id as any}
+          filmId={m.id}
           imageUrl={m.thumbnail}
           name={m.title}
-          country={(m as any).country} // nếu có
-          type={(m as any).tagIds || (m as any).types || []}
+          // truyền mảng tên trực tiếp
+          type={(m.genres || []).map((g) => g.name)}
           duration={m.duration}
-          // ageLimit={m.rating}
           isShowing={true}
-          voice={(m as any).voice}
-          trailerURL={(m as any).trailerUrl}
-          twoDthreeD={(m as any).formats} // ["2D","3D"] nếu có
-          onSelect={() => onPick(m)} // dùng để chọn phim trong flow admin
+          trailerURL={m.trailerUrl}
+          twoDthreeD={m.showtimeMeta?.formats}
+          languages={m.showtimeMeta?.languages}
+          subtitle={m.showtimeMeta?.hasSubtitle}
+          onSelect={goToTicket}
         />
       ))}
     </div>
