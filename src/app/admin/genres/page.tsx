@@ -301,8 +301,7 @@ const GenresListPage: React.FC = () => {
         type="success"
         title={dialogTitle}
         message={dialogMessage}
-        onCancel={() => setIsSuccessDialogOpen(false)}
-        cancelText="Đóng"
+        confirmText="Đóng"
       />
 
       {/* Modal Thêm/Sửa */}

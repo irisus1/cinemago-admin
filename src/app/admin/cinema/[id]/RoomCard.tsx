@@ -406,8 +406,7 @@ export default function RoomCard({ cinemaId }: { cinemaId: string }) {
         type="success"
         title={dialogTitle}
         message={dialogMessage}
-        onCancel={() => setIsSuccessDialogOpen(false)}
-        cancelText="Đóng"
+        confirmText="Đóng"
       />
 
       {/* Modal Thêm/Sửa phòng */}

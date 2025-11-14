@@ -1,16 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FiUser } from "react-icons/fi";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 
 const Navbar = () => {
   const [time, setTime] = useState(new Date());
-  const router = useRouter();
-  const token =
-    typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-  const { logout, userDetail } = useAuth();
+
+  const { user } = useAuth();
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -36,7 +32,7 @@ const Navbar = () => {
     >
       <div className="flex items-center w-2/3">
         <p>
-          Xin chào {userDetail?.fullname || "Admin"}. Hôm nay là:{" "}
+          Xin chào {user?.fullname || "Admin"}. Hôm nay là:{" "}
           {formatDateTime(time)}
         </p>
       </div>

@@ -658,8 +658,7 @@ export default function MovieForm({
         type="success"
         title={dialogTitle}
         message={dialogMsg}
-        onCancel={() => setSuccessOpen(false)}
-        cancelText="Đóng"
+        confirmText="Đóng"
       />
 
       <Modal
@@ -668,8 +667,7 @@ export default function MovieForm({
         type="error"
         title={dialogTitle}
         message={dialogMsg}
-        onCancel={() => setFailOpen(false)}
-        cancelText="Đóng"
+        confirmText="Đóng"
       />
       <RefreshLoader isOpen={loading} />
     </div>

@@ -120,6 +120,9 @@ const MoviesListPage: React.FC = () => {
           totalItems: pagination.totalItems,
           totalPages: pagination.totalPages,
           pageSize: pagination.pageSize,
+          currentPage: pagination.currentPage,
+          hasNextPage: pagination.hasNextPage,
+          hasPrevPage: pagination.hasPrevPage,
         };
         pageCache.current.set(p, data);
         metaRef.current = meta;

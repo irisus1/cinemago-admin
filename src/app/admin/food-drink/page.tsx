@@ -559,7 +559,6 @@ export default function FoodDrinkListPage() {
         type="success"
         title={dialogTitle}
         message={dialogMsg}
-        onConfirm={() => setSuccessOpen(false)}
         confirmText="Đóng"
       />
 

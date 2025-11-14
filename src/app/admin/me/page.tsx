@@ -106,7 +106,7 @@ export default function ProfilePage() {
         updatedAt: data.updatedAt,
       };
       setMe(user);
-      refreshUser(); // Cập nhật thông tin người dùng vào context AuthContext
+      // refreshUser(); // Cập nhật thông tin người dùng vào context AuthContext
       const baseName = (user.fullname ?? "").trim().replace(/\s+/g, " ");
       const baseGenderVN = mapGender(user.gender);
 
@@ -122,11 +122,11 @@ export default function ProfilePage() {
     } finally {
       setLoading(false);
     }
-  }, [refreshUser]);
+  }, []);
 
   useEffect(() => {
     load();
-  }, [load]);
+  }, []);
 
   useEffect(() => {
     // cleanup object URL
@@ -193,6 +193,7 @@ export default function ProfilePage() {
       setAvatarFile(null);
       setAvatarPreview(null);
 
+      await refreshUser();
       await load();
       // Hiện dialog thành công
       setDialogTitle("Lưu thay đổi thành công");
@@ -537,8 +538,7 @@ export default function ProfilePage() {
         type="success"
         title={dialogTitle}
         message={dialogMessage}
-        onCancel={() => setIsSuccessDialogOpen(false)}
-        cancelText="Đóng"
+        confirmText="Đóng"
       />
 
       <RefreshLoader isOpen={loading} />

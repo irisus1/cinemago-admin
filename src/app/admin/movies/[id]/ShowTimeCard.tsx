@@ -461,8 +461,7 @@ export default function ShowtimesCard({ movieId }: { movieId: string }) {
         type="success"
         title={dialogTitle}
         message={dialogMessage}
-        onCancel={() => setIsSuccessDialogOpen(false)}
-        cancelText="Đóng"
+        confirmText="Đóng"
       />
 
       <ShowTimeModal
