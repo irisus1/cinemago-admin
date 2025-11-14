@@ -5,41 +5,28 @@ import React, { useEffect, useState, useRef, useCallback } from "react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import Table, { Column } from "@/components/Table";
-import { FiEdit2, FiTrash2 } from "react-icons/fi";
+import { FiEdit2, FiTrash2, FiEye } from "react-icons/fi";
 import { BiRefresh } from "react-icons/bi";
-import Dialog from "@/components/ConfirmDialog";
-import SuccessDialog from "@/components/SuccessDialog";
 import RefreshLoader from "@/components/Loading";
 import {
-  getAllMovies,
-  deleteMovie,
-  restoreMovie,
-  getAllGenres,
-  updateMovieStatus,
-} from "@/services/MovieService";
+  genreService,
+  movieService,
+  type Movie,
+  Genre,
+  PaginationMeta,
+} from "@/services";
 import GenreMultiSelect from "@/components/GenreMultiSelect";
 import { Modal } from "@/components/Modal";
 
 // ===== Types =====
-type movie = {
-  id: string;
-  title: string;
-  description: string;
-  duration: number;
-  rating: number;
-  genres?: Genre[];
-  trailerUrl: string;
-  thumbnail: string;
-  releaseDate: string; // ISO date string
-  isActive?: boolean;
-  status: string;
-};
 
-type Genre = { id: string; name: string; description: string };
+const VI_MOVIE_STATUS = {
+  COMING_SOON: "Sắp chiếu",
+  NOW_SHOWING: "Đang chiếu",
+  ENDED: "Đã kết thúc",
+} as const;
 
-type PageMeta = { totalPages: number; pageSize: number; totalItems: number };
-
-const limit = 1; // << CHANGED: kích thước trang cố định
+const limit = 7; // << CHANGED: kích thước trang cố định
 
 const MoviesListPage: React.FC = () => {
   const router = useRouter();
@@ -49,13 +36,13 @@ const MoviesListPage: React.FC = () => {
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
   const [dialogTitle, setDialogTitle] = useState("");
   const [dialogMessage, setDialogMessage] = useState<React.ReactNode>("");
-  const [onConfirm, setOnConfirm] = useState<() => void>(() => () => { });
+  const [onConfirm, setOnConfirm] = useState<() => void>(() => () => {});
   const [globalLoading, setGlobalLoading] = useState(false);
   const [allGenres, setAllGenres] = useState<Genre[]>([]);
 
   // ------------ Paging & Search (NEW) ------------
   const [page, setPage] = useState(1);
-  const [rows, setRows] = useState<movie[]>([]);
+  const [rows, setRows] = useState<Movie[]>([]);
   const [totalPages, setTotalPages] = useState(1);
   const [hasPrev, setHasPrev] = useState(false);
   const [hasNext, setHasNext] = useState(false);
@@ -67,13 +54,14 @@ const MoviesListPage: React.FC = () => {
 
   const [searchPage, setSearchPage] = useState(1);
   const [searchTotalPages, setSearchTotalPages] = useState(1);
-  const [searchAll, setSearchAll] = useState<movie[]>([]);
-  const SEARCH_LIMIT = 1; // số mục trên mỗi trang khi search
+  const [searchAll, setSearchAll] = useState<Movie[]>([]);
+  const SEARCH_LIMIT = 7; // số mục trên mỗi trang khi search
 
   //------------ Filter states ------------
   const [genreIds, setGenreIds] = useState<string[]>([]); // nhiều thể loại
   const [ratingFrom, setRatingFrom] = useState<number | "">(""); // điểm tối thiểu
   const [status, setStatus] = useState<string>("");
+  const [reloadTick, setReloadTick] = useState(0);
 
   const hasAnyFilter =
     qDebounced.length > 0 ||
@@ -84,10 +72,10 @@ const MoviesListPage: React.FC = () => {
   const isSearchMode = hasAnyFilter;
 
   // ------------ cache ------------
-  const pageCache = useRef(new Map<number, movie[]>()); // page -> rows
-  const metaRef = useRef<PageMeta | null>(null); // meta phân trang mới nhất
+  const pageCache = useRef(new Map<number, Movie[]>()); // page -> rows
+  const metaRef = useRef<PaginationMeta | null>(null); // meta phân trang mới nhất
   const inFlight = useRef(
-    new Map<number, Promise<{ data: movie[]; meta: PageMeta }>>()
+    new Map<number, Promise<{ data: Movie[]; meta: PaginationMeta }>>()
   );
 
   function clearCache() {
@@ -97,18 +85,8 @@ const MoviesListPage: React.FC = () => {
   }
 
   const fetchPage = useCallback(async (p: number) => {
-    const res = await getAllMovies({ page: p, limit });
-    const { data, pagination } = res.data as {
-      data: movie[];
-      pagination: {
-        totalItems: number;
-        totalPages: number;
-        currentPage: number;
-        pageSize: number;
-        hasNextPage: boolean;
-        hasPrevPage: boolean;
-      };
-    };
+    const res = await movieService.getAllMovies({ page: p, limit });
+    const { data, pagination } = res;
     console.log(data);
 
     return { data: data ?? [], pagination };
@@ -138,7 +116,7 @@ const MoviesListPage: React.FC = () => {
       // 3) gọi thật -> lưu cache
       const req = (async () => {
         const { data, pagination } = await fetchPage(p);
-        const meta: PageMeta = {
+        const meta: PaginationMeta = {
           totalItems: pagination.totalItems,
           totalPages: pagination.totalPages,
           pageSize: pagination.pageSize,
@@ -201,7 +179,7 @@ const MoviesListPage: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [page, isSearchMode, fetchPageCached]);
+  }, [page, isSearchMode, fetchPageCached, reloadTick]);
 
   // ----- Có search: gom ALL trang & filter client -----
   useEffect(() => {
@@ -271,7 +249,15 @@ const MoviesListPage: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [qDebounced, isSearchMode, genreIds, ratingFrom, status, fetchPageCached]);
+  }, [
+    qDebounced,
+    isSearchMode,
+    genreIds,
+    ratingFrom,
+    status,
+    fetchPageCached,
+    reloadTick,
+  ]);
 
   useEffect(() => {
     if (!isSearchMode) return;
@@ -287,9 +273,9 @@ const MoviesListPage: React.FC = () => {
         setGlobalLoading(true);
 
         // Tùy API của bạn: ví dụ trả { data: Genre[] }
-        const res = await getAllGenres();
+        const res = await genreService.getAllGenres();
 
-        const list: Genre[] = res.data?.data as Genre[];
+        const list: Genre[] = res.data ?? [];
 
         if (!cancelled) setAllGenres(list);
       } catch {
@@ -305,6 +291,7 @@ const MoviesListPage: React.FC = () => {
 
   // ------------ Actions ------------
   const reloadCurrent = async () => {
+    setReloadTick((x) => x + 1);
     // tải lại theo trạng thái hiện tại (search hay không)
     if (isSearchMode) {
       setQDebounced((s) => s); // kích hoạt lại effect search
@@ -317,14 +304,18 @@ const MoviesListPage: React.FC = () => {
     router.push("/admin/movies/new");
   };
 
-  const handleEditNavigate = (movie: movie) => {
+  const handleViewNavigate = (movie: Movie) => {
+    router.push(`/admin/movies/${movie.id}`);
+  };
+
+  const handleEditNavigate = (movie: Movie) => {
     router.push(`/admin/movies/${movie.id}/edit`);
   };
 
   const handleRefresh = async () => {
     setGlobalLoading(true);
     clearCache();
-    await reloadCurrent();
+    reloadCurrent();
     setGlobalLoading(false);
   };
 
@@ -339,7 +330,48 @@ const MoviesListPage: React.FC = () => {
     setIsConfirmDialogOpen(true);
   };
 
-  const handleDelete = (m: movie) => {
+  const applyMoviePatch = (id: Movie["id"], patch: Partial<Movie>) => {
+    //Cập nhật toàn bộ pageCache
+    for (const [k, arr] of pageCache.current.entries()) {
+      const idx = arr.findIndex((x) => x.id === id);
+      if (idx !== -1) {
+        const next = arr.slice();
+        next[idx] = { ...next[idx], ...patch };
+        pageCache.current.set(k, next);
+      }
+    }
+
+    // Cập nhật hàng đang hiển thị
+    setRows((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+
+    // Nếu đang search: cập nhật searchAll + repaginate theo filter hiện tại
+    setSearchAll((prev) => {
+      if (!isSearchMode || !prev?.length) return prev;
+      const patched = prev.map((x) => (x.id === id ? { ...x, ...patch } : x));
+
+      // re-apply filter hiện tại (nếu bạn đang lọc theo status,…)
+      const s = qDebounced.toLowerCase();
+      const filtered = patched.filter((m) => {
+        if (s && !m.title.toLowerCase().includes(s)) return false;
+        if (
+          genreIds.length &&
+          !m.genres?.some((g) => genreIds.includes(String(g.id)))
+        )
+          return false;
+        if (ratingFrom !== "" && (m.rating ?? 0) < Number(ratingFrom))
+          return false;
+        if (status && m.status !== status) return false;
+        return true;
+      });
+      const tp = Math.max(1, Math.ceil(filtered.length / SEARCH_LIMIT));
+      setSearchTotalPages(tp);
+      const start = (searchPage - 1) * SEARCH_LIMIT;
+      setRows(filtered.slice(start, start + SEARCH_LIMIT));
+      return filtered;
+    });
+  };
+
+  const handleDelete = (m: Movie) => {
     openConfirm(
       "Xác nhận xóa",
       <>
@@ -350,8 +382,9 @@ const MoviesListPage: React.FC = () => {
       async () => {
         setIsConfirmDialogOpen(false);
         try {
-          await deleteMovie(m.id);
-          await reloadCurrent(); // << CHANGED: tải lại theo ngữ cảnh
+          await movieService.deleteMovie(m.id);
+
+          applyMoviePatch(m.id, { isActive: false });
           setDialogTitle("Thành công");
           setDialogMessage("Xóa phim thành công");
           setIsSuccessDialogOpen(true);
@@ -362,15 +395,15 @@ const MoviesListPage: React.FC = () => {
     );
   };
 
-  const handleRestore = (m: movie) => {
+  const handleRestore = (m: Movie) => {
     openConfirm(
       "Xác nhận khôi phục",
       <>Bạn có chắc chắn muốn khôi phục phim này không?</>,
       async () => {
         setIsConfirmDialogOpen(false);
         try {
-          await restoreMovie(m.id);
-          await reloadCurrent(); // << CHANGED
+          await movieService.restoreMovie(m.id);
+          applyMoviePatch(m.id, { isActive: true });
           setDialogTitle("Thành công");
           setDialogMessage("Khôi phục phim thành công");
           setIsSuccessDialogOpen(true);
@@ -421,13 +454,13 @@ const MoviesListPage: React.FC = () => {
     try {
       setGlobalLoading(true);
 
-      // 1) cập nhật UI ngay (optimistic)
+      //  gọi API cập nhật
+      await movieService.updateMovieStatus(ids, bulkStatus);
+
+      //  cập nhật UI ngay (optimistic)
       applyLocalStatus(ids, bulkStatus);
 
-      // 2) gọi API cập nhật
-      await updateMovieStatus(ids, bulkStatus);
-
-      // 3) dọn state chọn & refetch dữ liệu mới
+      //  dọn state chọn & refetch dữ liệu mới
       clearSelection();
       clearCache();
       await reloadCurrent();
@@ -457,7 +490,7 @@ const MoviesListPage: React.FC = () => {
   }
 
   // ===== Table columns =====
-  const columns: Column<movie>[] = [
+  const columns: Column<Movie>[] = [
     {
       header: (
         // checkbox "chọn tất cả" (indeterminate)
@@ -472,7 +505,7 @@ const MoviesListPage: React.FC = () => {
         />
       ),
       key: "__select",
-      render: (_: unknown, row: movie) => (
+      render: (_: unknown, row: Movie) => (
         <input
           type="checkbox"
           aria-label={`Chọn ${row.title}`}
@@ -498,24 +531,48 @@ const MoviesListPage: React.FC = () => {
     {
       header: "Thể loại",
       key: "genres",
-      render: (value: unknown, row: movie) => {
+      render: (value: unknown, row: Movie) => {
         const list = Array.isArray(value)
           ? (value as Genre[])
           : Array.isArray(row.genres)
-            ? row.genres
-            : undefined;
+          ? row.genres
+          : undefined;
         return list?.map((g) => g.name).join(", ") ?? "—";
       },
     },
     { header: "Đánh giá", key: "rating" },
-    { header: "Trạng thái", key: "status" },
+    {
+      header: "Trạng thái",
+      key: "status",
+      render: (_: unknown, m: Movie) => (
+        <span
+          className={
+            m.status === "NOW_SHOWING"
+              ? "inline-flex rounded-full px-2 py-0.5 bg-emerald-50 text-emerald-700"
+              : m.status === "COMING_SOON"
+              ? "inline-flex rounded-full px-2 py-0.5 bg-amber-50 text-amber-700"
+              : "inline-flex rounded-full px-2 py-0.5 bg-slate-100 text-slate-600"
+          }
+        >
+          {VI_MOVIE_STATUS[m.status as keyof typeof VI_MOVIE_STATUS] ??
+            m.status}
+        </span>
+      ),
+    },
     {
       header: "Hành động",
       key: "actions",
-      render: (_: unknown, row: movie) => (
+      render: (_: unknown, row: Movie) => (
         <div className="flex space-x-3">
           {row.isActive ? (
             <>
+              <button
+                className="text-green-600 hover:text-green-800"
+                onClick={() => handleViewNavigate(row)}
+                title="Xem chi tiết"
+              >
+                <FiEye className="w-4 h-4" />
+              </button>
               <button
                 className="text-blue-600 hover:text-blue-800"
                 onClick={() => handleEditNavigate(row)}
@@ -549,44 +606,49 @@ const MoviesListPage: React.FC = () => {
   return (
     <div>
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">Danh sách phim</h2>
+        <h2 className="text-2xl font-bold text-gray-800 pb-6">
+          Danh sách phim
+        </h2>
 
-        <div className="flex items-center justify-between w-full">
-          <div className="flex items-center gap-4">
+        <div className="grid w-full grid-cols-[1fr_auto] gap-x-4 gap-y-3">
+          {/* LEFT: filters (wrap khi thiếu chỗ) */}
+          <div className="flex flex-wrap items-center gap-4 min-w-0">
             <button
               onClick={handleRefresh}
-              className="p-3 rounded-full hover:bg-gray-100 transition-all duration-300"
+              className="h-10 w-10 grid place-items-center rounded-lg border hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
               disabled={globalLoading}
               title="Làm mới"
             >
               <BiRefresh
-                className={`text-3xl ${globalLoading
-                  ? "animate-spin"
-                  : "hover:rotate-180 transition-transform duration-300"
-                  }`}
+                className={`text-3xl ${
+                  globalLoading
+                    ? "animate-spin"
+                    : "hover:rotate-180 transition-transform duration-300"
+                }`}
               />
             </button>
 
-            <div className="w-[280px]">
+            <div className="min-w-0 w-[280px]">
               <input
                 type="text"
                 placeholder="Tên phim…"
                 disabled={selectionMode}
-                value={q} // << CHANGED
-                onChange={(e) => setQ(e.target.value)} // << CHANGED
-                className="w-full px-4 py-2 rounded-lg focus:outline-none border"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                className="w-full h-10 px-4 rounded-lg focus:outline-none border disabled:opacity-60 disabled:cursor-not-allowed"
               />
             </div>
 
-            <GenreMultiSelect
-              options={allGenres}
-              value={genreIds}
-              onChange={setGenreIds}
-              className="min-w-[320px] pt-10"
-              disabled={selectionMode}
-            />
+            <div className="min-w-0 w-[320px]">
+              <GenreMultiSelect
+                options={allGenres}
+                value={genreIds}
+                onChange={setGenreIds}
+                className="w-full" // để full theo wrapper
+                disabled={selectionMode}
+              />
+            </div>
 
-            {/* Đánh giá từ (>=) */}
             <input
               type="number"
               min={0}
@@ -600,18 +662,17 @@ const MoviesListPage: React.FC = () => {
                   e.target.value === "" ? "" : Number(e.target.value)
                 )
               }
-              className="w-[120px] px-3 py-2 rounded-lg border"
+              className="w-[120px] h-10 px-3 rounded-lg border disabled:opacity-60 disabled:cursor-not-allowed"
             />
 
-            {/* Trạng thái */}
             <select
               value={selectionMode ? bulkStatus : status}
               onChange={(e) => {
                 const v = e.target.value as string;
                 if (selectionMode) setBulkStatus(v || "");
-                else setStatus(v); // lọc
+                else setStatus(v);
               }}
-              className="h-10 w-[200px] px-3 rounded-lg border"
+              className="h-10 w-[200px] px-3 rounded-lg border disabled:opacity-60 disabled:cursor-not-allowed"
               aria-label={
                 selectionMode
                   ? "Chọn trạng thái cập nhật"
@@ -627,9 +688,10 @@ const MoviesListPage: React.FC = () => {
             </select>
           </div>
 
-          <div className="flex items-center gap-3">
+          {/* RIGHT: actions (giữ hàng 1, góc phải) */}
+          <div className="flex items-center gap-3 justify-self-end self-start">
             <button
-              className="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300"
+              className="px-4 h-10 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300"
               onClick={() => {
                 setQ("");
                 setGenreIds([]);
@@ -641,7 +703,7 @@ const MoviesListPage: React.FC = () => {
               Xóa lọc
             </button>
             <button
-              className="px-4 py-2 bg-black text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
+              className="px-4 h-10 bg-black text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
               onClick={handleAddNavigate}
             >
               Thêm phim +
@@ -674,7 +736,7 @@ const MoviesListPage: React.FC = () => {
       )}
 
       <div className="bg-white rounded-lg shadow-sm overflow-x-auto">
-        <Table<movie> columns={columns} data={rows} getRowKey={(r) => r.id} />{" "}
+        <Table<Movie> columns={columns} data={rows} getRowKey={(r) => r.id} />{" "}
         {(loadingPage || loadingSearch) && (
           <div className="flex items-center gap-2 px-6 py-3 text-sm text-gray-600">
             <span className="inline-block h-4 w-4 rounded-full border-2 border-gray-300 border-t-gray-600 animate-spin" />
@@ -733,35 +795,31 @@ const MoviesListPage: React.FC = () => {
         )}
       </div>
 
-      {/* <Dialog
-        isOpen={isConfirmDialogOpen}
-        onClose={() => setIsConfirmDialogOpen(false)}
-        onConfirm={onConfirm}
-        title={dialogTitle}
-        message={dialogMessage}
-      /> */}
       <Modal
         isOpen={isConfirmDialogOpen}
-        onClose={() =>setIsConfirmDialogOpen(false)}
+        onClose={() => setIsConfirmDialogOpen(false)}
         type="info"
         title={dialogTitle}
         message={dialogMessage}
-        confirmText="Đóng"
+        onCancel={() => setIsConfirmDialogOpen(false)}
+        cancelText="Hủy"
+        onConfirm={() => {
+          onConfirm();
+          setIsConfirmDialogOpen(false);
+        }}
+        confirmText="Xác nhận"
       />
-
-      {/* <SuccessDialog
-        isOpen={isSuccessDialogOpen}
-        onClose={() => setIsSuccessDialogOpen(false)}
-        title={dialogTitle}
-        message={dialogMessage}
-      /> */}
 
       <Modal
         isOpen={isSuccessDialogOpen}
-        onClose={() =>setIsSuccessDialogOpen(false)}
+        onClose={() => setIsSuccessDialogOpen(false)}
         type="success"
         title={dialogTitle}
         message={dialogMessage}
+        onConfirm={() => {
+          setIsSuccessDialogOpen(false);
+          setReloadTick((x) => x + 1);
+        }}
         confirmText="Đóng"
       />
 

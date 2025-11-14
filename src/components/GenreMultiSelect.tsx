@@ -49,9 +49,21 @@ export default function GenreMultiSelect({
   const remove = (id: string) => onChange(value.filter((v) => v !== id));
   const clearAll = () => onChange([]);
 
+  // Lấy nhãn đã chọn để hiển thị gọn trong trigger
+  const labels = React.useMemo(
+    () =>
+      value
+        .map((id) => options.find((o) => o.id === id)?.name)
+        .filter((x): x is string => Boolean(x)),
+    [value, options]
+  );
+
+  const MAX_SHOW = 2; // số chip hiển thị trong trigger
+  const shown = labels.slice(0, MAX_SHOW);
+  const extra = labels.length - shown.length;
+
   return (
     <div className={cn("flex flex-col gap-2", className)}>
-      {/* combobox */}
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
@@ -59,12 +71,47 @@ export default function GenreMultiSelect({
             role="combobox"
             disabled={disabled}
             aria-expanded={open}
-            className="w-[320px] justify-between"
+            className="w-[320px] min-h-10 justify-start pr-8 overflow-hidden"
           >
-            {value.length ? `${value.length} thể loại đã chọn` : placeholder}
-            <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
+            {labels.length === 0 ? (
+              <span className="text-muted-foreground">{placeholder}</span>
+            ) : (
+              <div className="flex items-center gap-1 flex-1 min-w-0 overflow-hidden">
+                {shown.map((name, idx) => (
+                  <span
+                    key={name + idx}
+                    className="inline-flex items-center max-w-[120px] rounded-full bg-muted px-2 py-0.5 text-xs"
+                    title={name}
+                  >
+                    <span className="truncate">{name}</span>
+                    {/* Chặn mở popover khi bấm ✕ */}
+                    <button
+                      className="ml-1"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        const id = value.find(
+                          (v) => options.find((o) => o.id === v)?.name === name
+                        );
+                        if (id) remove(id);
+                      }}
+                      title="Bỏ"
+                    >
+                      <X className="h-3 w-3 opacity-70 hover:opacity-100" />
+                    </button>
+                  </span>
+                ))}
+                {extra > 0 && (
+                  <span className="text-xs text-muted-foreground">
+                    +{extra}
+                  </span>
+                )}
+              </div>
+            )}
+            <ChevronsUpDown className="absolute right-2 h-4 w-4 opacity-50 pointer-events-none" />
           </Button>
         </PopoverTrigger>
+
         <PopoverContent className="w-[320px] p-0" align="start">
           <Command>
             <CommandInput placeholder="Tìm thể loại..." />
@@ -89,6 +136,7 @@ export default function GenreMultiSelect({
               </CommandGroup>
             </CommandList>
           </Command>
+
           {value.length > 0 && (
             <div className="p-2 border-t bg-muted/30">
               <Button
@@ -103,34 +151,6 @@ export default function GenreMultiSelect({
           )}
         </PopoverContent>
       </Popover>
-      {/* chips đã chọn */}
-      <div
-        className="w-[320px] h-10 rounded-md border bg-muted/30 px-2
-                flex items-center gap-2 overflow-x-auto whitespace-nowrap"
-      >
-        {value.length != 0 ? (
-          value.map((id) => {
-            const opt = options.find((o) => o.id === id);
-            if (!opt) return null;
-            return (
-              <Badge
-                key={id}
-                variant="secondary"
-                className="px-2 py-1 rounded-full"
-              >
-                {opt.name}
-                <button className="ml-1" onClick={() => remove(id)} title="Bỏ">
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
-            );
-          })
-        ) : (
-          <span className="text-sm text-muted-foreground">
-            Chưa chọn thể loại
-          </span>
-        )}
-      </div>
     </div>
   );
 }
