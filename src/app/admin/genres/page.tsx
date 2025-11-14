@@ -1,7 +1,7 @@
 // app/(admin)/admin/genres/page.tsx
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import Table, { Column } from "@/components/Table";
 import { FiEdit2, FiTrash2 } from "react-icons/fi";
 import { BiRefresh } from "react-icons/bi";
@@ -38,40 +38,43 @@ const GenresListPage: React.FC = () => {
   const [onConfirm, setOnConfirm] = useState<() => void>(() => () => {});
 
   // ===== Data fetching =====
-  const fetchGenres = async (toPage = page) => {
-    try {
-      setLoading(true);
-      const { data, pagination } = await genreService.getAllGenres({
-        page: toPage,
-        limit: pageSize,
-        search: queryName.trim() || undefined,
-      });
+  const fetchGenres = useCallback(
+    async (toPage = page) => {
+      try {
+        setLoading(true);
+        const { data, pagination } = await genreService.getAllGenres({
+          page: toPage,
+          limit: pageSize,
+          search: queryName.trim() || undefined,
+        });
 
-      console.log(data, pagination);
+        console.log(data, pagination);
 
-      setGenres(data ?? []);
-      setPagination(pagination ?? null);
-      setTotalPages(pagination?.totalPages ?? 1);
-      setTotalItems(pagination?.totalItems ?? 0);
-      if (pagination?.currentPage && pagination.currentPage !== page) {
-        setPage(pagination.currentPage); // đồng bộ nếu backend normalize
+        setGenres(data ?? []);
+        setPagination(pagination ?? null);
+        setTotalPages(pagination?.totalPages ?? 1);
+        setTotalItems(pagination?.totalItems ?? 0);
+        if (pagination?.currentPage && pagination.currentPage !== page) {
+          setPage(pagination.currentPage); // đồng bộ nếu backend normalize
+        }
+        return { items: data ?? [], pagination };
+      } catch (e) {
+        console.error(e);
+        setGenres([]);
+        setPagination(null);
+        setTotalPages(1);
+        setTotalItems(0);
+        return { items: [], pagination: null };
+      } finally {
+        setLoading(false);
       }
-      return { items: data ?? [], pagination };
-    } catch (e) {
-      console.error(e);
-      setGenres([]);
-      setPagination(null);
-      setTotalPages(1);
-      setTotalItems(0);
-      return { items: [], pagination: null };
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [page, pageSize, queryName]
+  );
 
   useEffect(() => {
     fetchGenres();
-  }, [page, queryName]);
+  }, [page, queryName, fetchGenres]);
   useEffect(() => {
     setPage(1);
   }, [queryName]);

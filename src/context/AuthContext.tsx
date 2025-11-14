@@ -258,7 +258,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         await refreshUser();
       }
     } catch (error) {
-      toast.error(String(error));
       throw error;
     }
   };

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -7,7 +7,6 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { roomService, type Room, RoomUpdate, SeatType } from "@/services";
-import { on } from "events";
 
 /* ====================== Types ====================== */
 type SeatTypeKey = "normal" | "vip" | "couple" | "empty";
@@ -130,7 +129,6 @@ export default function SeatLayoutBuilder({
   open,
   onClose,
 }: Props) {
-  const [rows, setRows] = useState<number>(defaultRows);
   const [cols, setCols] = useState<number>(defaultCols);
   const [pendingRows, setPendingRows] = useState<string>(String(defaultRows));
   const [pendingCols, setPendingCols] = useState<string>(String(defaultCols));
@@ -138,7 +136,6 @@ export default function SeatLayoutBuilder({
   const [layout, setLayout] = useState<LayoutGrid>(() =>
     makeEmptyLayout(defaultRows, defaultCols)
   );
-  const [roomData, setRoomData] = useState<Room | null>(room || null);
 
   // drag paint
   const [isDragging, setIsDragging] = useState(false);
@@ -167,14 +164,14 @@ export default function SeatLayoutBuilder({
       const rr = grid.length,
         cc = grid.reduce((m, r) => Math.max(m, r.length), 0);
       setLayout(grid);
-      setRows(rr);
+
       setCols(cc);
       setPendingRows(String(rr));
       setPendingCols(String(cc));
     } else {
       const { rows: rr, cols: cc, grid } = buildGridFromSeatList(seatLayout);
       setLayout(grid);
-      setRows(rr);
+
       setCols(cc);
       setPendingRows(String(rr));
       setPendingCols(String(cc));
@@ -193,20 +190,6 @@ export default function SeatLayoutBuilder({
     const clamped = Math.min(Math.max(n || 1, 1), max);
     return { n: n || 1, clamped, adjusted: clamped !== (n || 1) };
   };
-
-  function findCouplePartner(grid: LayoutGrid, rIdx: number, cIdx: number) {
-    const cell = grid[rIdx]?.[cIdx];
-    if (!cell?.pairId) return null;
-    const pid = cell.pairId;
-
-    if (cIdx > 0 && grid[rIdx][cIdx - 1]?.pairId === pid) {
-      return { r: rIdx, c: cIdx - 1 };
-    }
-    if (cIdx < grid[rIdx].length - 1 && grid[rIdx][cIdx + 1]?.pairId === pid) {
-      return { r: rIdx, c: cIdx + 1 };
-    }
-    return null;
-  }
 
   // Quét toàn bộ, chỉ giữ DOUBLE khi còn đúng 1 bạn ngang cùng pairId
   const cleanupDoublePairs = (grid: LayoutGrid) => {
@@ -277,7 +260,6 @@ export default function SeatLayoutBuilder({
     const r = rB.clamped;
     const c = cB.clamped;
 
-    setRows(r);
     setCols(c);
     setPendingRows(String(r));
     setPendingCols(String(c));
@@ -404,15 +386,6 @@ export default function SeatLayoutBuilder({
   };
   const onSeatMouseEnter = (r: number, c: number) => {
     if (isDragging) applySeat(r, c);
-  };
-
-  const resetChanges = () => {
-    setRows(defaultRows);
-    setCols(defaultCols);
-    setPendingRows(String(defaultRows));
-    setPendingCols(String(defaultCols));
-    setLayout(makeEmptyLayout(defaultRows, defaultCols));
-    setSelectedType("normal");
   };
 
   // convert internal SeatTypeKey to external SeatRecordType

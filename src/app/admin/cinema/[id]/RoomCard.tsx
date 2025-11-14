@@ -32,7 +32,6 @@ export default function RoomCard({ cinemaId }: { cinemaId: string }) {
   const [pagination, setPagination] = useState<PaginationMeta | null>(null);
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
-  const totalPages = pagination?.totalPages ?? 1;
 
   // filters (client)
   const [search, setSearch] = useState("");

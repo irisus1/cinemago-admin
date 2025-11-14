@@ -156,8 +156,8 @@ export default function ShowtimeModal({
         const res = await cinemaService.getAllCinemas();
         const data = res.data ?? [];
         if (alive) setCinemas(data);
-      } catch (e: any) {
-        if (alive) toast.error(e?.message || "Không tải được danh sách rạp");
+      } catch {
+        if (alive) toast.error("Không tải được danh sách rạp");
       }
     })();
     return () => {

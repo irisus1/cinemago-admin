@@ -25,7 +25,9 @@ import axios, {
 import { ACCESS_TOKEN_KEY } from "@/constants/auth";
 
 const api: AxiosInstance = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/v1",
+  baseURL:
+    process.env.NEXT_PUBLIC_API_URL ||
+    "https://api-gateway-yw89.onrender.com/api/v1",
   withCredentials: true, // cookie cho refresh token
 });
 

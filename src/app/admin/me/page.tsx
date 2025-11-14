@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,11 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { Modal } from "@/components/Modal";
 import RefreshLoader from "@/components/Loading";
-import { cn } from "@/lib/utils";
 
 // ====== Services (điều chỉnh theo project) ======
-import { userService } from "@/services";
-import { changePassword } from "@/services/AuthService";
+import { userService, authService } from "@/services";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 
@@ -61,7 +59,7 @@ function passwordScore(pw: string) {
 export default function ProfilePage() {
   const [me, setMe] = useState<Me | null>(null);
   const [loading, setLoading] = useState(false);
-  const { userDetail, setUserDetail } = useAuth();
+  const { refreshUser } = useAuth();
 
   // form info
   const [fullName, setFullName] = useState("");
@@ -91,7 +89,7 @@ export default function ProfilePage() {
   const [onConfirm, setOnConfirm] = useState<() => void>(() => () => {});
 
   // fetch profile
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const res = await userService.getMe();
@@ -108,7 +106,7 @@ export default function ProfilePage() {
         updatedAt: data.updatedAt,
       };
       setMe(user);
-      setUserDetail(user); // Cập nhật thông tin người dùng vào context AuthContext
+      refreshUser(); // Cập nhật thông tin người dùng vào context AuthContext
       const baseName = (user.fullname ?? "").trim().replace(/\s+/g, " ");
       const baseGenderVN = mapGender(user.gender);
 
@@ -124,11 +122,11 @@ export default function ProfilePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [refreshUser]);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   useEffect(() => {
     // cleanup object URL
@@ -231,7 +229,10 @@ export default function ProfilePage() {
     }
     setLoading(true);
     try {
-      await changePassword({ oldPassword: curPw, newPassword: newPw });
+      await authService.changePassword({
+        oldPassword: curPw,
+        newPassword: newPw,
+      });
       setCurPw("");
       setNewPw("");
       setCfPw("");
