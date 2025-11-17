@@ -83,12 +83,38 @@ export default function ShowtimeModal({
   const [roomId, setRoomId] = useState("");
   const [price, setPrice] = useState<string>("");
   const [startDate, setStartDate] = useState("");
-  const [startTime, setStartTime] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [endTime, setEndTime] = useState("");
+  // nhiều giờ bắt đầu trong cùng 1 ngày
+  const [timeSlots, setTimeSlots] = useState<string[]>([""]);
   const [language, setLanguage] = useState("English");
   const [format, setFormat] = useState("2D");
   const [subtitle, setSubtitle] = useState(false);
+
+  // ===== Helper trong component =====
+  const getEndFor = (time: string) => {
+    if (!startDate || !time || duration == null) return null;
+    const startIso = toIsoLocal(startDate, time);
+    const { date, time: endTime } = addMinutesIsoLocal(startIso, duration);
+    return { date, time: endTime };
+  };
+
+  const updateTimeSlot = (index: number, value: string) => {
+    setTimeSlots((prev) => {
+      const next = [...prev];
+      next[index] = value;
+      return next;
+    });
+  };
+
+  const addTimeSlot = () => {
+    setTimeSlots((prev) => [...prev, ""]);
+  };
+
+  const removeTimeSlot = (index: number) => {
+    setTimeSlots((prev) => {
+      if (prev.length <= 1) return prev;
+      return prev.filter((_, i) => i !== index);
+    });
+  };
 
   // Load duration theo movieId khi open
   useEffect(() => {
@@ -97,7 +123,6 @@ export default function ShowtimeModal({
     (async () => {
       try {
         const m = await movieService.getMovieById(movieId);
-        // giả sử response: { data: { duration: number } }
         if (alive) setDuration(m?.duration ?? null);
       } catch {
         if (alive) toast.error("Không tải được thời lượng phim");
@@ -117,17 +142,12 @@ export default function ShowtimeModal({
       setRoomId(showtime.roomId ?? "");
       setPrice(showtime.price != null ? String(showtime.price) : "");
       const s = new Date(showtime.startTime);
-      const e = showtime.endTime ? new Date(showtime.endTime) : null;
-      setStartDate(
-        `${s.getFullYear()}-${pad(s.getMonth() + 1)}-${pad(s.getDate())}`
-      );
-      setStartTime(`${pad(s.getHours())}:${pad(s.getMinutes())}`);
-      setEndDate(
-        e
-          ? `${e.getFullYear()}-${pad(e.getMonth() + 1)}-${pad(e.getDate())}`
-          : ""
-      );
-      setEndTime(e ? `${pad(e.getHours())}:${pad(e.getMinutes())}` : "");
+      const dateStr = `${s.getFullYear()}-${pad(s.getMonth() + 1)}-${pad(
+        s.getDate()
+      )}`;
+      const timeStr = `${pad(s.getHours())}:${pad(s.getMinutes())}`;
+      setStartDate(dateStr);
+      setTimeSlots([timeStr]); // edit 1 suất -> 1 giờ
       setLanguage(showtime.language ?? "English");
       setFormat(showtime.format ?? "2D");
       setSubtitle(Boolean(showtime.subtitle));
@@ -138,9 +158,7 @@ export default function ShowtimeModal({
       setRooms([]);
       setPrice("");
       setStartDate("");
-      setStartTime("");
-      setEndDate("");
-      setEndTime("");
+      setTimeSlots([""]);
       setLanguage("English");
       setFormat("2D");
       setSubtitle(false);
@@ -189,47 +207,46 @@ export default function ShowtimeModal({
     };
   }, [open, cinemaId, roomId]);
 
-  // Tự động tính end khi start đổi & có duration
-  useEffect(() => {
-    if (!startDate || !startTime || duration == null) return;
-    const startIso = toIsoLocal(startDate, startTime);
-    const { date, time } = addMinutesIsoLocal(startIso, duration);
-    setEndDate(date);
-    setEndTime(time);
-  }, [startDate, startTime, duration]);
-
   const canSubmit = useMemo(() => {
     if (!cinemaId || !roomId) return false;
-    if (!startDate || !startTime) return false;
-    if (price !== "" && Number.isNaN(Number(price))) return false;
+    if (!startDate) return false;
     if (duration == null) return false;
-    const startIso = toIsoLocal(startDate, startTime);
-    const endX = addMinutesIsoLocal(startIso, duration);
-    const endIso = toIsoLocal(endX.date, endX.time);
-    return new Date(startIso).getTime() < new Date(endIso).getTime();
-  }, [cinemaId, roomId, startDate, startTime, duration, price]);
+    if (price !== "" && Number.isNaN(Number(price))) return false;
+
+    const validTimes = timeSlots.filter((t) => t && t.trim() !== "");
+    if (!validTimes.length) return false;
+
+    return true;
+  }, [cinemaId, roomId, startDate, duration, price, timeSlots]);
 
   // 1 nút Lưu duy nhất:
-  // - create: lưu xong reset start & giữ modal (toast)
-  // - edit: lưu xong đóng modal (toast)
+  // - create: lưu xong reset start & list time (toast)
+  // - edit: lưu xong đóng modal (toast, update 1 suất)
   const submit = useCallback(async () => {
-    if (!canSubmit) return;
+    if (!canSubmit || duration == null) return;
+
+    const validTimes = timeSlots.filter((t) => t && t.trim() !== "");
+    if (!validTimes.length) return;
+
     try {
       setLoading(true);
-      const startIso = toIsoLocal(startDate, startTime);
-      const endX = addMinutesIsoLocal(startIso, duration as number);
-      const body = {
-        roomId,
-        movieId,
-        price: Number(price),
-        startTime: startIso,
-        endTime: toIsoLocal(endX.date, endX.time),
-        language,
-        format,
-        subtitle,
-      };
 
       if (mode === "edit" && showtime?.id) {
+        // Edit: chỉ dùng time đầu tiên
+        const firstTime = validTimes[0];
+        const startIso = toIsoLocal(startDate, firstTime);
+        const endX = addMinutesIsoLocal(startIso, duration);
+        const body = {
+          roomId,
+          movieId,
+          price: Number(price),
+          startTime: startIso,
+          endTime: toIsoLocal(endX.date, endX.time),
+          language,
+          format,
+          subtitle,
+        };
+
         await showTimeService.updateShowTime(showtime.id, body);
         toast.success("Cập nhật suất chiếu thành công");
         onSuccess?.();
@@ -237,17 +254,36 @@ export default function ShowtimeModal({
         return;
       }
 
-      console.log(body);
+      // CREATE: tạo nhiều suất theo list giờ
+      const bodies = validTimes.map((t) => {
+        const startIso = toIsoLocal(startDate, t);
+        const endX = addMinutesIsoLocal(startIso, duration);
+        return {
+          roomId,
+          movieId,
+          price: Number(price),
+          startTime: startIso,
+          endTime: toIsoLocal(endX.date, endX.time),
+          language,
+          format,
+          subtitle,
+        };
+      });
 
-      await showTimeService.createShowTime(body);
-      toast.success("Tạo suất chiếu thành công. Bạn có thể tiếp tục thêm mới.");
+      // gọi tuần tự để dễ debug; nếu muốn nhanh hơn có thể Promise.all
+      for (const body of bodies) {
+        // console.log(body);
+        await showTimeService.createShowTime(body);
+      }
+
+      toast.success(
+        `Tạo ${bodies.length} suất chiếu thành công. Bạn có thể tiếp tục thêm mới.`
+      );
       onSuccess?.();
 
-      // Giữ nguyên rạp/phòng/…; reset thời gian để nhập tiếp
+      // Giữ nguyên rạp/phòng/…; reset ngày + list giờ để nhập tiếp
       setStartDate("");
-      setStartTime("");
-      setEndDate("");
-      setEndTime("");
+      setTimeSlots([""]);
     } catch {
       toast.error(
         `${mode === "edit" ? "Cập nhật" : "Tạo"} suất chiếu thất bại`
@@ -258,11 +294,11 @@ export default function ShowtimeModal({
   }, [
     canSubmit,
     duration,
+    timeSlots,
     roomId,
     movieId,
     price,
     startDate,
-    startTime,
     language,
     format,
     subtitle,
@@ -341,44 +377,70 @@ export default function ShowtimeModal({
             />
           </div>
 
-          {/* 3) NGÀY/GIỜ BẮT ĐẦU */}
+          {/* 3) NGÀY + NHIỀU GIỜ BẮT ĐẦU */}
+
           <div className="min-w-0">
-            <Label>Ngày bắt đầu</Label>
-            <Input
-              className="mt-1 h-10 w-full"
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-            />
-          </div>
-          <div className="min-w-0">
-            <Label>Giờ bắt đầu</Label>
-            <Input
-              className="mt-1 h-10 w-full"
-              type="time"
-              value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
-            />
+            <Label>Ngày chiếu</Label>
+            <div className="mt-1 flex gap-2">
+              <Input
+                className="h-10 w-full"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+              {mode === "create" && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-10 whitespace-nowrap"
+                  onClick={addTimeSlot}
+                >
+                  + Thêm giờ chiếu
+                </Button>
+              )}
+            </div>
           </div>
 
-          {/* 4) NGÀY/GIỜ KẾT THÚC */}
-          <div className="min-w-0">
-            <Label>Ngày kết thúc</Label>
-            <Input
-              className="mt-1 h-10 w-full"
-              type="date"
-              value={endDate}
-              readOnly
-            />
-          </div>
-          <div className="min-w-0">
-            <Label>Giờ kết thúc</Label>
-            <Input
-              className="mt-1 h-10 w-full"
-              type="time"
-              value={endTime}
-              readOnly
-            />
+          {/* GIỜ BẮT ĐẦU – dùng 2 cột của modal, time1 col1, time2 col2, time3 lại col1 hàng mới */}
+          <div className="md:col-span-2 min-w-0">
+            <Label>Giờ bắt đầu</Label>
+            <div className="mt-1 grid grid-cols-1 md:grid-cols-2 gap-2">
+              {timeSlots.map((t, idx) => {
+                const endInfo = getEndFor(t);
+                return (
+                  <div key={idx} className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Input
+                        className="h-10 w-full"
+                        type="time"
+                        value={t}
+                        onChange={(e) => updateTimeSlot(idx, e.target.value)}
+                      />
+                      {timeSlots.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => removeTimeSlot(idx)}
+                        >
+                          ✕
+                        </Button>
+                      )}
+                    </div>
+                    {endInfo && (
+                      <p className="text-xs text-muted-foreground">
+                        Kết thúc:{" "}
+                        {endInfo.date === startDate
+                          ? endInfo.time
+                          : `${endInfo.date} ${endInfo.time}`}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
           {/* 5) NGÔN NGỮ + ĐỊNH DẠNG */}

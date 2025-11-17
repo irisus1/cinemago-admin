@@ -3,7 +3,6 @@ import api from "@/config/api";
 import { jwtDecode } from "jwt-decode";
 import type { User } from "./user.service";
 import { ACCESS_TOKEN_KEY } from "@/constants/auth";
-import { da } from "date-fns/locale";
 
 export interface LoginResponse {
   accessToken: string;
