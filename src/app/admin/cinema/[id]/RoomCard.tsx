@@ -109,6 +109,8 @@ export default function RoomCard({ cinemaId }: { cinemaId: string }) {
   // ===== handlers =====
 
   const handleViewLayoutOpen = (r: Room) => {
+    console.log("data room: ", r);
+
     setOpenRoom(r);
     setOpenLayout(true);
   };

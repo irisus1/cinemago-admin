@@ -24,9 +24,13 @@ import axios, {
 } from "axios";
 import { ACCESS_TOKEN_KEY } from "@/constants/auth";
 
+const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+
 const api: AxiosInstance = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1",
-  withCredentials: true, // cookie cho refresh token
+  baseURL: BASE,
+  headers: {
+    "Content-Type": "application/json",
+  },
 });
 
 let isRefreshing = false;
@@ -66,7 +70,15 @@ api.interceptors.response.use(
 
     // Nếu token hết hạn (401)
     if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
+      if (
+        originalRequest.url?.includes("/auth/refresh-token") ||
+        originalRequest.url?.includes("/auth/login")
+      ) {
+        // Capitalize error message if present
+        console.log(error.response);
+
+        return Promise.reject(error);
+      }
 
       if (isRefreshing) {
         //  Đợi refresh token hiện tại xong rồi retry
@@ -82,16 +94,14 @@ api.interceptors.response.use(
         });
       }
 
+      originalRequest._retry = true;
+
       isRefreshing = true;
 
       try {
-        const refreshResponse = await axios.post(
-          `${
-            process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/v1"
-          }/auth/refresh-token`,
-          {},
-          { withCredentials: true }
-        );
+        const refreshResponse = await api.post(`${BASE}/auth/refresh-token`, {
+          refreshToken: getRefreshCookieFromFE(),
+        });
 
         const newAccessToken = refreshResponse.data?.accessToken as
           | string
@@ -99,7 +109,14 @@ api.interceptors.response.use(
         if (!newAccessToken)
           throw new Error("No accessToken in refresh response");
 
+        const newRefreshToken = refreshResponse.data?.refreshToken;
+
         localStorage.setItem(ACCESS_TOKEN_KEY, newAccessToken);
+
+        if (newRefreshToken) {
+          document.cookie = `refreshToken=${newRefreshToken}; Path=/; Max-Age=604800; SameSite=Lax; `;
+        }
+
         processQueue(null, newAccessToken);
 
         if (originalRequest.headers)
@@ -108,6 +125,7 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
+
         localStorage.removeItem(ACCESS_TOKEN_KEY);
         if (typeof window !== "undefined") {
           window.location.href = "/login";
@@ -121,5 +139,11 @@ api.interceptors.response.use(
     throw error;
   }
 );
+
+function getRefreshCookieFromFE() {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(/(^| )refreshToken=([^;]+)/);
+  return match ? match[2] : null;
+}
 
 export default api;
