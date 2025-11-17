@@ -184,15 +184,13 @@ export default function MovieForm({
       const dateStr = format(releaseDate, "yyyy-MM-dd"); // "2025-10-08"
       fd.append("releaseDate", dateStr);
     }
-    fd.append("genres", JSON.stringify(genres.map((g) => g.id)));
+    fd.append("genresIds", genres.map((g) => g.id).join(","));
     // media
     if (thumbFile) fd.append("thumbnail", thumbFile);
     else if (thumbUrl) fd.append("thumbnailUrl", thumbUrl);
     if (trailerFile) fd.append("trailer", trailerFile);
-    else if (trailerUrl) fd.append("trailerUrl", trailerUrl);
+    else if (trailerUrl) fd.append("trailerPath", trailerUrl);
     fd.append("status", status);
-
-    console.log(fd.get("duration"));
 
     try {
       if (mode === "edit") {
@@ -205,7 +203,6 @@ export default function MovieForm({
         setDialogMsg("Tạo phim thành công");
       }
       setSuccessOpen(true);
-      onSuccess?.();
     } catch {
       setDialogTitle("Lỗi");
       setDialogMsg("Thao tác thất bại.");
@@ -658,6 +655,7 @@ export default function MovieForm({
         type="success"
         title={dialogTitle}
         message={dialogMsg}
+        onConfirm={() => onSuccess?.()}
         confirmText="Đóng"
       />
 

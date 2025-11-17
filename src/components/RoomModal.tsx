@@ -50,8 +50,6 @@ export default function RoomModal({
   cinemaId,
   room,
 }: RoomModalProps) {
-  console.log(room);
-
   const [saving, setSaving] = useState(false);
   const [loading, setLoadingRoom] = useState(false);
 
@@ -60,6 +58,19 @@ export default function RoomModal({
   const [coupleBonus, setCoupleBonus] = useState<number | "">(
     room?.COUPLE ?? 0
   );
+  const [hasVipSeat, setHasVipSeat] = useState(false);
+  const [hasCoupleSeat, setHasCoupleSeat] = useState(false);
+
+  useEffect(() => {
+    if (mode === "create") {
+      setName("");
+      setVipBonus(0);
+      setCoupleBonus(0);
+      const layout = makeBaseLayout5x5();
+      setHasVipSeat(layout.some((s) => s.type === "VIP"));
+      setHasCoupleSeat(layout.some((s) => s.type === "COUPLE"));
+    }
+  }, [mode]);
 
   // reset khi mở / đổi room
   useEffect(() => {
@@ -73,6 +84,10 @@ export default function RoomModal({
         setName(res?.name ?? "");
         setVipBonus(Number(res?.VIP ?? 0));
         setCoupleBonus(Number(res?.COUPLE ?? 0));
+        if (res?.seatLayout?.length) {
+          setHasVipSeat(res.seatLayout.some((s) => s.type === "VIP"));
+          setHasCoupleSeat(res.seatLayout.some((s) => s.type === "COUPLE"));
+        }
       } catch (e) {
         console.log("Không tải được thông tin phòng");
       } finally {
@@ -88,8 +103,8 @@ export default function RoomModal({
       const payloadBase = {
         cinemaId,
         name: name.trim(),
-        vipPrice: Number(vipBonus || 0),
-        couplePrice: Number(coupleBonus || 0),
+        vipPrice: Number(vipBonus || 1),
+        couplePrice: Number(coupleBonus || 1),
       };
 
       console.log("edit create payload: ", payloadBase);
@@ -147,6 +162,8 @@ export default function RoomModal({
                   inputMode="numeric"
                   step="1000"
                   placeholder="0"
+                  disabled={!hasVipSeat}
+                  className={!hasVipSeat ? "opacity-50 cursor-not-allowed" : ""}
                   value={vipBonus}
                   onChange={(e) =>
                     setVipBonus(
@@ -161,6 +178,10 @@ export default function RoomModal({
                   type="number"
                   inputMode="numeric"
                   step="1000"
+                  disabled={!hasCoupleSeat}
+                  className={
+                    !hasCoupleSeat ? "opacity-50 cursor-not-allowed" : ""
+                  }
                   placeholder="0"
                   value={coupleBonus}
                   onChange={(e) =>

@@ -47,9 +47,9 @@ export const adminTabs = [
     path: "/admin/users",
     icon: <FiUser className="w-6 h-6" />,
   },
-  {
-    name: "Thông tin cá nhân",
-    path: "/admin/me",
-    icon: <FaUserShield className="w-6 h-6" />,
-  },
+  // {
+  //   name: "Thông tin cá nhân",
+  //   path: "/admin/me",
+  //   icon: <FaUserShield className="w-6 h-6" />,
+  // },
 ];

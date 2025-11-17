@@ -141,6 +141,7 @@ import { toast } from "sonner";
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
+  isLoggingOut: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -166,6 +167,7 @@ export const useAuth = (): AuthContextType => {
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   // ===== INIT AUTH STATE =====
   useEffect(() => {
@@ -184,13 +186,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           // Lấy user từ localStorage (nếu có)
           const storedUser = authService.getStoredUser();
           if (storedUser) setUser(storedUser);
-
-          // Cố gắng refresh access token khi vừa load app
-          try {
-            await authService.refreshAccessToken();
-          } catch (e) {
-            console.warn("Refresh failed on init:", e);
-          }
 
           // Gọi API lấy user mới nhất
           try {
@@ -216,10 +211,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // ===== AUTO REFRESH TOKEN =====
   useEffect(() => {
     const checkAndRefresh = async () => {
+      console.log("đã qua 60s");
+
       const hasToken = !!authService.getToken();
       if (!hasToken) return;
 
-      // Nếu token hết hạn
+      //Nếu token hết hạn
       if (authService.isTokenExpired()) {
         try {
           await authService.refreshAccessToken();
@@ -231,7 +228,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       }
       // Nếu token sắp hết hạn
-      else if (authService.isTokenExpiringSoon(3)) {
+      else if (authService.isTokenExpiringSoon(1)) {
         try {
           await authService.refreshAccessToken();
           console.log("Token refreshed proactively");
@@ -264,6 +261,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // ===== LOGOUT =====
   const logout = async () => {
+    setIsLoggingOut(true);
     try {
       await authService.logout();
       toast.success("Đã đăng xuất");
@@ -271,6 +269,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.error("Logout error:", error);
     } finally {
       setUser(null);
+      setIsLoggingOut(false);
     }
   };
 
@@ -316,6 +315,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const value: AuthContextType = {
     user,
     isAuthenticated: !!user,
+    isLoggingOut,
     isLoading,
     login,
     logout,
