@@ -278,8 +278,14 @@ export default function FoodDrinkListPage() {
   // ======================== Selection Logic ========================
   const toggleOne = (id: string, checked: boolean) => {
     setSelectedIds((prev) => {
-      const next = new Set(prev);
-      checked ? next.add(id) : next.delete(id);
+      const next = new Set<string>(prev);
+
+      if (checked) {
+        next.add(id);
+      } else {
+        next.delete(id);
+      }
+
       return next;
     });
   };
@@ -553,7 +559,6 @@ export default function FoodDrinkListPage() {
         type="success"
         title={dialogTitle}
         message={dialogMsg}
-        onConfirm={() => setSuccessOpen(false)}
         confirmText="Đóng"
       />
 

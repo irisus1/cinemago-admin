@@ -1,4 +1,3 @@
-import { changePassword } from "./AuthService";
 import axios from "axios";
 import api from "@/config/api";
 

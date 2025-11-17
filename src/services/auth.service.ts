@@ -3,7 +3,6 @@ import api from "@/config/api";
 import { jwtDecode } from "jwt-decode";
 import type { User } from "./user.service";
 import { ACCESS_TOKEN_KEY } from "@/constants/auth";
-import { log } from "console";
 
 export interface LoginResponse {
   accessToken: string;
@@ -74,6 +73,24 @@ class AuthService {
     } finally {
       this.clearLocalAuth();
       this.deleteRefreshCookie();
+    }
+  }
+
+  // === CHANGE PASS ===
+  async changePassword(payload: {
+    oldPassword: string;
+    newPassword: string;
+  }): Promise<string> {
+    try {
+      const { data } = await api.post<{ message: string }>(
+        "/auth/change-password",
+        payload
+      );
+      return data.message || "Đổi mật khẩu thành công.";
+    } catch (e: unknown) {
+      const msg = getMsg(e, "Không thể đổi mật khẩu.");
+      console.error("Change password error:", e);
+      throw new Error(msg);
     }
   }
 

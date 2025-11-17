@@ -33,16 +33,12 @@ import {
   roomService,
   showTimeService,
   type ShowTime,
-  PaginationMeta,
 } from "@/services";
-import { da } from "date-fns/locale";
 
 export default function ShowtimesCard({ movieId }: { movieId: string }) {
-
   const [showtimes, setShowtimes] = useState<ShowTime[]>([]);
   const [loadingShow, setLoadingShow] = useState(false);
   const [filterLang, setFilterLang] = useState<string | undefined>(undefined);
-
 
   const [open, setOpen] = useState(false);
   const [editShowtime, setEditShowtme] = useState<ShowTime | null>(null);
@@ -54,7 +50,8 @@ export default function ShowtimesCard({ movieId }: { movieId: string }) {
   const [onConfirm, setOnConfirm] = useState<() => void>(() => () => {});
 
   const [page, setPage] = useState(1); // 1-based
-  const [pageSize, setPageSize] = useState(6); // limit
+  // const [pageSize, setPageSize] = useState(6); // limit
+  const pageSize = 6;
   const [totalItems, setTotalItems] = useState(0);
 
   const cinemaCache = useRef(new Map<string, string>());
@@ -104,7 +101,6 @@ export default function ShowtimesCard({ movieId }: { movieId: string }) {
       try {
         setLoadingShow(true);
 
-
         // GỌI API có page/limit
         const res = await showTimeService.getShowTimes({
           movieId: movieId,
@@ -150,7 +146,6 @@ export default function ShowtimesCard({ movieId }: { movieId: string }) {
 
         if (!cancelled) setShowtimes(enriched);
         console.log(enriched);
-
       } finally {
         if (!cancelled) setLoadingShow(false);
       }
@@ -209,49 +204,55 @@ export default function ShowtimesCard({ movieId }: { movieId: string }) {
     setIsConfirmDialogOpen(true);
   };
 
-  const handleDelete = (showtime: ShowTime) => {
-    openConfirm(
-      "Xác nhận xóa",
-      <>
-        Bạn có chắc chắn muốn xóa suất chiếu này không?
-        <br />
-        Việc này không thể hoàn tác.
-      </>,
-      async () => {
-        setIsConfirmDialogOpen(false);
-        try {
-          await showTimeService.deleteShowTime(showtime.id);
-          patchShowtime(showtime.id, { isActive: false });
-          setReloadTick((x) => x + 1);
-          setDialogTitle("Thành công");
-          setDialogMessage("Xóa suất chiếu thành công");
-          setIsSuccessDialogOpen(true);
-        } catch (err) {
-          alert("Thao tác thất bại: " + err);
+  const handleDelete = useCallback(
+    (showtime: ShowTime) => {
+      openConfirm(
+        "Xác nhận xóa",
+        <>
+          Bạn có chắc chắn muốn xóa suất chiếu này không?
+          <br />
+          Việc này không thể hoàn tác.
+        </>,
+        async () => {
+          setIsConfirmDialogOpen(false);
+          try {
+            await showTimeService.deleteShowTime(showtime.id);
+            patchShowtime(showtime.id, { isActive: false });
+            setReloadTick((x) => x + 1);
+            setDialogTitle("Thành công");
+            setDialogMessage("Xóa suất chiếu thành công");
+            setIsSuccessDialogOpen(true);
+          } catch (err) {
+            alert("Thao tác thất bại: " + err);
+          }
         }
-      }
-    );
-  };
+      );
+    },
+    [patchShowtime]
+  );
 
-  const handleRestore = (showtime: ShowTime) => {
-    openConfirm(
-      "Xác nhận khôi phục",
-      <>Khôi phục suất chiếu này?</>,
-      async () => {
-        setIsConfirmDialogOpen(false);
-        try {
-          await showTimeService.restoreShowTime(showtime.id);
-          patchShowtime(showtime.id, { isActive: true });
-          setReloadTick((x) => x + 1);
-          setDialogTitle("Thành công");
-          setDialogMessage("Khôi phục suất chiếu thành công");
-          setIsSuccessDialogOpen(true);
-        } catch (err) {
-          alert("Thao tác thất bại: " + err);
+  const handleRestore = useCallback(
+    (showtime: ShowTime) => {
+      openConfirm(
+        "Xác nhận khôi phục",
+        <>Khôi phục suất chiếu này?</>,
+        async () => {
+          setIsConfirmDialogOpen(false);
+          try {
+            await showTimeService.restoreShowTime(showtime.id);
+            patchShowtime(showtime.id, { isActive: true });
+            setReloadTick((x) => x + 1);
+            setDialogTitle("Thành công");
+            setDialogMessage("Khôi phục suất chiếu thành công");
+            setIsSuccessDialogOpen(true);
+          } catch (err) {
+            alert("Thao tác thất bại: " + err);
+          }
         }
-      }
-    );
-  };
+      );
+    },
+    [patchShowtime]
+  );
 
   const columns: Column<ShowTime>[] = useMemo(
     () => [
@@ -265,7 +266,6 @@ export default function ShowtimesCard({ movieId }: { movieId: string }) {
         render: (v) =>
           v
             ? Intl.DateTimeFormat("vi-VN", {
-
                 timeZone: "UTC",
 
                 hour: "2-digit",
@@ -282,7 +282,6 @@ export default function ShowtimesCard({ movieId }: { movieId: string }) {
         render: (v) =>
           v
             ? Intl.DateTimeFormat("vi-VN", {
-
                 timeZone: "UTC",
 
                 hour: "2-digit",
@@ -343,13 +342,11 @@ export default function ShowtimesCard({ movieId }: { movieId: string }) {
           </div>
         ),
       },
-
     ],
-    []
+    [handleDelete, handleRestore]
   );
 
   return (
-
     <div>
       <Card className="shadow-sm">
         {/* Header: Title (dòng 1) + Controls row (dòng 2) */}
@@ -464,8 +461,7 @@ export default function ShowtimesCard({ movieId }: { movieId: string }) {
         type="success"
         title={dialogTitle}
         message={dialogMessage}
-        onCancel={() => setIsSuccessDialogOpen(false)}
-        cancelText="Đóng"
+        confirmText="Đóng"
       />
 
       <ShowTimeModal
@@ -481,6 +477,5 @@ export default function ShowtimesCard({ movieId }: { movieId: string }) {
         }}
       />
     </div>
-
   );
 }

@@ -2,10 +2,7 @@
 
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import MovieGrid from "@/components/order-ticket/MovieGrid";
-import type { TheaterBlock, Showtime } from "@/lib/types";
-import { api } from "@/lib/api";
-import { showTimeService, movieService, type Genre, Movie } from "@/services";
-import { Calendar } from "lucide-react";
+import { showTimeService, movieService, type Movie } from "@/services";
 
 /** Helpers */
 const todayLocalISODate = () => {
@@ -46,8 +43,7 @@ export default function AdminWalkupBookingPage() {
 
   // ====== States chính ======
   const [movies, setMovies] = useState<Movie[]>([]);
-  const [movie, setMovie] = useState<Movie | null>(null);
-  const [blocks, setBlocks] = useState<TheaterBlock[]>([]);
+
   const [loading, setLoading] = useState(false);
 
   // ====== Fetch list phim theo suất chiếu của ngày đã chọn ======
@@ -123,8 +119,6 @@ export default function AdminWalkupBookingPage() {
         if (ids.length === 0) {
           if (!cancelled) {
             setMovies([]); // <- để render empty-state
-            setMovie(null);
-            setBlocks([]);
           }
           return;
         }
@@ -143,8 +137,6 @@ export default function AdminWalkupBookingPage() {
 
         if (!cancelled) {
           setMovies(moviesEnriched as Movie[]);
-          setMovie(null);
-          setBlocks([]);
         }
       } catch {
         if (!cancelled) setMovies([]);
