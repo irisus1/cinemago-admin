@@ -2,7 +2,15 @@
 
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import MovieGrid from "@/components/order-ticket/MovieGrid";
-import { showTimeService, movieService, type Movie } from "@/services";
+import {
+  showTimeService,
+  movieService,
+  cinemaService,
+  type Movie,
+  Cinema,
+} from "@/services";
+import { DateNativeVN } from "@/components/DateNativeVN";
+import BookingSheet from "./bookingSheet";
 
 /** Helpers */
 const todayLocalISODate = () => {
@@ -20,18 +28,18 @@ const toLocalNaive = (d: Date) =>
   `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
   `T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 
-// [00:00, +1d 03:00) local-naive
-const toLocalRangeTailNaive = (dateStr: string, tailHours = 3) => {
-  // guard & clamp
+const toLocalRangeTailNaive = (dateStr: string) => {
+  // guard
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
     const today = todayLocalISODate();
-    return toLocalRangeTailNaive(today, tailHours);
+    return toLocalRangeTailNaive(today);
   }
-  const t = Math.min(23, Math.max(0, tailHours));
 
   const [y, m, d] = dateStr.split("-").map((n) => parseInt(n, 10));
-  const start = new Date(y, m - 1, d, 0, 0, 0, 0); // 00:00
-  const end = new Date(y, m - 1, d + 1, t, 0, 0, 0); // +1d t:00
+
+  const start = new Date(y, m - 1, d, 0, 0, 0, 0);
+
+  const end = new Date(y, m - 1, d, 23, 59, 59);
 
   return { startTime: toLocalNaive(start), endTime: toLocalNaive(end) };
 };
@@ -39,25 +47,64 @@ const toLocalRangeTailNaive = (dateStr: string, tailHours = 3) => {
 export default function AdminWalkupBookingPage() {
   // ====== Query theo ngày ======
   const [dateStr, setDateStr] = useState<string>(() => todayLocalISODate());
-  const dayRange = useMemo(() => toLocalRangeTailNaive(dateStr, 3), [dateStr]);
+  const dayRange = useMemo(() => toLocalRangeTailNaive(dateStr), [dateStr]);
 
+  const [cinemas, setCinemas] = useState<Cinema[]>([]);
+  const [selectedCinemaId, setSelectedCinemaId] = useState<string>("");
   // ====== States chính ======
   const [movies, setMovies] = useState<Movie[]>([]);
+  const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
 
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    (async () => {
+      try {
+        // 1. Fetch list rạp
+        const res = await cinemaService.getAllCinemas();
+        const list = res?.data || [];
+        setCinemas(list);
+        const savedId = localStorage.getItem("admin_persistent_cinema_id");
+
+        if (savedId) {
+          // Nếu có lịch sử lưu thì dùng lại
+          setSelectedCinemaId(savedId);
+        } else if (list.length > 0) {
+          // Nếu chưa có, mặc định chọn rạp đầu tiên và LƯU LUÔN
+          const defaultId = String(list[0].id);
+          setSelectedCinemaId(defaultId);
+          localStorage.setItem("admin_persistent_cinema_id", defaultId);
+        }
+      } catch (error) {
+        console.error("Failed to fetch cinemas", error);
+      }
+    })();
+  }, []);
+
+  const handleCinemaChange = (newId: string) => {
+    setSelectedCinemaId(newId);
+
+    localStorage.setItem("admin_persistent_cinema_id", newId);
+  };
   // ====== Fetch list phim theo suất chiếu của ngày đã chọn ======
   useEffect(() => {
     let cancelled = false;
+    if (!selectedCinemaId) return;
     (async () => {
       try {
         setLoading(true);
+
+        console.log(dayRange.startTime, dayRange.endTime);
 
         // 1) Lấy showtimes theo khoảng [start, end)
         const sts = await showTimeService.getShowTimes({
           startTime: dayRange.startTime,
           endTime: dayRange.endTime,
+          cinemaId: selectedCinemaId,
         });
+
+        console.log(sts);
 
         const data = sts?.data ?? [];
 
@@ -147,44 +194,62 @@ export default function AdminWalkupBookingPage() {
     return () => {
       cancelled = true;
     };
-  }, [dayRange.startTime, dayRange.endTime]);
+  }, [dayRange.startTime, dayRange.endTime, selectedCinemaId]);
 
-  const ref = useRef<HTMLInputElement>(null);
-  const dmy = useMemo(
-    () => (dateStr ? dateStr.split("-").reverse().join("/") : ""),
-    [dateStr]
-  );
+  const handleMovieSelect = (movie: Movie) => {
+    setSelectedMovie(movie);
+    setIsSheetOpen(true);
+  };
+
+  // [NEW] Handler đóng sheet
+  const handleCloseSheet = () => {
+    setIsSheetOpen(false);
+    // Reset movie sau khi animation đóng xong (opsional)
+    setTimeout(() => setSelectedMovie(null), 300);
+  };
   // ====== UI ======
   return (
-    <div className="px-6 py-6 max-w-7xl mx-auto">
+    <div className="max-w-7xl mx-auto">
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <h1 className="text-3xl font-bold">Đặt vé tại rạp cho ngày hôm nay</h1>
 
         {/* Chọn ngày để lọc suất chiếu */}
         <div className="flex items-center gap-3">
-          <label className="text-sm font-medium text-gray-700">
-            Chọn ngày:
-          </label>
-          {/* visible: dd/mm/yyyy */}
-          <input
-            type="text"
-            readOnly
-            value={dmy}
-            onClick={() => (
-              ref.current?.showPicker?.(), ref.current?.focus?.()
-            )}
-            className="rounded-md border px-3 py-2 text-sm cursor-pointer bg-white"
-          />
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-gray-700">
+              Chọn rạp:
+            </label>
+            <select
+              className="rounded-md border px-3 py-2 text-sm bg-white min-w-[200px]"
+              value={selectedCinemaId}
+              onChange={(e) => handleCinemaChange(e.target.value)}
+            >
+              {cinemas.length === 0 && (
+                <option value="">Đang tải rạp...</option>
+              )}
+              {cinemas.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-gray-700">
+              Chọn ngày:
+            </label>
 
-          {/* hidden native date input (ISO) */}
-          <input
-            ref={ref}
-            type="date"
-            lang="vi" // cố gắng hiển thị dd/mm/yyyy nếu browser hỗ trợ
-            value={dateStr} // giữ ISO YYYY-MM-DD cho tính toán/query
-            onChange={(e) => setDateStr(e.target.value)}
-            className="sr-only"
-          />
+            <DateNativeVN
+              valueISO={dateStr}
+              onChangeISO={(iso) => {
+                console.log("Ngày chọn:", iso);
+                // setSelectedDate(iso)
+                setDateStr(iso);
+              }}
+              className="relative "
+              widthClass="w-full "
+            />
+          </div>
         </div>
       </div>
 
@@ -202,9 +267,21 @@ export default function AdminWalkupBookingPage() {
             Không có suất chiếu trong khung giờ đã chọn.
           </div>
         ) : (
-          <MovieGrid movies={movies} date={dateStr} />
+          <MovieGrid
+            movies={movies}
+            date={dateStr}
+            cinemaId={selectedCinemaId}
+            onMovieSelect={handleMovieSelect}
+          />
         )}
       </section>
+      <BookingSheet
+        isOpen={isSheetOpen}
+        onClose={handleCloseSheet}
+        movie={selectedMovie}
+        cinemaId={selectedCinemaId}
+        date={dateStr}
+      />
     </div>
   );
 }

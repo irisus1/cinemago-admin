@@ -173,6 +173,21 @@ class RoomService {
       throw new Error(msg);
     }
   }
+
+  async getBusyRooms(startTime: string, endTime: string): Promise<string[]> {
+    const res = await api.get<{ data: string[] }>(
+      "/showtimes/public/get-busy-rooms",
+      {
+        params: {
+          startTime,
+          endTime,
+        },
+      }
+    );
+
+    // res.data là object { data: string[] }
+    return res.data?.data ?? res.data ?? [];
+  }
 }
 
 export const roomService = new RoomService();

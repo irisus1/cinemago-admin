@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { DateNativeVN } from "./DateNativeVN";
 import {
   Select,
   SelectTrigger,
@@ -85,6 +86,8 @@ export default function ShowtimeModal({
   const [startDate, setStartDate] = useState("");
   // nhiều giờ bắt đầu trong cùng 1 ngày
   const [timeSlots, setTimeSlots] = useState<string[]>([""]);
+  const [timeSlotErrors, setTimeSlotErrors] = useState<string[]>([""]);
+
   const [language, setLanguage] = useState("English");
   const [format, setFormat] = useState("2D");
   const [subtitle, setSubtitle] = useState(false);
@@ -94,7 +97,11 @@ export default function ShowtimeModal({
     if (!startDate || !time || duration == null) return null;
     const startIso = toIsoLocal(startDate, time);
     const { date, time: endTime } = addMinutesIsoLocal(startIso, duration);
-    return { date, time: endTime };
+    const [year, month, day] = date.split("-");
+
+    const formattedDate = `${day}-${month}-${year}`;
+
+    return { date: formattedDate, time: endTime };
   };
 
   const updateTimeSlot = (index: number, value: string) => {
@@ -103,14 +110,26 @@ export default function ShowtimeModal({
       next[index] = value;
       return next;
     });
+
+    setTimeSlotErrors((prev) => {
+      const next = [...prev];
+      next[index] = "";
+      return next;
+    });
   };
 
   const addTimeSlot = () => {
     setTimeSlots((prev) => [...prev, ""]);
+    setTimeSlotErrors((prev) => [...prev, ""]);
   };
 
   const removeTimeSlot = (index: number) => {
     setTimeSlots((prev) => {
+      if (prev.length <= 1) return prev;
+      return prev.filter((_, i) => i !== index);
+    });
+
+    setTimeSlotErrors((prev) => {
       if (prev.length <= 1) return prev;
       return prev.filter((_, i) => i !== index);
     });
@@ -147,7 +166,7 @@ export default function ShowtimeModal({
       )}`;
       const timeStr = `${pad(s.getHours())}:${pad(s.getMinutes())}`;
       setStartDate(dateStr);
-      setTimeSlots([timeStr]); // edit 1 suất -> 1 giờ
+      setTimeSlots([timeStr]);
       setLanguage(showtime.language ?? "English");
       setFormat(showtime.format ?? "2D");
       setSubtitle(Boolean(showtime.subtitle));
@@ -159,6 +178,7 @@ export default function ShowtimeModal({
       setPrice("");
       setStartDate("");
       setTimeSlots([""]);
+      setTimeSlotErrors([""]);
       setLanguage("English");
       setFormat("2D");
       setSubtitle(false);
@@ -228,8 +248,91 @@ export default function ShowtimeModal({
     const validTimes = timeSlots.filter((t) => t && t.trim() !== "");
     if (!validTimes.length) return;
 
+    const slotMetas = timeSlots
+      .map((raw, originalIndex) => {
+        const t = raw.trim();
+        if (!t) return null;
+
+        const startIso = toIsoLocal(startDate, t);
+        const endX = addMinutesIsoLocal(startIso, duration);
+        const endIso = toIsoLocal(endX.date, endX.time);
+
+        return {
+          originalIndex, // index trong timeSlots
+          label: t,
+          startIso,
+          endIso,
+          startMs: new Date(startIso).getTime(),
+          endMs: new Date(endIso).getTime(),
+        };
+      })
+      .filter(
+        (
+          m
+        ): m is {
+          originalIndex: number;
+          label: string;
+          startIso: string;
+          endIso: string;
+          startMs: number;
+          endMs: number;
+        } => m !== null
+      );
+
+    if (!slotMetas.length) return;
+
+    // 2) Check CHỒNG GIỜ trong batch hiện tại
+    const errorsInBatch: string[] = Array(timeSlots.length).fill("");
+
+    const sorted = [...slotMetas].sort((a, b) => a.startMs - b.startMs);
+    const accepted: { startMs: number; endMs: number }[] = [];
+
+    for (const slot of sorted) {
+      const conflict = accepted.find(
+        (s) => slot.startMs < s.endMs && slot.endMs > s.startMs
+      );
+
+      if (conflict) {
+        errorsInBatch[slot.originalIndex] =
+          "Giờ này bị chồng với 1 suất chiếu khác trong danh sách.";
+      } else {
+        accepted.push({ startMs: slot.startMs, endMs: slot.endMs });
+      }
+    }
+
+    if (errorsInBatch.some((e) => e)) {
+      setTimeSlotErrors(errorsInBatch);
+      toast.error("Có suất chiếu bị chồng giờ, vui lòng kiểm tra lại.");
+      return;
+    }
+
+    // 3) Check TRÙNG CA trong DB bằng get-busy-rooms
+    const errorsBusy: string[] = [...errorsInBatch]; // hiện tại đều "" rồi
+
     try {
       setLoading(true);
+
+      for (const slot of slotMetas) {
+        const res = await roomService.getBusyRooms(slot.startIso, slot.endIso);
+
+        // tuỳ service của bạn, nếu trả về { data: string[] } thì sửa lại:
+        // const busyRooms: string[] = res.data ?? [];
+        const busyRooms: string[] = res ?? [];
+
+        if (busyRooms.includes(roomId)) {
+          errorsBusy[slot.originalIndex] =
+            "Giờ này trùng với 1 suất chiếu khác của phòng đã chọn.";
+        }
+      }
+
+      if (errorsBusy.some((e) => e)) {
+        setTimeSlotErrors(errorsBusy);
+        toast.error("Một số giờ chiếu trùng với ca khác trong phòng.");
+        return;
+      }
+
+      // không còn lỗi -> clear
+      setTimeSlotErrors(Array(timeSlots.length).fill(""));
 
       if (mode === "edit" && showtime?.id) {
         // Edit: chỉ dùng time đầu tiên
@@ -255,35 +358,29 @@ export default function ShowtimeModal({
       }
 
       // CREATE: tạo nhiều suất theo list giờ
-      const bodies = validTimes.map((t) => {
-        const startIso = toIsoLocal(startDate, t);
-        const endX = addMinutesIsoLocal(startIso, duration);
-        return {
+      for (const slot of slotMetas) {
+        const body = {
           roomId,
           movieId,
           price: Number(price),
-          startTime: startIso,
-          endTime: toIsoLocal(endX.date, endX.time),
+          startTime: slot.startIso,
+          endTime: slot.endIso,
           language,
           format,
           subtitle,
         };
-      });
-
-      // gọi tuần tự để dễ debug; nếu muốn nhanh hơn có thể Promise.all
-      for (const body of bodies) {
-        // console.log(body);
         await showTimeService.createShowTime(body);
       }
 
       toast.success(
-        `Tạo ${bodies.length} suất chiếu thành công. Bạn có thể tiếp tục thêm mới.`
+        `Tạo ${slotMetas.length} suất chiếu thành công. Bạn có thể tiếp tục thêm mới.`
       );
       onSuccess?.();
 
       // Giữ nguyên rạp/phòng/…; reset ngày + list giờ để nhập tiếp
       setStartDate("");
       setTimeSlots([""]);
+      setTimeSlotErrors([""]);
     } catch {
       toast.error(
         `${mode === "edit" ? "Cập nhật" : "Tạo"} suất chiếu thất bại`
@@ -343,7 +440,7 @@ export default function ShowtimeModal({
           </div>
 
           {/* 2) PHÒNG + GIÁ */}
-          <div className="min-w-0">
+          <div className="min-w-0 md:col-span-2">
             <Label>Phòng</Label>
             <Select
               value={roomId}
@@ -379,14 +476,24 @@ export default function ShowtimeModal({
 
           {/* 3) NGÀY + NHIỀU GIỜ BẮT ĐẦU */}
 
-          <div className="min-w-0">
+          <div className="min-w-0 ">
             <Label>Ngày chiếu</Label>
             <div className="mt-1 flex gap-2">
-              <Input
+              {/* <Input
                 className="h-10 w-full"
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
+              /> */}
+              <DateNativeVN
+                valueISO={startDate}
+                onChangeISO={(iso) => {
+                  console.log("Ngày chọn:", iso);
+                  // setSelectedDate(iso)
+                  setStartDate(iso);
+                }}
+                className="relative "
+                widthClass="w-full "
               />
               {mode === "create" && (
                 <Button
@@ -435,6 +542,11 @@ export default function ShowtimeModal({
                         {endInfo.date === startDate
                           ? endInfo.time
                           : `${endInfo.date} ${endInfo.time}`}
+                      </p>
+                    )}
+                    {timeSlotErrors[idx] && (
+                      <p className="text-xs text-red-500">
+                        {timeSlotErrors[idx]}
                       </p>
                     )}
                   </div>
