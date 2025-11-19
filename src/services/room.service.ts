@@ -9,6 +9,16 @@ export type SeatCell = {
   type: SeatType;
 };
 
+export type SeatModal = {
+  id: string;
+  seatNumber: string;
+  roomId: string;
+  seatType: SeatType;
+  createdAt: string;
+  updatedAt: string;
+  extraPrice: number;
+};
+
 export type Room = {
   id: string;
   name: string;
@@ -18,6 +28,7 @@ export type Room = {
   updatedAt?: string;
   isActive?: boolean;
   seatLayout?: SeatCell[];
+  seats: SeatModal[];
   // các trường thống kê nếu BE có:
   VIP?: number;
   COUPLE?: number;
@@ -31,6 +42,13 @@ export type RoomQuery = {
   startTime?: Date | string;
   endTime?: Date | string;
   cinemaId?: string;
+};
+
+export type HeldSeatResponse = {
+  seatId: string;
+  extraPrice: number;
+  showtimeId?: string;
+  userId: string;
 };
 
 export type PaginationMeta = {
@@ -161,10 +179,10 @@ class RoomService {
   }
 
   // GET /rooms/held-seats/:showtimeId -> { data: string[] }
-  async getHeldSeats(showtimeId: string): Promise<string[]> {
+  async getHeldSeats(showtimeId: string): Promise<HeldSeatResponse[]> {
     try {
-      const { data } = await api.get<{ data: string[] }>(
-        `/rooms/held-seats/${showtimeId}`
+      const { data } = await api.get<{ data: HeldSeatResponse[] }>(
+        `/rooms/${showtimeId}/hold-seat`
       );
       return data.data;
     } catch (e: unknown) {
@@ -172,6 +190,21 @@ class RoomService {
       console.error("Get held seats error:", e);
       throw new Error(msg);
     }
+  }
+
+  async getBusyRooms(startTime: string, endTime: string): Promise<string[]> {
+    const res = await api.get<{ data: string[] }>(
+      "/showtimes/public/get-busy-rooms",
+      {
+        params: {
+          startTime,
+          endTime,
+        },
+      }
+    );
+
+    // res.data là object { data: string[] }
+    return res.data?.data ?? res.data ?? [];
   }
 }
 
