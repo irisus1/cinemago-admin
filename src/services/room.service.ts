@@ -9,6 +9,16 @@ export type SeatCell = {
   type: SeatType;
 };
 
+export type SeatModal = {
+  id: string;
+  seatNumber: string;
+  roomId: string;
+  seatType: SeatType;
+  createdAt: string;
+  updatedAt: string;
+  extraPrice: number;
+};
+
 export type Room = {
   id: string;
   name: string;
@@ -18,6 +28,7 @@ export type Room = {
   updatedAt?: string;
   isActive?: boolean;
   seatLayout?: SeatCell[];
+  seats: SeatModal[];
   // các trường thống kê nếu BE có:
   VIP?: number;
   COUPLE?: number;

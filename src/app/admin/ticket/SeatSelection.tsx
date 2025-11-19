@@ -3,7 +3,7 @@
 import React, { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Minus, Plus } from "lucide-react";
-import { type SeatCell } from "@/services";
+import { type SeatCell, SeatModal } from "@/services";
 import {
   formatVND,
   type TicketType,
@@ -18,11 +18,14 @@ interface SeatSelectionStepProps {
   coupleSurcharge: number;
   onBack: () => void;
   seatLayout: SeatCell[];
+  seatList: SeatModal[];
   loadingLayout: boolean;
   selectedSeats: string[];
   quantities: Record<TicketType, number>;
   onQuantitiesChange: (type: TicketType, delta: number) => void;
   onSeatsChange: (seats: string[]) => void;
+  showtimeId: string | number;
+  roomId: string | number;
 }
 
 export default function SeatSelectionStep({
@@ -32,6 +35,7 @@ export default function SeatSelectionStep({
   coupleSurcharge,
   onBack,
   seatLayout,
+  seatList,
   loadingLayout,
   selectedSeats,
   quantities,
@@ -45,8 +49,8 @@ export default function SeatSelectionStep({
   };
 
   const currentCounts = useMemo(
-    () => calculateSeatCounts(selectedSeats, seatLayout),
-    [selectedSeats, seatLayout]
+    () => calculateSeatCounts(selectedSeats, seatList),
+    [selectedSeats, seatList]
   );
 
   const checkSeatDisabled = (seatType: string, isSelected: boolean) => {
@@ -65,17 +69,20 @@ export default function SeatSelectionStep({
     return false;
   };
 
-  const handleSeatClick = (seat: SeatCell, nextSeat: SeatCell | null) => {
-    const seatIdsToToggle = [`${seat.row}-${seat.col}`];
-    if (seat.type === "COUPLE" && nextSeat)
-      seatIdsToToggle.push(`${nextSeat.row}-${nextSeat.col}`);
+  const handleSeatClick = (seat: SeatModal, nextSeat: SeatModal | null) => {
+    const idsToToggle = [seat.id];
+    if (seat.seatType === "COUPLE" && nextSeat) {
+      idsToToggle.push(nextSeat.id);
+    }
 
     let newSelected = [...selectedSeats];
-    const isSelected = newSelected.includes(seatIdsToToggle[0]);
-    if (isSelected)
-      newSelected = newSelected.filter((id) => !seatIdsToToggle.includes(id));
-    else newSelected = [...newSelected, ...seatIdsToToggle];
+    const isSelected = newSelected.includes(seat.id);
 
+    if (isSelected) {
+      newSelected = newSelected.filter((id) => !idsToToggle.includes(id));
+    } else {
+      newSelected = [...newSelected, ...idsToToggle];
+    }
     onSeatsChange(newSelected);
   };
 
@@ -125,6 +132,7 @@ export default function SeatSelectionStep({
         <h4 className="font-bold mb-3 text-gray-700">2. Sơ đồ ghế</h4>
         <SeatMap
           seatLayout={seatLayout}
+          seatList={seatList}
           selectedSeats={selectedSeats}
           loading={loadingLayout}
           isSeatDisabled={checkSeatDisabled}

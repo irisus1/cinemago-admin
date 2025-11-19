@@ -10,6 +10,7 @@ export interface ShowtimeItem {
   price: number;
   vipPrice?: number;
   couplePrice?: number;
+  isPast?: boolean;
 }
 
 export interface GroupedByRoom {
@@ -58,7 +59,7 @@ export default function ShowtimeList({
       {groupedData.map((room) => (
         <div key={room.roomId} className="border-b pb-6 last:border-0">
           <h4 className="font-bold text-xl mb-4 flex items-center gap-2 text-gray-800 pl-4 border-l-4 border-primary">
-            🏢 {room.roomName}
+            {room.roomName}
           </h4>
           <div className="space-y-4 pl-4">
             {Object.entries(room.formats).map(([format, times]) => (
@@ -73,6 +74,7 @@ export default function ShowtimeList({
                     return (
                       <Button
                         key={st.id}
+                        disabled={st.isPast}
                         variant={isActive ? "default" : "outline"}
                         className={`h-10 transition-all ${
                           isActive
@@ -80,6 +82,7 @@ export default function ShowtimeList({
                             : "hover:bg-primary/10"
                         }`}
                         onClick={() =>
+                          !st.isPast &&
                           onSelect(
                             st.id,
                             room.roomName,

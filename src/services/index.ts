@@ -37,6 +37,7 @@ export type {
   RoomUpdate,
   SeatType,
   SeatCell,
+  SeatModal,
 } from "./room.service";
 
 export type {

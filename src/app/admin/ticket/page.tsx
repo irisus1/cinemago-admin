@@ -23,13 +23,11 @@ const todayLocalISODate = () => {
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
-// "YYYY-MM-DDTHH:mm:ss" (local-naive, không timezone)
 const toLocalNaive = (d: Date) =>
   `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
   `T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 
 const toLocalRangeTailNaive = (dateStr: string) => {
-  // guard
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
     const today = todayLocalISODate();
     return toLocalRangeTailNaive(today);
@@ -45,13 +43,11 @@ const toLocalRangeTailNaive = (dateStr: string) => {
 };
 
 export default function AdminWalkupBookingPage() {
-  // ====== Query theo ngày ======
   const [dateStr, setDateStr] = useState<string>(() => todayLocalISODate());
   const dayRange = useMemo(() => toLocalRangeTailNaive(dateStr), [dateStr]);
 
   const [cinemas, setCinemas] = useState<Cinema[]>([]);
   const [selectedCinemaId, setSelectedCinemaId] = useState<string>("");
-  // ====== States chính ======
   const [movies, setMovies] = useState<Movie[]>([]);
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -87,7 +83,6 @@ export default function AdminWalkupBookingPage() {
 
     localStorage.setItem("admin_persistent_cinema_id", newId);
   };
-  // ====== Fetch list phim theo suất chiếu của ngày đã chọn ======
   useEffect(() => {
     let cancelled = false;
     if (!selectedCinemaId) return;
@@ -115,7 +110,7 @@ export default function AdminWalkupBookingPage() {
             languages: string[];
             formats: string[];
             minPrice: number | null;
-            earliestStart: string | null; // local-naive
+            earliestStart: string | null;
             hasSubtitle: boolean | null;
           }
         > = {};
@@ -165,7 +160,7 @@ export default function AdminWalkupBookingPage() {
         const ids = Object.keys(metaByMovieId);
         if (ids.length === 0) {
           if (!cancelled) {
-            setMovies([]); // <- để render empty-state
+            setMovies([]);
           }
           return;
         }
@@ -201,10 +196,8 @@ export default function AdminWalkupBookingPage() {
     setIsSheetOpen(true);
   };
 
-  // [NEW] Handler đóng sheet
   const handleCloseSheet = () => {
     setIsSheetOpen(false);
-    // Reset movie sau khi animation đóng xong (opsional)
     setTimeout(() => setSelectedMovie(null), 300);
   };
   // ====== UI ======
@@ -253,7 +246,6 @@ export default function AdminWalkupBookingPage() {
         </div>
       </div>
 
-      {/* Section 1: Movies from showtimes in selected day */}
       <section className="mb-10">
         <h2 className="mb-3 text-xl font-semibold">
           Phim có suất chiếu trong ngày
