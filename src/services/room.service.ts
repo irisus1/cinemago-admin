@@ -44,6 +44,13 @@ export type RoomQuery = {
   cinemaId?: string;
 };
 
+export type HeldSeatResponse = {
+  seatId: string;
+  extraPrice: number;
+  showtimeId?: string;
+  userId: string;
+};
+
 export type PaginationMeta = {
   totalItems: number;
   totalPages: number;
@@ -172,10 +179,10 @@ class RoomService {
   }
 
   // GET /rooms/held-seats/:showtimeId -> { data: string[] }
-  async getHeldSeats(showtimeId: string): Promise<string[]> {
+  async getHeldSeats(showtimeId: string): Promise<HeldSeatResponse[]> {
     try {
-      const { data } = await api.get<{ data: string[] }>(
-        `/rooms/held-seats/${showtimeId}`
+      const { data } = await api.get<{ data: HeldSeatResponse[] }>(
+        `/rooms/${showtimeId}/hold-seat`
       );
       return data.data;
     } catch (e: unknown) {

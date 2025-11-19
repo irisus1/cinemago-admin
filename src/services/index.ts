@@ -7,6 +7,8 @@ export { movieService } from "./movie.service";
 export { showTimeService } from "./showtime.service";
 export { roomService } from "./room.service";
 export { foodDrinkService } from "./food.service";
+export { paymentService } from "./payment.service";
+export { bookingService } from "./booking.service";
 
 // Export types
 export type { LoginResponse, RegisterRequest } from "./auth.service";
@@ -46,3 +48,12 @@ export type {
   CreateFoodDrinkRequest,
   UpdateFoodDrinkRequest,
 } from "./food.service";
+
+export type { CreatePaymentRequest } from "./payment.service";
+
+export type {
+  BookingSeat,
+  Booking,
+  BookingFoodDrink,
+  CreateBookingRequest,
+} from "./booking.service";

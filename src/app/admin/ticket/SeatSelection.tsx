@@ -26,6 +26,10 @@ interface SeatSelectionStepProps {
   onSeatsChange: (seats: string[]) => void;
   showtimeId: string | number;
   roomId: string | number;
+  processingSeats: string[];
+  onToggleSeat: (seat: SeatModal, nextSeat: SeatModal | null) => void;
+  // [NEW]
+  heldSeats: string[];
 }
 
 export default function SeatSelectionStep({
@@ -41,6 +45,9 @@ export default function SeatSelectionStep({
   quantities,
   onQuantitiesChange,
   onSeatsChange,
+  processingSeats,
+  onToggleSeat,
+  heldSeats,
 }: SeatSelectionStepProps) {
   const prices = {
     standard: basePrice,
@@ -136,7 +143,11 @@ export default function SeatSelectionStep({
           selectedSeats={selectedSeats}
           loading={loadingLayout}
           isSeatDisabled={checkSeatDisabled}
-          onSeatClick={handleSeatClick}
+          // onSeatClick={handleSeatClick}
+          processingSeats={processingSeats}
+          onSeatClick={onToggleSeat}
+          // [NEW]
+          heldSeats={heldSeats}
         />
       </div>
     </div>

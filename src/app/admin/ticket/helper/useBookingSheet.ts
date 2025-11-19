@@ -3,6 +3,8 @@ import {
   showTimeService,
   roomService,
   foodDrinkService,
+  paymentService,
+  bookingService,
   type Movie,
   SeatCell,
   SeatModal,
@@ -11,7 +13,6 @@ import {
   Room,
 } from "@/services";
 import { type TicketType, calculateSeatCounts } from "./seat-helper";
-
 import { type GroupedByRoom } from "./showtimelist";
 
 export interface SelectedShowtimeInfo {
@@ -37,7 +38,9 @@ export const useBookingLogic = ({
   date,
 }: UseBookingLogicProps) => {
   // --- STATE ---
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [groupedData, setGroupedData] = useState<GroupedByRoom[]>([]);
   const [selectedShowtime, setSelectedShowtime] =
     useState<SelectedShowtimeInfo | null>(null);
@@ -48,6 +51,9 @@ export const useBookingLogic = ({
     couple: 0,
   });
   const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
+  const [processingSeats, setProcessingSeats] = useState<string[]>([]);
+  const [heldSeats, setHeldSeats] = useState<string[]>([]);
+
   const [seatLayout, setSeatLayout] = useState<SeatCell[]>([]);
   const [seatList, setSeatList] = useState<SeatModal[]>([]);
   const [loadingLayout, setLoadingLayout] = useState(false);
@@ -66,6 +72,8 @@ export const useBookingLogic = ({
       setSeatList([]);
       setSeatLayout([]);
       setFoodQuantities({});
+      setProcessingSeats([]);
+      setHeldSeats([]);
     }
   }, [isOpen]);
 
@@ -165,6 +173,8 @@ export const useBookingLogic = ({
     setSeatList([]);
     setFoodQuantities({});
     setSeatLayout([]);
+    setProcessingSeats([]);
+    setHeldSeats([]);
     setSelectedShowtime({
       id,
       roomName,
@@ -179,10 +189,65 @@ export const useBookingLogic = ({
       const res = await roomService.getRoomById(roomId);
       setSeatList(Array.isArray(res.seats) ? res.seats : []);
       setSeatLayout(Array.isArray(res.seatLayout) ? res.seatLayout : []);
+
+      const holdRes = await roomService.getHeldSeats(String(id));
+      console.log("Held seats:", holdRes);
+
+      const book = await bookingService.getBookedSeats(id);
+      console.log("Booked seats:", book);
+
+      // 1. Extract held seat IDs
+      const heldIds = Array.isArray(holdRes)
+        ? holdRes.map((item) => item.seatId)
+        : [];
+
+      // 2. Extract booked seat IDs
+      const bookedIds = Array.isArray(book)
+        ? book.map((item) => item.seatId)
+        : [];
+
+      // 3. Merge + remove duplicates
+      const mergedSeatIds = Array.from(new Set([...heldIds, ...bookedIds]));
+
+      setHeldSeats(mergedSeatIds);
     } catch (error) {
       console.error(error);
     } finally {
       setLoadingLayout(false);
+    }
+  };
+
+  const handleToggleSeat = async (
+    seat: SeatModal,
+    nextSeat: SeatModal | null
+  ) => {
+    if (!selectedShowtime) return;
+    const idsToToggle = [seat.id];
+    if (seat.seatType === "COUPLE" && nextSeat) idsToToggle.push(nextSeat.id);
+    const isSelecting = !selectedSeats.includes(seat.id);
+    setProcessingSeats((prev) => [...prev, ...idsToToggle]);
+    try {
+      const showtimeIdStr = String(selectedShowtime.id);
+      if (isSelecting) {
+        await Promise.all(
+          idsToToggle.map((id) => roomService.holdSeat(showtimeIdStr, id))
+        );
+        setSelectedSeats((prev) => [...prev, ...idsToToggle]);
+      } else {
+        await Promise.all(
+          idsToToggle.map((id) => roomService.holdSeat(showtimeIdStr, id))
+        );
+        setSelectedSeats((prev) =>
+          prev.filter((id) => !idsToToggle.includes(id))
+        );
+      }
+    } catch (error) {
+      console.error("Seat action failed:", error);
+      alert("Ghế này vừa bị người khác chọn!");
+    } finally {
+      setProcessingSeats((prev) =>
+        prev.filter((id) => !idsToToggle.includes(id))
+      );
     }
   };
 
@@ -203,26 +268,63 @@ export const useBookingLogic = ({
     });
   };
 
-  const handleConfirmBooking = () => {
+  const handleOpenPaymentModal = () => {
     if (!selectedShowtime) return;
+    setIsPaymentModalOpen(true);
+  };
 
-    const foodDrinkPayload = Object.entries(foodQuantities)
-      .filter(([, qty]) => qty > 0)
-      .map(([id, qty]) => ({
-        foodDrinkId: String(id),
-        quantity: qty,
-      }));
+  const handleProcessPayment = async (method: "MOMO" | "VNPAY" | "ZALOPAY") => {
+    if (!selectedShowtime) return;
+    setIsSubmitting(true);
 
-    const bookingData = {
-      showtimeId: String(selectedShowtime.id),
-      seatIds: selectedSeats,
-      foodDrinks: foodDrinkPayload,
-    };
+    try {
+      const foodDrinkPayload = Object.entries(foodQuantities)
+        .filter(([, qty]) => qty > 0)
+        .map(([id, qty]) => ({
+          foodDrinkId: String(id),
+          quantity: qty,
+        }));
 
-    console.log("=== PAYLOAD GỬI ĐI ===", bookingData);
+      const bookingData = {
+        showtimeId: String(selectedShowtime.id),
+        seatIds: selectedSeats,
+        foodDrinks: foodDrinkPayload,
+      };
 
-    // TODO: Gọi API backend tại đây, ví dụ:
-    // await bookingService.createOrder(bookingData);
+      console.log("=== PAYLOAD GỬI ĐI ===", bookingData);
+
+      const res = await roomService.getHeldSeats(selectedShowtime.id);
+      console.log(res);
+
+      //   for (const seatId of selectedSeats) {
+      //     await roomService.holdSeat(selectedShowtime.id, seatId);
+      //   }
+
+      const bookingRes = await bookingService.createBooking(bookingData);
+      const { id: bookingId, totalPrice } = bookingRes;
+
+      let paymentRes;
+      const paymentPayload = { bookingId, amount: totalPrice };
+
+      if (method === "MOMO") {
+        paymentRes = await paymentService.checkoutWithMoMo(paymentPayload);
+      } else if (method === "VNPAY") {
+        paymentRes = await paymentService.checkoutWithVnPay(paymentPayload);
+      } else {
+        paymentRes = await paymentService.checkoutWithZaloPay(paymentPayload);
+      }
+
+      // 4. Redirect user đến trang thanh toán
+      if (paymentRes) {
+        window.location.href = paymentRes;
+      } else {
+        alert("Không nhận được link thanh toán!");
+      }
+    } catch (error) {
+      console.error("Payment Process Error:", error);
+      alert("Có lỗi xảy ra trong quá trình xử lý thanh toán.");
+      setIsSubmitting(false); // Chỉ tắt loading nếu lỗi, nếu thành công thì trang đã redirect
+    }
   };
 
   const summaryData = useMemo(() => {
@@ -302,17 +404,24 @@ export const useBookingLogic = ({
     loadingLayout,
     foods,
     foodQuantities,
+    isPaymentModalOpen,
+    isSubmitting,
+
+    heldSeats,
+    handleToggleSeat,
+    processingSeats,
 
     // Setters
     setSelectedShowtime,
     setSelectedSeats,
+    setIsPaymentModalOpen,
 
     // Handlers
     handleSelectShowtime,
     updateQuantity,
     updateFoodQuantity,
-    handleConfirmBooking,
-
+    handleOpenPaymentModal,
+    handleProcessPayment,
     // Computed
     ...summaryData,
   };

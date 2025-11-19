@@ -19,6 +19,7 @@ import { useBookingLogic } from "./helper/useBookingSheet";
 import SeatSelectionStep from "./SeatSelection";
 import ShowtimeList from "./helper/showtimelist";
 import FoodSelector from "./helper/foodSelector";
+import PaymentMethodModal from "./PaymentModal";
 
 interface BookingSheetProps {
   isOpen: boolean;
@@ -49,7 +50,18 @@ export default function BookingSheet({
     handleSelectShowtime,
     updateQuantity,
     updateFoodQuantity,
-    handleConfirmBooking,
+
+    handleToggleSeat,
+    processingSeats,
+    heldSeats,
+
+    // Modal & Payment Handlers
+    handleOpenPaymentModal,
+    handleProcessPayment,
+    isPaymentModalOpen,
+    setIsPaymentModalOpen,
+    isSubmitting,
+
     setSelectedShowtime,
     setSelectedSeats,
     totalQty,
@@ -117,6 +129,9 @@ export default function BookingSheet({
                 onSeatsChange={setSelectedSeats}
                 showtimeId={selectedShowtime.id}
                 roomId={selectedShowtime.roomId}
+                onToggleSeat={handleToggleSeat}
+                processingSeats={processingSeats}
+                heldSeats={heldSeats}
               />
 
               <FoodSelector
@@ -129,57 +144,67 @@ export default function BookingSheet({
         </div>
 
         {selectedShowtime && (
-          <div className="fixed bottom-0 right-0 w-full sm:max-w-[90vw] border-t bg-white shadow-[0_-4px_10px_-1px_rgba(0,0,0,0.1)] p-4 px-6 z-50">
-            <div className="flex justify-between items-end mb-4">
-              <div className="flex flex-col gap-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide min-w-[60px]">
-                    Ghế:
-                  </span>
-                  <span
-                    className="font-bold text-lg text-gray-800 max-w-[200px] truncate"
-                    title={formattedSelectedSeats}
-                  >
-                    {formattedSelectedSeats}
-                  </span>
-                </div>
-
-                {formattedFoods && (
-                  <div className="flex items-start gap-2">
-                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide min-w-[60px] mt-0.5">
-                      Bắp nước:
+          <>
+            <div className="fixed bottom-0 right-0 w-full sm:max-w-[90vw] border-t bg-white shadow-[0_-4px_10px_-1px_rgba(0,0,0,0.1)] p-4 px-6 z-50">
+              <div className="flex justify-between items-end mb-4">
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide min-w-[60px]">
+                      Ghế:
                     </span>
                     <span
-                      className="text-sm font-medium text-gray-700 line-clamp-2 max-w-[300px]"
-                      title={formattedFoods}
+                      className="font-bold text-lg text-gray-800 max-w-[200px] truncate"
+                      title={formattedSelectedSeats}
                     >
-                      {formattedFoods}
+                      {formattedSelectedSeats}
                     </span>
                   </div>
-                )}
-              </div>
 
-              <div className="text-right min-w-[120px]">
-                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide block">
-                  Tổng cộng:
-                </span>
-                <span className="font-bold text-2xl text-primary">
-                  {formatVND(totalPrice)}
-                </span>
+                  {formattedFoods && (
+                    <div className="flex items-start gap-2">
+                      <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide min-w-[60px] mt-0.5">
+                        Bắp nước:
+                      </span>
+                      <span
+                        className="text-sm font-medium text-gray-700 line-clamp-2 max-w-[300px]"
+                        title={formattedFoods}
+                      >
+                        {formattedFoods}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="text-right min-w-[120px]">
+                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide block">
+                    Tổng cộng:
+                  </span>
+                  <span className="font-bold text-2xl text-primary">
+                    {formatVND(totalPrice)}
+                  </span>
+                </div>
               </div>
+              <Button
+                className="w-full text-lg h-12"
+                disabled={totalQty === 0 || !isEnoughSeats}
+                onClick={handleOpenPaymentModal}
+              >
+                {totalQty === 0
+                  ? "Vui lòng chọn vé"
+                  : isEnoughSeats
+                  ? "Xác nhận đặt vé"
+                  : "Vui lòng chọn đủ ghế"}
+              </Button>
             </div>
-            <Button
-              className="w-full text-lg h-12"
-              disabled={totalQty === 0 || !isEnoughSeats}
-              onClick={handleConfirmBooking}
-            >
-              {totalQty === 0
-                ? "Vui lòng chọn vé"
-                : isEnoughSeats
-                ? "Xác nhận đặt vé"
-                : "Vui lòng chọn đủ ghế"}
-            </Button>
-          </div>
+
+            <PaymentMethodModal
+              isOpen={isPaymentModalOpen}
+              onClose={() => setIsPaymentModalOpen(false)}
+              totalPrice={totalPrice}
+              onConfirm={handleProcessPayment}
+              isProcessing={isSubmitting}
+            />
+          </>
         )}
       </SheetContent>
     </Sheet>

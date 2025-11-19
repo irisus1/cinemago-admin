@@ -46,13 +46,18 @@ export const groupSeatsByRow = (layout: SeatCell[]) => {
 export const getSeatStyle = (
   type: string,
   isSelected: boolean,
-  isDisabled: boolean
+  isDisabled: boolean,
+  isHeld: boolean
 ) => {
   if (type === "EMPTY")
     return "invisible pointer-events-none border-0 w-8 h-8 m-1";
 
   let baseStyle =
     "flex items-center justify-center rounded text-[10px] font-bold transition-all border select-none";
+
+  if (isHeld) {
+    return `${baseStyle} bg-gray-400 border-gray-500 text-white cursor-not-allowed pointer-events-none w-8 h-8 m-1 opacity-70`;
+  }
 
   if (isDisabled) {
     baseStyle +=
@@ -85,6 +90,9 @@ export const getSeatStyle = (
     if (type === "COUPLE") sizeStyle = "w-[72px] h-8 m-1";
   }
 
+  if (isHeld && type === "COUPLE") {
+    return `${baseStyle} w-[72px] h-8 m-1 bg-gray-400 border-gray-500 text-white cursor-not-allowed pointer-events-none opacity-70`;
+  }
   return `${baseStyle} ${sizeStyle} ${colorStyle}`;
 };
 
