@@ -178,6 +178,20 @@ class RoomService {
     }
   }
 
+  async releaseSeat(showtimeId: string, seatId: string): Promise<string> {
+    try {
+      const { data } = await api.post<string>("/rooms/release-seat", {
+        showtimeId,
+        seatId,
+      });
+      return data;
+    } catch (e: unknown) {
+      const msg = getMsg(e, "Không thể xóa giữ chỗ.");
+      console.error("Release seat error:", e);
+      throw new Error(msg);
+    }
+  }
+
   // GET /rooms/held-seats/:showtimeId -> { data: string[] }
   async getHeldSeats(showtimeId: string): Promise<HeldSeatResponse[]> {
     try {

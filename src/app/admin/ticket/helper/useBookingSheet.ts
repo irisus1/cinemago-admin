@@ -235,7 +235,7 @@ export const useBookingLogic = ({
         setSelectedSeats((prev) => [...prev, ...idsToToggle]);
       } else {
         await Promise.all(
-          idsToToggle.map((id) => roomService.holdSeat(showtimeIdStr, id))
+          idsToToggle.map((id) => roomService.releaseSeat(showtimeIdStr, id))
         );
         setSelectedSeats((prev) =>
           prev.filter((id) => !idsToToggle.includes(id))

@@ -24,7 +24,7 @@ import axios, {
 } from "axios";
 import { ACCESS_TOKEN_KEY } from "@/constants/auth";
 
-const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/v1";
 
 const api: AxiosInstance = axios.create({
   baseURL: BASE,
