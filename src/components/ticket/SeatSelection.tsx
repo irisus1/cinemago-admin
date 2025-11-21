@@ -4,12 +4,8 @@ import React, { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Minus, Plus } from "lucide-react";
 import { type SeatCell, SeatModal } from "@/services";
-import {
-  formatVND,
-  type TicketType,
-  calculateSeatCounts,
-} from "./helper/seat-helper";
-import SeatMap from "./helper/seat-map";
+import { formatVND, type TicketType, calculateSeatCounts } from "./seat-helper";
+import SeatMap from "./seat-map";
 
 interface SeatSelectionStepProps {
   roomName: string;

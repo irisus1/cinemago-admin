@@ -19,6 +19,7 @@ export type UserParams = {
   limit?: number;
   search?: string;
   role?: "ADMIN" | "USER";
+  isActive?: boolean;
 };
 
 type PaginationMeta = {
@@ -32,7 +33,10 @@ type PaginationMeta = {
 
 export type Paginated<T> = { pagination: PaginationMeta; data: T[] };
 
-export type CreateUserRequest = Omit<User, "id" | "createdAt" | "isActive">;
+export type CreateUserRequest = Omit<
+  User,
+  "id" | "createdAt" | "isActive" | "avatarUrl"
+>;
 export type UpdateUserRequest = Partial<Omit<User, "id" | "createdAt">>;
 
 type ApiErrorBody = { message?: string };

@@ -110,7 +110,7 @@ export default function SeatMap({
 
   return (
     <div className="border rounded-lg p-4 bg-white min-h-[400px] flex flex-col items-center overflow-x-auto">
-      <div className="w-3/4 max-w-[400px] h-2 bg-gray-300 mb-8 rounded-full shadow-[0_10px_20px_-5px_rgba(0,0,0,0.3)] relative">
+      <div className="w-3/4 max-w-[400px] h-2 bg-gray-300 mb-8 rounded-full shadow-[0_10px_20px_-5px_rgba(0,0,0,0.3)] relative mt-3">
         <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs text-gray-400 uppercase tracking-widest font-semibold">
           Màn hình
         </span>

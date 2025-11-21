@@ -24,8 +24,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon, X, Check, ChevronsUpDown, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import RefreshLoader from "./Loading";
-import { Modal } from "./Modal";
+import RefreshLoader from "../Loading";
+import { Modal } from "../Modal";
 import { genreService, movieService, type Genre, Movie } from "@/services";
 
 export default function MovieForm({

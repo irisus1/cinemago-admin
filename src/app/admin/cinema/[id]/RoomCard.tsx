@@ -19,7 +19,7 @@ import { BiRefresh } from "react-icons/bi";
 import Table, { Column } from "@/components/Table";
 
 import { Modal } from "@/components/Modal";
-import RoomModal from "@/components/RoomModal";
+import RoomModal from "@/components/modal/RoomModal";
 import SeatLayoutBuilder from "./RoomLayout";
 
 // === Services (điều chỉnh theo project của bạn) ===

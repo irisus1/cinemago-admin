@@ -1,6 +1,6 @@
 import React from "react";
-import MovieCard from "./MovieCard";
 import type { Movie } from "@/services";
+import MovieCard from "./MovieCard";
 
 type MovieCardItem = Movie & {
   showtimeMeta?: {

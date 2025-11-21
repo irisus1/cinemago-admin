@@ -10,16 +10,16 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { type Movie } from "@/services";
-import { formatVND } from "./helper/seat-helper";
+import { formatVND } from "../../../components/ticket/seat-helper";
 
 // Import Hook Logic
-import { useBookingLogic } from "./helper/useBookingSheet";
+import { useBookingLogic } from "../../../components/ticket/useBookingSheet";
 
 // Import Component con
-import SeatSelectionStep from "./SeatSelection";
-import ShowtimeList from "./helper/showtimelist";
-import FoodSelector from "./helper/foodSelector";
-import PaymentMethodModal from "./PaymentModal";
+import SeatSelectionStep from "../../../components/ticket/SeatSelection";
+import ShowtimeList from "@/components/ticket/showtimelist";
+import FoodSelector from "../../../components/ticket/foodSelector";
+import PaymentMethodModal from "@/components/modal/PaymentModal";
 
 interface BookingSheetProps {
   isOpen: boolean;

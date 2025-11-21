@@ -27,7 +27,7 @@ import Table, { Column } from "@/components/Table";
 import { fetchNamesFromPaginated, PageResp, HasIdName } from "./helper";
 
 import { Modal } from "@/components/Modal";
-import ShowTimeModal from "@/components/ShowtimeModal";
+import ShowtimeModal from "@/components/modal/ShowtimeModal";
 import {
   cinemaService,
   roomService,
@@ -464,7 +464,7 @@ export default function ShowtimesCard({ movieId }: { movieId: string }) {
         confirmText="Đóng"
       />
 
-      <ShowTimeModal
+      <ShowtimeModal
         open={open}
         onClose={() => setOpen(false)}
         mode={editShowtime ? "edit" : "create"}

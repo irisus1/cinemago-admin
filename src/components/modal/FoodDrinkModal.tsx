@@ -13,19 +13,31 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { FoodDrink, foodDrinkService } from "@/services";
+import { FoodDrink } from "@/services";
 import { toast } from "sonner";
+
+type FormDataFood = {
+  name: string;
+  description: string;
+  price: string;
+  type: "SNACK" | "DRINK" | "COMBO";
+  file?: File | null;
+};
 
 export default function FoodDrinkModal({
   open,
   onClose,
   editData,
-  onSuccess,
+  onSubmit,
 }: {
   open: boolean;
   onClose: () => void;
   editData?: FoodDrink | null;
-  onSuccess: (updatedItem?: FoodDrink) => void;
+  onSubmit?: (
+    data: FormDataFood,
+    mode: "create" | "edit",
+    original?: FoodDrink | null
+  ) => void | Promise<void>;
 }) {
   const [name, setName] = React.useState("");
   const [desc, setDesc] = React.useState("");
@@ -33,9 +45,7 @@ export default function FoodDrinkModal({
   const [type, setType] = React.useState<"SNACK" | "DRINK" | "COMBO">("SNACK");
   const [file, setFile] = React.useState<File | null>(null);
   const [preview, setPreview] = React.useState<string | null>(null);
-  const [loading, setLoading] = React.useState(false);
-  const toastRef = React.useRef<string | null>(null); // tránh toast spam
-
+  const toastRef = React.useRef<string | null>(null);
   React.useEffect(() => {
     if (editData) {
       setName(editData.name);
@@ -61,8 +71,7 @@ export default function FoodDrinkModal({
     setPreview(URL.createObjectURL(f));
   };
 
-  const handleSubmit = async () => {
-    if (loading) return; // ngăn spam nút
+  const handleSubmit = () => {
     if (!name || !desc || !price) {
       if (!toastRef.current) {
         const id = toast.warning("Vui lòng nhập đầy đủ thông tin", {
@@ -73,35 +82,19 @@ export default function FoodDrinkModal({
       return;
     }
 
-    const fd = new FormData();
-    fd.append("name", name);
-    fd.append("description", desc);
-    fd.append("price", price);
-    fd.append("type", type);
-    if (file) fd.append("image", file);
+    const mode: "create" | "edit" = editData ? "edit" : "create";
 
-    try {
-      setLoading(true);
-
-      if (editData) {
-        const updated = await foodDrinkService.updateFoodDrinkById(
-          editData.id,
-          fd
-        );
-        toast.success("Cập nhật món thành công");
-        onSuccess(updated); //  gửi dữ liệu cập nhật ra ngoài
-      } else {
-        const created = await foodDrinkService.addFoodDrink(fd);
-        toast.success("Thêm món mới thành công");
-        onSuccess(created); //  gửi dữ liệu mới ra ngoài
-      }
-
-      onClose();
-    } catch (e) {
-      toast.error(String(e));
-    } finally {
-      setLoading(false);
-    }
+    onSubmit?.(
+      {
+        name,
+        description: desc,
+        price,
+        type,
+        file,
+      },
+      mode,
+      editData ?? null
+    );
   };
 
   return (
@@ -119,7 +112,6 @@ export default function FoodDrinkModal({
         </DialogHeader>
 
         <div className="grid grid-cols-1 md:grid-cols-[320px_1fr] gap-10 py-4">
-          {/*  Preview ảnh */}
           <div className="flex flex-col items-center gap-4">
             <div
               className="relative w-[280px] h-[360px] border-2 border-gray-200 rounded-lg overflow-hidden bg-muted cursor-pointer group shadow-md hover:shadow-lg transition-all"
@@ -164,7 +156,6 @@ export default function FoodDrinkModal({
             )}
           </div>
 
-          {/* Form thông tin */}
           <div className="space-y-6">
             <div>
               <Label className="text-base font-medium">Tên món</Label>
@@ -214,21 +205,17 @@ export default function FoodDrinkModal({
             </div>
           </div>
         </div>
-        <DialogFooter className="">
+
+        <DialogFooter>
           <Button
             variant="outline"
             onClick={onClose}
-            disabled={loading}
             className="text-base px-6 py-2"
           >
             Hủy
           </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={loading}
-            className="text-base px-6 py-2"
-          >
-            {loading ? "Đang lưu..." : "Lưu"}
+          <Button onClick={handleSubmit} className="text-base px-6 py-2">
+            Lưu
           </Button>
         </DialogFooter>
       </DialogContent>

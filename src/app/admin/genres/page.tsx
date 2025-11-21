@@ -1,4 +1,3 @@
-// app/(admin)/admin/genres/page.tsx
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
@@ -7,13 +6,15 @@ import { FiEdit2, FiTrash2 } from "react-icons/fi";
 import { BiRefresh } from "react-icons/bi";
 import RefreshLoader from "@/components/Loading";
 import { Modal } from "@/components/Modal";
-import GenreModal from "@/components/GenreModal";
+import GenreModal from "@/components/modal/GenreModal";
 import { genreService, type Genre, PaginationMeta } from "@/services";
 
-// ===== Types =====
+type GenreFormPayload = {
+  name: string;
+  description: string;
+};
 
 const GenresListPage: React.FC = () => {
-  // Data & filters
   const [genres, setGenres] = useState<Genre[]>([]);
   const [queryName, setQueryName] = useState("");
   const [time, setTime] = useState("");
@@ -26,18 +27,15 @@ const GenresListPage: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
 
-  // Modal (create/edit)
   const [open, setOpen] = useState(false);
   const [editGenre, setEditGenre] = useState<Genre | null>(null);
 
-  // Confirm/Success dialogs
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
   const [dialogTitle, setDialogTitle] = useState("");
   const [dialogMessage, setDialogMessage] = useState<React.ReactNode>("");
   const [onConfirm, setOnConfirm] = useState<() => void>(() => () => {});
 
-  // ===== Data fetching =====
   const fetchGenres = useCallback(
     async (toPage = page) => {
       try {
@@ -55,7 +53,7 @@ const GenresListPage: React.FC = () => {
         setTotalPages(pagination?.totalPages ?? 1);
         setTotalItems(pagination?.totalItems ?? 0);
         if (pagination?.currentPage && pagination.currentPage !== page) {
-          setPage(pagination.currentPage); // đồng bộ nếu backend normalize
+          setPage(pagination.currentPage);
         }
         return { items: data ?? [], pagination };
       } catch (e) {
@@ -84,7 +82,6 @@ const GenresListPage: React.FC = () => {
     return () => clearTimeout(t);
   }, [time]);
 
-  // ===== Handlers =====
   const handleAddOpen = () => {
     setEditGenre(null);
     setOpen(true);
@@ -120,7 +117,7 @@ const GenresListPage: React.FC = () => {
         setIsConfirmDialogOpen(false);
         try {
           await genreService.deleteGenre(g.id);
-          // flip isActive tại chỗ
+
           setGenres((prev) =>
             prev.map((it) => (it.id === g.id ? { ...it, isActive: false } : it))
           );
@@ -153,9 +150,62 @@ const GenresListPage: React.FC = () => {
     });
   };
 
+  const handleSubmitGenre = (
+    data: GenreFormPayload,
+    modeForm: "create" | "edit",
+    original?: Genre
+  ) => {
+    const isCreate = modeForm === "create";
+    const genreName = data.name || original?.name || "";
+
+    setOpen(false);
+    setEditGenre(original ?? null);
+
+    openConfirm(
+      isCreate ? "Xác nhận thêm thể loại" : "Xác nhận cập nhật thể loại",
+      <>
+        Bạn có chắc muốn <b>{isCreate ? "thêm mới" : "cập nhật"}</b> thể loại{" "}
+        <span className="text-blue-600 font-semibold">{genreName}</span> không?
+      </>,
+      async () => {
+        setIsConfirmDialogOpen(false);
+        try {
+          setLoading(true);
+
+          if (isCreate) {
+            await genreService.addGenre({
+              name: data.name,
+              description: data.description,
+            });
+          } else if (original) {
+            await genreService.updateGenre(original.id, {
+              name: data.name,
+              description: data.description,
+            });
+          }
+
+          setDialogTitle("Thành công");
+          setDialogMessage(
+            isCreate
+              ? "Đã thêm thể loại mới."
+              : "Đã cập nhật thông tin thể loại."
+          );
+          setIsSuccessDialogOpen(true);
+
+          setEditGenre(null);
+          await fetchGenres();
+        } catch (err) {
+          console.error(err);
+          alert("Thao tác thất bại: " + err);
+        } finally {
+          setLoading(false);
+        }
+      }
+    );
+  };
+
   const clearFilters = () => setQueryName("");
 
-  // ===== Table columns =====
   const columns: Column<Genre>[] = [
     { header: "Tên thể loại", key: "name" },
     { header: "Mô tả", key: "description" },
@@ -196,7 +246,6 @@ const GenresListPage: React.FC = () => {
     },
   ];
 
-  // ===== Render =====
   return (
     <div>
       <div className="mb-6">
@@ -279,7 +328,6 @@ const GenresListPage: React.FC = () => {
         )}
       </div>
 
-      {/* Confirm & Success */}
       <Modal
         isOpen={isConfirmDialogOpen}
         onClose={() => setIsConfirmDialogOpen(false)}
@@ -304,17 +352,12 @@ const GenresListPage: React.FC = () => {
         confirmText="Đóng"
       />
 
-      {/* Modal Thêm/Sửa */}
       <GenreModal
         open={open}
         onClose={() => setOpen(false)}
         mode={editGenre ? "edit" : "create"}
         genre={editGenre ?? undefined}
-        onSuccess={async () => {
-          setOpen(false);
-          setEditGenre(null);
-          await fetchGenres(); // reload list
-        }}
+        onSubmit={handleSubmitGenre}
       />
 
       <RefreshLoader isOpen={loading} />

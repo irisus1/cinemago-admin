@@ -10,15 +10,13 @@ import { Modal } from "@/components/Modal";
 import { foodDrinkService, type FoodDrink, PaginationMeta } from "@/services";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import FoodDrinkModal from "@/components/FoodDrinkModal";
+import FoodDrinkModal from "@/components/modal/FoodDrinkModal";
 import Image from "next/image";
 
-// ======================== Constants ========================
 const limit = 7;
 const VI_TYPE = { SNACK: "Đồ ăn", DRINK: "Thức uống", COMBO: "Combo" };
 const VI_AVAIL = { true: "Còn bán", false: "Ngừng bán" };
 
-// ======================== Component ========================
 export default function FoodDrinkListPage() {
   const [rows, setRows] = useState<FoodDrink[]>([]);
   const [page, setPage] = useState(1);
@@ -29,21 +27,19 @@ export default function FoodDrinkListPage() {
 
   const [loading, setLoading] = useState(false);
 
-  // filters
   const [q, setQ] = useState("");
   const [type, setType] = useState<string>("");
   const [isAvailable, setIsAvailable] = useState<string>("");
 
-  // modals
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<FoodDrink | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [successOpen, setSuccessOpen] = useState(false);
+  const [errorOpen, setErrorOpen] = useState(false);
   const [dialogTitle, setDialogTitle] = useState("");
   const [dialogMsg, setDialogMsg] = useState<React.ReactNode>("");
   const [onConfirm, setOnConfirm] = useState<() => void>(() => {});
 
-  // ======================== Cache ========================
   const pageCache = useRef(
     new Map<number, { data: FoodDrink[]; pagination: PaginationMeta }>()
   );
@@ -54,10 +50,8 @@ export default function FoodDrinkListPage() {
     allCache.current = null;
   };
 
-  // ======================== Fetch Page ========================
   const fetchPage = useCallback(
     async (p: number) => {
-      // kiểm tra cache trang
       const cached = pageCache.current.get(p);
       if (cached) return cached;
 
@@ -79,9 +73,8 @@ export default function FoodDrinkListPage() {
     [q, isAvailable]
   );
 
-  // ======================== Gom toàn bộ dữ liệu ========================
   const ensureAllDataLoaded = useCallback(async () => {
-    if (allCache.current) return allCache.current; // ✅ đã có cache -> không gọi API nữa
+    if (allCache.current) return allCache.current;
 
     const first = await fetchPage(1);
     const totalPages = first.pagination.totalPages;
@@ -91,18 +84,15 @@ export default function FoodDrinkListPage() {
     );
 
     const allData = allResults.flatMap((r) => r.data);
-    allCache.current = allData; // ✅ cache lại toàn bộ
+    allCache.current = allData;
     return allData;
   }, [fetchPage]);
 
-  // ======================== Load dữ liệu hiển thị ========================
   const loadPage = useCallback(async () => {
     setLoading(true);
     try {
-      // lấy toàn bộ dữ liệu (chỉ load 1 lần rồi cache)
       const allData = await ensureAllDataLoaded();
 
-      // lọc local
       let filtered = allData;
       if (type) filtered = filtered.filter((item) => item.type === type);
       if (q) {
@@ -119,7 +109,6 @@ export default function FoodDrinkListPage() {
         filtered = filtered.filter((item) => item.isAvailable === active);
       }
 
-      // phân trang client
       const start = (page - 1) * limit;
       const paged = filtered.slice(start, start + limit);
 
@@ -135,25 +124,21 @@ export default function FoodDrinkListPage() {
     }
   }, [ensureAllDataLoaded, q, type, isAvailable, page]);
 
-  // ======================== Trigger load ========================
   useEffect(() => {
     loadPage();
   }, [page, q, type, isAvailable, loadPage]);
 
-  // reset page khi đổi filter
   useEffect(() => {
     setPage(1);
   }, [q, type, isAvailable]);
 
   const updateCacheItem = (id: string, patch: Partial<FoodDrink>) => {
-    // Cập nhật allCache
     if (allCache.current) {
       allCache.current = allCache.current.map((item) =>
         item.id === id ? { ...item, ...patch } : item
       );
     }
 
-    // Cập nhật từng trang cache
     for (const [pageNum, entry] of pageCache.current.entries()) {
       const updated = entry.data.map((item) =>
         item.id === id ? { ...item, ...patch } : item
@@ -162,7 +147,6 @@ export default function FoodDrinkListPage() {
     }
   };
 
-  // ======================== Handlers ========================
   const handleRefresh = async () => {
     clearCache();
     await loadPage();
@@ -190,7 +174,6 @@ export default function FoodDrinkListPage() {
   };
 
   const handleDelete = (fd: FoodDrink) => {
-    // kiểm tra trạng thái hiện tại
     const isCurrentlyAvailable = fd.isAvailable;
 
     const actionText = isCurrentlyAvailable ? "ngừng bán" : "bán lại";
@@ -224,6 +207,87 @@ export default function FoodDrinkListPage() {
     );
   };
 
+  const handleSubmitFoodDrink = (
+    data: {
+      name: string;
+      description: string;
+      price: string;
+      type: "SNACK" | "DRINK" | "COMBO";
+      file?: File | null;
+    },
+    mode: "create" | "edit",
+    original?: FoodDrink | null
+  ) => {
+    const isCreate = mode === "create";
+    const itemName = data.name || original?.name || "";
+
+    // ✅ ĐÓNG form trước để không bị chồng 2 modal
+    setShowForm(false);
+    setEditing(original ?? null);
+
+    openConfirm(
+      isCreate ? "Xác nhận thêm món" : "Xác nhận cập nhật món",
+      <>
+        Bạn có chắc muốn <b>{isCreate ? "thêm mới" : "cập nhật"}</b> món{" "}
+        <span className="text-blue-600 font-semibold">{itemName}</span> không?
+      </>,
+      async () => {
+        setConfirmOpen(false);
+        try {
+          setLoading(true);
+
+          const fd = new FormData();
+          fd.append("name", data.name);
+          fd.append("description", data.description);
+          fd.append("price", data.price);
+          fd.append("type", data.type);
+          if (data.file) fd.append("image", data.file);
+
+          if (isCreate) {
+            const created = await foodDrinkService.addFoodDrink(fd);
+
+            if (allCache.current) {
+              allCache.current = [created, ...(allCache.current || [])];
+            } else {
+              allCache.current = [created];
+            }
+            pageCache.current.delete(1);
+
+            setDialogTitle("Thành công");
+            setDialogMsg(
+              <>
+                Đã thêm món <b>{created.name}</b> thành công.
+              </>
+            );
+            setSuccessOpen(true);
+          } else if (original) {
+            const updated = await foodDrinkService.updateFoodDrinkById(
+              original.id,
+              fd
+            );
+
+            updateCacheItem(updated.id, updated);
+
+            setDialogTitle("Thành công");
+            setDialogMsg(
+              <>
+                Đã cập nhật món <b>{updated.name}</b> thành công.
+              </>
+            );
+            setSuccessOpen(true);
+          }
+
+          setEditing(null);
+          await loadPage();
+        } catch (e) {
+          toast.error("Không thể lưu món: " + String(e));
+        } finally {
+          setLoading(false);
+        }
+      }
+    );
+  };
+
   async function handleBulkToggle() {
     if (selectedIds.size === 0) return;
     const ids = Array.from(selectedIds);
@@ -239,25 +303,20 @@ export default function FoodDrinkListPage() {
         try {
           setLoading(true);
 
-          // ✅ Lấy dữ liệu hiện tại trong cache để biết trạng thái từng món
           const allItems = allCache.current ?? [];
 
-          // ✅ Chạy song song thay vì tuần tự
           await Promise.all(
             ids.map((id) => foodDrinkService.toggleFoodDrinkAvailability(id))
           );
 
-          // ✅ Cập nhật cache local (đảo trạng thái)
           ids.forEach((id) => {
             const current = allItems.find((x) => x.id === id);
             if (current)
               updateCacheItem(id, { isAvailable: !current.isAvailable });
           });
 
-          // ✅ Cập nhật giao diện tức thời
           loadPage();
 
-          // ✅ Hiển thị thông báo
           setDialogTitle("Thành công");
           setDialogMsg(
             <>
@@ -275,7 +334,6 @@ export default function FoodDrinkListPage() {
     );
   }
 
-  // ======================== Selection Logic ========================
   const toggleOne = (id: string, checked: boolean) => {
     setSelectedIds((prev) => {
       const next = new Set<string>(prev);
@@ -306,7 +364,6 @@ export default function FoodDrinkListPage() {
     });
   };
 
-  // ======================== Columns ========================
   const columns: Column<FoodDrink>[] = [
     {
       header: (
@@ -395,7 +452,6 @@ export default function FoodDrinkListPage() {
     },
   ];
 
-  // ======================== Render ========================
   return (
     <div>
       <div className="mb-6">
@@ -404,7 +460,6 @@ export default function FoodDrinkListPage() {
         </h2>
 
         <div className="flex flex-wrap items-center justify-between mb-6 gap-4">
-          {/* FILTER BAR */}
           <div className="flex flex-wrap items-center gap-4 p-4 rounded-lg flex-1 ">
             <Button
               variant="outline"
@@ -452,7 +507,6 @@ export default function FoodDrinkListPage() {
             </select>
           </div>
 
-          {/* ADD BUTTON */}
           <Button
             onClick={handleAdd}
             className="bg-black text-white hover:bg-blue-700 h-10 px-5 ml-auto shadow-md transition-colors duration-300"
@@ -462,7 +516,6 @@ export default function FoodDrinkListPage() {
         </div>
       </div>
 
-      {/* BULK TOGGLE */}
       {selectedIds.size > 0 && (
         <div className="flex items-center gap-3 bg-muted/30 border rounded-lg p-3 mb-3">
           <span className="text-sm">
@@ -480,7 +533,6 @@ export default function FoodDrinkListPage() {
         </div>
       )}
 
-      {/* TABLE */}
       <div className="bg-white rounded-lg shadow-sm overflow-x-auto">
         <Table columns={columns} data={rows} getRowKey={(r) => r.id} />
 
@@ -513,50 +565,43 @@ export default function FoodDrinkListPage() {
         )}
       </div>
 
-      {/* FORM MODAL */}
       {showForm && (
         <FoodDrinkModal
           open={showForm}
           onClose={() => setShowForm(false)}
           editData={editing}
-          onSuccess={(updatedItem) => {
-            setShowForm(false);
-
-            if (!updatedItem) return;
-
-            if (editing) {
-              // ✅ Sửa món → cập nhật cache
-              updateCacheItem(updatedItem.id, updatedItem);
-            } else {
-              // ✅ Thêm món → thêm vào đầu danh sách cache
-              if (allCache.current) {
-                allCache.current = [updatedItem, ...allCache.current];
-              }
-              pageCache.current.delete(1); // xoá cache trang 1 để force reload
-            }
-
-            loadPage(); // render lại từ cache đã cập nhật
-          }}
+          onSubmit={handleSubmitFoodDrink}
         />
       )}
 
-      {/* CONFIRM MODAL */}
       <Modal
         isOpen={confirmOpen}
         onClose={() => setConfirmOpen(false)}
         type="info"
         title={dialogTitle}
         message={dialogMsg}
+        onCancel={() => {
+          setConfirmOpen(false);
+          setShowForm(true);
+        }}
         onConfirm={onConfirm}
         confirmText="Xác nhận"
         cancelText="Hủy"
       />
 
-      {/* SUCCESS MODAL */}
       <Modal
         isOpen={successOpen}
         onClose={() => setSuccessOpen(false)}
         type="success"
+        title={dialogTitle}
+        message={dialogMsg}
+        confirmText="Đóng"
+      />
+
+      <Modal
+        isOpen={errorOpen}
+        onClose={() => setErrorOpen(false)}
+        type="error"
         title={dialogTitle}
         message={dialogMsg}
         confirmText="Đóng"

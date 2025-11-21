@@ -1,22 +1,44 @@
 "use client";
+
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { Dialog, Transition } from "@headlessui/react";
-// đổi sang service thật của bạn
-import { cinemaService, type Cinema } from "@/services";
+import {
+  Dialog,
+  DialogPanel,
+  DialogTitle,
+  Transition,
+  TransitionChild,
+} from "@headlessui/react";
+import type { Cinema } from "@/services";
+
+type CinemaFormPayload = {
+  name: string;
+  city: string;
+  address: string;
+  longitude: number | null;
+  latitude: number | null;
+  isActive: boolean;
+};
+
+type CinemaModalProps = {
+  open: boolean;
+  onClose: () => void;
+  mode: "create" | "edit";
+  cinema?: Cinema;
+  // page xử lý confirm + call API
+  onSubmit?: (
+    payload: CinemaFormPayload,
+    mode: "create" | "edit",
+    cinema?: Cinema
+  ) => void | Promise<void>;
+};
 
 export default function CinemaModal({
   open,
   onClose,
   mode,
   cinema,
-  onSuccess,
-}: {
-  open: boolean;
-  onClose: () => void;
-  mode: "create" | "edit";
-  cinema?: Cinema;
-  onSuccess?: () => void;
-}) {
+  onSubmit,
+}: CinemaModalProps) {
   const [name, setName] = useState(cinema?.name ?? "");
   const [city, setCity] = useState(cinema?.city ?? "");
   const [address, setAddress] = useState(cinema?.address ?? "");
@@ -27,16 +49,15 @@ export default function CinemaModal({
     cinema?.latitude != null ? String(cinema.latitude) : ""
   );
   const [isActive, setIsActive] = useState<boolean>(cinema?.isActive ?? true);
-  const [loading, setLoading] = useState(false);
 
-  // validate bắt buộc
   const valid = useMemo(
-    () => name.trim() && city.trim() && address.trim(),
+    () => Boolean(name.trim() && city.trim() && address.trim()),
     [name, city, address]
   );
 
   useEffect(() => {
     if (!open) return;
+
     if (mode === "edit" && cinema) {
       setName(cinema.name ?? "");
       setCity(cinema.city ?? "");
@@ -52,9 +73,8 @@ export default function CinemaModal({
       setLatitude("");
       setIsActive(true);
     }
-  }, [open, mode, cinema?.id]);
+  }, [open, mode, cinema]);
 
-  // helper parse số hoặc null
   const toNumOrNull = (s: string) => {
     const t = s.trim();
     if (!t) return null;
@@ -63,37 +83,25 @@ export default function CinemaModal({
   };
 
   async function handleSubmit() {
-    if (!valid) return;
-    try {
-      setLoading(true);
-      const payload = {
-        name: name.trim(),
-        city: city.trim(),
-        address: address.trim(),
-        longitude: toNumOrNull(longitude),
-        latitude: toNumOrNull(latitude),
-        isActive,
-      };
+    if (!valid || !onSubmit) return;
 
-      if (mode === "create") {
-        await cinemaService.addCinema(payload);
-      } else {
-        if (!cinema?.id) throw new Error("Thiếu ID rạp");
-        await cinemaService.updateCinema(cinema.id, payload);
-      }
+    const payload: CinemaFormPayload = {
+      name: name.trim(),
+      city: city.trim(),
+      address: address.trim(),
+      longitude: toNumOrNull(longitude),
+      latitude: toNumOrNull(latitude),
+      isActive,
+    };
 
-      onSuccess?.();
-      onClose();
-    } finally {
-      setLoading(false);
-    }
+    await onSubmit(payload, mode, cinema);
   }
 
   return (
     <Transition show={open} as={Fragment}>
       <Dialog onClose={onClose} className="relative z-50">
         {/* Overlay */}
-        <Transition.Child
+        <TransitionChild
           as={Fragment}
           enter="ease-out duration-200"
           enterFrom="opacity-0"
@@ -103,11 +111,11 @@ export default function CinemaModal({
           leaveTo="opacity-0"
         >
           <div className="fixed inset-0 bg-black/40" />
-        </Transition.Child>
+        </TransitionChild>
 
         {/* Panel */}
         <div className="fixed inset-0 flex items-center justify-center p-4">
-          <Transition.Child
+          <TransitionChild
             as={Fragment}
             enter="ease-out duration-200"
             enterFrom="opacity-0 scale-95"
@@ -116,10 +124,10 @@ export default function CinemaModal({
             leaveFrom="opacity-100 scale-100"
             leaveTo="opacity-0 scale-95"
           >
-            <Dialog.Panel className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl">
-              <Dialog.Title className="text-lg font-semibold mb-3">
+            <DialogPanel className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl">
+              <DialogTitle className="text-lg font-semibold mb-3">
                 {mode === "create" ? "Thêm rạp" : "Chỉnh sửa rạp"}
-              </Dialog.Title>
+              </DialogTitle>
 
               <div className="space-y-4">
                 <div>
@@ -170,9 +178,9 @@ export default function CinemaModal({
                       disabled={mode === "edit"}
                       onChange={(e) => setLongitude(e.target.value)}
                       className="w-full px-3 py-2 border rounded-lg
-                                disabled:bg-gray-50 disabled:text-gray-500
-                                disabled:placeholder:text-gray-400
-                                disabled:opacity-70 disabled:cursor-not-allowed"
+                        disabled:bg-gray-50 disabled:text-gray-500
+                        disabled:placeholder:text-gray-400
+                        disabled:opacity-70 disabled:cursor-not-allowed"
                       placeholder="VD: 106.70098"
                     />
                   </div>
@@ -187,9 +195,9 @@ export default function CinemaModal({
                       value={latitude}
                       onChange={(e) => setLatitude(e.target.value)}
                       className="w-full px-3 py-2 border rounded-lg
-                                disabled:bg-gray-50 disabled:text-gray-500
-                                disabled:placeholder:text-gray-400
-                                disabled:opacity-70 disabled:cursor-not-allowed"
+                        disabled:bg-gray-50 disabled:text-gray-500
+                        disabled:placeholder:text-gray-400
+                        disabled:opacity-70 disabled:cursor-not-allowed"
                       placeholder="VD: 10.77689"
                     />
                   </div>
@@ -204,19 +212,17 @@ export default function CinemaModal({
                   Hủy
                 </button>
                 <button
-                  disabled={!valid || loading}
+                  disabled={!valid}
                   onClick={handleSubmit}
                   className={`px-4 py-2 rounded-lg text-white ${
-                    valid && !loading
-                      ? "bg-blue-600 hover:bg-blue-700"
-                      : "bg-gray-400"
+                    valid ? "bg-blue-600 hover:bg-blue-700" : "bg-gray-400"
                   }`}
                 >
                   {mode === "create" ? "Thêm" : "Lưu"}
                 </button>
               </div>
-            </Dialog.Panel>
-          </Transition.Child>
+            </DialogPanel>
+          </TransitionChild>
         </div>
       </Dialog>
     </Transition>

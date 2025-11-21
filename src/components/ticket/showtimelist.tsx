@@ -74,7 +74,7 @@ export default function ShowtimeList({
                     return (
                       <Button
                         key={st.id}
-                        disabled={st.isPast}
+                        // disabled={st.isPast}
                         variant={isActive ? "default" : "outline"}
                         className={`h-10 transition-all ${
                           isActive
@@ -82,7 +82,7 @@ export default function ShowtimeList({
                             : "hover:bg-primary/10"
                         }`}
                         onClick={() =>
-                          !st.isPast &&
+                          // !st.isPast &&
                           onSelect(
                             st.id,
                             room.roomName,

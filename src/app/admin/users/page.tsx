@@ -1,4 +1,3 @@
-// app/(admin)/admin/users/page.tsx
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
@@ -7,16 +6,24 @@ import { FiEdit2, FiTrash2 } from "react-icons/fi";
 import { BiRefresh } from "react-icons/bi";
 import { Modal } from "@/components/Modal";
 import RefreshLoader from "@/components/Loading";
+import UserModal from "@/components/modal/UserModal";
 
-import { userService, type User, PaginationMeta } from "@/services";
+import {
+  userService,
+  type User,
+  PaginationMeta,
+  CreateUserRequest,
+} from "@/services";
 import { Badge } from "@/components/ui/badge";
 
 const UsersListPage: React.FC = () => {
-  // Data & filters
   const [users, setUsers] = useState<User[]>([]);
   const [search, setSearch] = useState("");
-  const [searchInput, setSearchInput] = useState(""); // debounce input
+  const [searchInput, setSearchInput] = useState("");
   const [role, setRole] = useState<"__ALL__" | "ADMIN" | "USER">("__ALL__");
+  const [status, setStatus] = useState<"__ALL__" | "ACTIVE" | "INACTIVE">(
+    "__ALL__"
+  );
 
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
@@ -25,39 +32,42 @@ const UsersListPage: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
 
-  // Modal (create/edit) — nếu dùng
   const [open, setOpen] = useState(false);
   const [editUser, setEditUser] = useState<User | null>(null);
 
-  // Confirm/Success dialogs
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
+  const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
   const [dialogTitle, setDialogTitle] = useState("");
   const [dialogMessage, setDialogMessage] = useState<React.ReactNode>("");
   const [onConfirm, setOnConfirm] = useState<() => void>(() => () => {});
 
-  // debounce 300ms
   useEffect(() => {
     const t = setTimeout(() => setSearch(searchInput), 300);
     return () => clearTimeout(t);
   }, [searchInput]);
 
-  // đổi search/role => về trang 1
   useEffect(() => {
     setPage(1);
-  }, [search, role]);
+  }, [search, role, status]);
 
-  // fetch
   const fetchUsers = async (toPage = page) => {
     try {
       setLoading(true);
+
+      const isActiveParam =
+        status === "__ALL__" ? undefined : status === "ACTIVE";
+
       const res = await userService.getAllUsers({
         page: toPage,
         limit: pageSize,
         search: search.trim() || undefined,
-        role: role !== "__ALL__" ? role : undefined, // BE yêu cầu uppercase
+        role: role !== "__ALL__" ? role : undefined,
+        isActive: isActiveParam,
       });
       const { data, pagination } = res;
+      console.log(data);
+
       setUsers(data ?? []);
       setPagination(pagination ?? null);
       setTotalPages(pagination?.totalPages ?? 1);
@@ -79,9 +89,8 @@ const UsersListPage: React.FC = () => {
   useEffect(() => {
     fetchUsers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, search, role]);
+  }, [page, search, role, status]);
 
-  // handlers
   const handleAddOpen = () => {
     setEditUser(null);
     setOpen(true);
@@ -145,13 +154,60 @@ const UsersListPage: React.FC = () => {
     );
   };
 
+  const handleSubmitUser = (
+    payload: CreateUserRequest,
+    mode: "create" | "edit",
+    user?: User
+  ) => {
+    const isCreate = mode === "create";
+
+    openConfirm(
+      isCreate ? "Xác nhận tạo người dùng" : "Xác nhận cập nhật người dùng",
+      <>
+        Bạn có chắc muốn{" "}
+        {isCreate ? "tạo tài khoản người dùng này?" : "cập nhật tài khoản này?"}
+      </>,
+      async () => {
+        setIsConfirmDialogOpen(false);
+        try {
+          if (isCreate) {
+            await userService.createUser(payload);
+          } else if (user) {
+            await userService.updateUser(user.id, payload);
+          }
+
+          setDialogTitle("Thành công");
+          setDialogMessage(
+            isCreate
+              ? "Đã tạo người dùng mới."
+              : "Đã cập nhật thông tin người dùng."
+          );
+          setIsSuccessDialogOpen(true);
+
+          await fetchUsers();
+          setOpen(false);
+          setEditUser(null);
+        } catch (err) {
+          console.error(err);
+          setDialogTitle("Thất bại");
+          setDialogMessage(
+            isCreate
+              ? "Đã có lỗi trong quá trình tạo người dùng mới."
+              : "Đã có lỗi trong quá trình cập nhật thông tin người dùng."
+          );
+          setIsErrorDialogOpen(true);
+        }
+      }
+    );
+  };
+
   const clearFilters = () => {
     setSearchInput("");
     setSearch("");
     setRole("__ALL__");
+    setStatus("__ALL__");
   };
 
-  // columns
   const columns: Column<User>[] = useMemo(
     () => [
       { header: "Email", key: "email" },
@@ -245,13 +301,11 @@ const UsersListPage: React.FC = () => {
     if (["female", "f", "nu", "nữ"].includes(key)) return "Nữ";
     if (["other", "khac", "khác"].includes(key)) return "Khác";
 
-    // nếu BE đã lưu "Nam"/"Nữ"/"Khác" thì dùng luôn (an toàn nhờ type guard)
     if (isGenderVN(s)) return s;
 
     return "Khác";
   };
 
-  // render
   return (
     <div>
       <div className="mb-6">
@@ -276,7 +330,6 @@ const UsersListPage: React.FC = () => {
               />
             </button>
 
-            {/* Search theo tên/email (server) */}
             <div className="w-[280px]">
               <input
                 type="text"
@@ -287,7 +340,6 @@ const UsersListPage: React.FC = () => {
               />
             </div>
 
-            {/* Lọc theo role (server) */}
             <select
               value={role}
               onChange={(e) =>
@@ -299,6 +351,19 @@ const UsersListPage: React.FC = () => {
               <option value="__ALL__">Tất cả vai trò</option>
               <option value="ADMIN">ADMIN</option>
               <option value="USER">Người dùng</option>
+            </select>
+
+            <select
+              value={status}
+              onChange={(e) =>
+                setStatus(e.target.value as "__ALL__" | "ACTIVE" | "INACTIVE")
+              }
+              className="px-3 py-2 rounded-lg border"
+              title="Lọc trạng thái"
+            >
+              <option value="__ALL__">Tất cả trạng thái</option>
+              <option value="ACTIVE">Hoạt động</option>
+              <option value="INACTIVE">Đã khóa</option>
             </select>
           </div>
 
@@ -349,8 +414,6 @@ const UsersListPage: React.FC = () => {
         )}
       </div>
 
-      {/* Dialogs */}
-
       <Modal
         isOpen={isConfirmDialogOpen}
         onClose={() => setIsConfirmDialogOpen(false)}
@@ -375,18 +438,22 @@ const UsersListPage: React.FC = () => {
         confirmText="Đóng"
       />
 
-      {/* Modal Thêm/Sửa (nếu có) */}
-      {/* <UserModal
+      <Modal
+        isOpen={isErrorDialogOpen}
+        onClose={() => setIsErrorDialogOpen(false)}
+        type="error"
+        title={dialogTitle}
+        message={dialogMessage}
+        confirmText="Đóng"
+      />
+
+      <UserModal
         open={open}
         onClose={() => setOpen(false)}
         mode={editUser ? "edit" : "create"}
         user={editUser ?? undefined}
-        onSuccess={async () => {
-          setOpen(false);
-          setEditUser(null);
-          await fetchUsers();
-        }}
-      /> */}
+        onSubmit={handleSubmitUser}
+      />
 
       <RefreshLoader isOpen={loading} />
     </div>

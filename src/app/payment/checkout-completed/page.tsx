@@ -4,7 +4,7 @@ import React, { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, XCircle, Home, Ticket, Loader2 } from "lucide-react";
-import { formatVND } from "@/app/admin/ticket/helper/seat-helper";
+import { formatVND } from "@/components/ticket/seat-helper";
 
 // Component con để bọc trong Suspense (Bắt buộc với Next.js App Router khi dùng searchParams)
 function PaymentResultContent() {

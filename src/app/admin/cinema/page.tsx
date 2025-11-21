@@ -9,59 +9,57 @@ import { BiRefresh } from "react-icons/bi";
 
 import RefreshLoader from "@/components/Loading";
 import { Modal } from "@/components/Modal";
-import CinemaModal from "@/components/CinemaModal";
-import { cinemaService, type Cinema, PaginationMeta } from "@/services";
+import CinemaModal from "@/components/modal/CinemaModal";
+import {
+  cinemaService,
+  type Cinema,
+  PaginationMeta,
+  CreateCinemaRequest,
+} from "@/services";
 
 type Mode = "server" | "client";
 
 const CinemasListPage: React.FC = () => {
   const router = useRouter();
 
-  // ===== Server data + pagination =====
-  const [cinemas, setCinemas] = useState<Cinema[]>([]); // 1 trang từ server
+  const [cinemas, setCinemas] = useState<Cinema[]>([]);
   const [pagination, setPagination] = useState<PaginationMeta | null>(null);
   const [page, setPage] = useState(1);
   const [limit] = useState(5);
 
-  // ===== Client full data (khi có filter city/address) =====
   const [allRows, setAllRows] = useState<Cinema[]>([]);
   const [mode, setMode] = useState<Mode>("server");
 
-  // ===== Filters =====
-  const [temp, setTemp] = useState(""); // input tạm cho tên rạp (debounce)
-  const [nameKw, setNameKw] = useState(""); // gửi lên BE qua "search"
-  const [cityKw, setCityKw] = useState(""); // filter client
-  const [addrKw, setAddrKw] = useState(""); // filter client
+  const [temp, setTemp] = useState("");
+  const [nameKw, setNameKw] = useState("");
+  const [cityKw, setCityKw] = useState("");
+  const [addrKw, setAddrKw] = useState("");
   const hasClientFilter = cityKw.trim() !== "" || addrKw.trim() !== "";
 
-  // ===== UI state =====
   const [loading, setLoading] = useState(false);
 
-  // ===== Modal (create/edit) =====
   const [open, setOpen] = useState(false);
   const [editCinema, setEditCinema] = useState<Cinema | null>(null);
 
-  // ===== Confirm/Success dialogs =====
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
+  const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
   const [dialogTitle, setDialogTitle] = useState("");
   const [dialogMessage, setDialogMessage] = useState<React.ReactNode>("");
   const [onConfirm, setOnConfirm] = useState<() => void>(() => () => {});
 
-  // ========== Fetch helpers ==========
   const fetchPage = async (toPage = page) => {
     setLoading(true);
     try {
       const res = await cinemaService.getAllCinemas({
         page: toPage,
         limit,
-        search: nameKw.trim() || undefined, // BE chỉ lọc theo tên rạp
+        search: nameKw.trim() || undefined,
       });
 
       setCinemas(res?.data ?? []);
       setPagination(res?.pagination ?? null);
 
-      // nếu BE normalize currentPage
       if (res?.pagination?.currentPage && res.pagination.currentPage !== page) {
         setPage(res.pagination.currentPage);
       }
@@ -74,7 +72,6 @@ const CinemasListPage: React.FC = () => {
     }
   };
 
-  // Gọi lần lượt đến khi hết trang (hasNextPage=false)
   const fetchAllForClient = async (opts?: {
     search?: string;
     pageSize?: number;
@@ -89,12 +86,11 @@ const CinemasListPage: React.FC = () => {
         const res = await cinemaService.getAllCinemas({
           page: nextPage,
           limit: pageSizeLocal,
-          search: opts?.search?.trim() || undefined, // vẫn áp dụng search theo tên ở BE
+          search: opts?.search?.trim() || undefined,
         });
         const { data, pagination } = res;
         result.push(...(data ?? []));
 
-        // nếu BE trả pageSize khác tham số, đồng bộ lại để bước nhảy ổn định
         if (pagination?.pageSize && pagination.pageSize !== pageSizeLocal) {
           pageSizeLocal = pagination.pageSize;
         }
@@ -102,7 +98,6 @@ const CinemasListPage: React.FC = () => {
         if (!pagination?.hasNextPage) break;
         nextPage = (pagination?.currentPage ?? nextPage) + 1;
 
-        // Guard an toàn nếu BE lỗi
         if (pagination?.totalPages && nextPage > pagination.totalPages) break;
       }
 
@@ -115,43 +110,36 @@ const CinemasListPage: React.FC = () => {
     }
   };
 
-  // ========== Effects ==========
-  // Debounce tên rạp
   useEffect(() => {
     const t = setTimeout(() => setNameKw(temp), 400);
     return () => clearTimeout(t);
   }, [temp]);
 
-  // Đổi trạng thái client filter => chuyển mode & về trang 1
   useEffect(() => {
     const nextMode: Mode = hasClientFilter ? "client" : "server";
     setMode(nextMode);
     setPage(1);
   }, [hasClientFilter]);
 
-  // Server mode: fetch theo page/limit/nameKw
   useEffect(() => {
     if (mode === "server") fetchPage();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, page, limit, nameKw]);
 
-  // Client mode: mỗi khi nameKw đổi (ảnh hưởng tập dữ liệu), tải toàn bộ
   useEffect(() => {
     if (mode === "client")
       fetchAllForClient({ search: nameKw, pageSize: limit });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, nameKw, limit]);
 
-  // Đổi city/address trong client mode -> chỉ cần về trang 1
   useEffect(() => {
     if (mode === "client") setPage(1);
   }, [cityKw, addrKw, mode]);
 
-  // ========== Data to display ==========
   const source = mode === "client" ? allRows : cinemas;
 
   const filtered = useMemo(() => {
-    if (mode !== "client") return source; // server mode: không lọc client
+    if (mode !== "client") return source;
     const c = cityKw.trim().toLowerCase();
     const a = addrKw.trim().toLowerCase();
     return source.filter((x) => {
@@ -167,7 +155,6 @@ const CinemasListPage: React.FC = () => {
       ? filtered.slice((page - 1) * limit, (page - 1) * limit + limit)
       : source;
 
-  // ========== Handlers ==========
   const handleAddOpen = () => {
     setEditCinema(null);
     setOpen(true);
@@ -241,6 +228,62 @@ const CinemasListPage: React.FC = () => {
     );
   };
 
+  const handleSubmitCinema = (
+    data: CreateCinemaRequest,
+    modeForm: "create" | "edit",
+    original?: Cinema
+  ) => {
+    const isCreate = modeForm === "create";
+    const cinemaName = data.name || original?.name || "";
+
+    // đóng form trước để không bị chồng 2 modal
+    setOpen(false);
+    setEditCinema(original ?? null);
+
+    openConfirm(
+      isCreate ? "Xác nhận thêm rạp" : "Xác nhận cập nhật rạp",
+      <>
+        Bạn có chắc muốn <b>{isCreate ? "thêm mới" : "cập nhật"}</b> rạp{" "}
+        <span className="text-blue-600 font-semibold">{cinemaName}</span> không?
+      </>,
+      async () => {
+        setIsConfirmDialogOpen(false);
+        try {
+          setLoading(true);
+
+          if (isCreate) {
+            await cinemaService.addCinema(data);
+          } else if (original) {
+            await cinemaService.updateCinema(original.id, data);
+          }
+
+          setDialogTitle("Thành công");
+          setDialogMessage(
+            isCreate
+              ? "Đã thêm rạp mới thành công."
+              : "Đã cập nhật thông tin rạp thành công."
+          );
+          setIsSuccessDialogOpen(true);
+
+          setEditCinema(null);
+
+          if (mode === "server") {
+            await fetchPage();
+          } else {
+            await fetchAllForClient({ search: nameKw, pageSize: limit });
+          }
+        } catch (e) {
+          setDialogTitle("Thất bại");
+          setDialogMessage("Không thể lưu rạp, vui lòng thử lại.");
+          setIsErrorDialogOpen(true);
+          console.error(e);
+        } finally {
+          setLoading(false);
+        }
+      }
+    );
+  };
+
   const clearFilters = () => {
     setTemp("");
     setNameKw("");
@@ -248,7 +291,6 @@ const CinemasListPage: React.FC = () => {
     setAddrKw("");
   };
 
-  // ===== Table columns =====
   const columns: Column<Cinema>[] = [
     { header: "Tên rạp phim", key: "name" },
     { header: "Thành phố", key: "city" },
@@ -307,7 +349,6 @@ const CinemasListPage: React.FC = () => {
     },
   ];
 
-  // ===== Render =====
   return (
     <div>
       <div className="mb-6">
@@ -316,7 +357,6 @@ const CinemasListPage: React.FC = () => {
         </h2>
 
         <div className="flex items-center justify-between gap-4 w-full">
-          {/* LEFT: refresh + filters (tự wrap khi hẹp) */}
           <div className="flex items-center gap-3 flex-1 flex-wrap">
             <button
               onClick={handleRefresh}
@@ -333,7 +373,6 @@ const CinemasListPage: React.FC = () => {
               />
             </button>
 
-            {/* Tên rạp (server) */}
             <div className="basis-[240px]">
               <input
                 type="text"
@@ -344,7 +383,6 @@ const CinemasListPage: React.FC = () => {
               />
             </div>
 
-            {/* Thành phố (client) */}
             <div className="basis-[200px]">
               <input
                 type="text"
@@ -355,7 +393,6 @@ const CinemasListPage: React.FC = () => {
               />
             </div>
 
-            {/* Địa chỉ (client) */}
             <div className="basis-[260px]">
               <input
                 type="text"
@@ -367,7 +404,6 @@ const CinemasListPage: React.FC = () => {
             </div>
           </div>
 
-          {/* RIGHT: actions (luôn dính bên phải) */}
           <div className="flex items-center gap-3 shrink-0">
             <button
               className="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300"
@@ -392,7 +428,6 @@ const CinemasListPage: React.FC = () => {
           getRowKey={(r) => r.id}
         />
 
-        {/* Footer phân trang */}
         {mode === "server" && pagination && (
           <div className="flex items-center justify-between px-6 py-4 bg-gray-50">
             <button
@@ -440,8 +475,6 @@ const CinemasListPage: React.FC = () => {
         )}
       </div>
 
-      {/* Confirm & Success */}
-
       <Modal
         isOpen={isConfirmDialogOpen}
         onClose={() => setIsConfirmDialogOpen(false)}
@@ -466,21 +499,21 @@ const CinemasListPage: React.FC = () => {
         confirmText="Đóng"
       />
 
-      {/* Modal Thêm/Sửa */}
+      <Modal
+        isOpen={isErrorDialogOpen}
+        onClose={() => setIsErrorDialogOpen(false)}
+        type="error"
+        title={dialogTitle}
+        message={dialogMessage}
+        confirmText="Đóng"
+      />
+
       <CinemaModal
         open={open}
         onClose={() => setOpen(false)}
         mode={editCinema ? "edit" : "create"}
         cinema={editCinema ?? undefined}
-        onSuccess={async () => {
-          setOpen(false);
-          setEditCinema(null);
-          if (mode === "server") {
-            await fetchPage(); // reload trang hiện tại
-          } else {
-            await fetchAllForClient({ search: nameKw, pageSize: limit });
-          }
-        }}
+        onSubmit={handleSubmitCinema}
       />
 
       <RefreshLoader isOpen={loading} />

@@ -8,7 +8,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { formatVND } from "./helper/seat-helper";
+import { formatVND } from "../ticket/seat-helper";
 import { Loader2 } from "lucide-react";
 
 interface PaymentMethodModalProps {
