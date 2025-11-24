@@ -1,211 +1,49 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
-import Table, { Column } from "@/components/Table";
+import React from "react";
 import { FiEdit2, FiTrash2 } from "react-icons/fi";
 import { BiRefresh } from "react-icons/bi";
+
+import Table, { Column } from "@/components/Table";
 import RefreshLoader from "@/components/Loading";
 import { Modal } from "@/components/Modal";
 import GenreModal from "@/components/modal/GenreModal";
-import { genreService, type Genre, PaginationMeta } from "@/services";
-
-type GenreFormPayload = {
-  name: string;
-  description: string;
-};
+import { type Genre } from "@/services";
+import { useGenreLogic } from "@/hooks/useGenreLogic";
 
 const GenresListPage: React.FC = () => {
-  const [genres, setGenres] = useState<Genre[]>([]);
-  const [queryName, setQueryName] = useState("");
-  const [time, setTime] = useState("");
+  const {
+    genres,
+    loading,
+    page,
+    setPage,
+    pagination,
+    totalPages,
+    totalItems,
+    time,
+    setTime,
+    open,
+    setOpen,
+    editGenre,
+    isConfirmDialogOpen,
+    setIsConfirmDialogOpen,
+    isSuccessDialogOpen,
+    setIsSuccessDialogOpen,
+    isErrorDialogOpen,
+    setIsErrorDialogOpen,
+    dialogTitle,
+    dialogMessage,
+    onConfirm,
+    handleRefresh,
+    clearFilters,
+    handleAddOpen,
+    handleEditOpen,
+    handleDelete,
+    handleRestore,
+    handleSubmitGenre,
+  } = useGenreLogic();
 
-  const [loading, setLoading] = useState(false);
-
-  const [page, setPage] = useState(1);
-  const [pageSize] = useState(7);
-  const [pagination, setPagination] = useState<PaginationMeta | null>(null);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
-
-  const [open, setOpen] = useState(false);
-  const [editGenre, setEditGenre] = useState<Genre | null>(null);
-
-  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
-  const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
-  const [dialogTitle, setDialogTitle] = useState("");
-  const [dialogMessage, setDialogMessage] = useState<React.ReactNode>("");
-  const [onConfirm, setOnConfirm] = useState<() => void>(() => () => {});
-
-  const fetchGenres = useCallback(
-    async (toPage = page) => {
-      try {
-        setLoading(true);
-        const { data, pagination } = await genreService.getAllGenres({
-          page: toPage,
-          limit: pageSize,
-          search: queryName.trim() || undefined,
-        });
-
-        console.log(data, pagination);
-
-        setGenres(data ?? []);
-        setPagination(pagination ?? null);
-        setTotalPages(pagination?.totalPages ?? 1);
-        setTotalItems(pagination?.totalItems ?? 0);
-        if (pagination?.currentPage && pagination.currentPage !== page) {
-          setPage(pagination.currentPage);
-        }
-        return { items: data ?? [], pagination };
-      } catch (e) {
-        console.error(e);
-        setGenres([]);
-        setPagination(null);
-        setTotalPages(1);
-        setTotalItems(0);
-        return { items: [], pagination: null };
-      } finally {
-        setLoading(false);
-      }
-    },
-    [page, pageSize, queryName]
-  );
-
-  useEffect(() => {
-    fetchGenres();
-  }, [page, queryName, fetchGenres]);
-  useEffect(() => {
-    setPage(1);
-  }, [queryName]);
-
-  useEffect(() => {
-    const t = setTimeout(() => setQueryName(time), 300);
-    return () => clearTimeout(t);
-  }, [time]);
-
-  const handleAddOpen = () => {
-    setEditGenre(null);
-    setOpen(true);
-  };
-
-  const handleEditOpen = (g: Genre) => {
-    setEditGenre(g);
-    setOpen(true);
-  };
-
-  const handleRefresh = async () => {
-    setLoading(true);
-    await fetchGenres();
-    setLoading(false);
-  };
-
-  const openConfirm = (
-    title: string,
-    message: React.ReactNode,
-    action: () => void
-  ) => {
-    setDialogTitle(title);
-    setDialogMessage(message);
-    setOnConfirm(() => action);
-    setIsConfirmDialogOpen(true);
-  };
-
-  const handleDelete = (g: Genre) => {
-    openConfirm(
-      "Xác nhận xóa",
-      <>Bạn có chắc muốn xóa thể loại này không ?</>,
-      async () => {
-        setIsConfirmDialogOpen(false);
-        try {
-          await genreService.deleteGenre(g.id);
-
-          setGenres((prev) =>
-            prev.map((it) => (it.id === g.id ? { ...it, isActive: false } : it))
-          );
-          setDialogTitle("Thành công");
-          setDialogMessage("Đã xóa thể loại.");
-          setIsSuccessDialogOpen(true);
-          // Nếu cần đồng bộ lại tổng số từ server thì gọi thêm: await fetchGenres();
-        } catch (err) {
-          alert("Thao tác thất bại: " + err);
-        }
-      }
-    );
-  };
-
-  const handleRestore = (g: Genre) => {
-    openConfirm("Xác nhận khôi phục", <>Khôi phục…</>, async () => {
-      setIsConfirmDialogOpen(false);
-      try {
-        await genreService.restoreGenre(g.id);
-        setGenres((prev) =>
-          prev.map((it) => (it.id === g.id ? { ...it, isActive: true } : it))
-        );
-        setDialogTitle("Thành công");
-        setDialogMessage("Khôi phục thể loại thành công");
-        setIsSuccessDialogOpen(true);
-        // cần thì gọi: await fetchGenres();
-      } catch (err) {
-        alert("Thao tác thất bại: " + err);
-      }
-    });
-  };
-
-  const handleSubmitGenre = (
-    data: GenreFormPayload,
-    modeForm: "create" | "edit",
-    original?: Genre
-  ) => {
-    const isCreate = modeForm === "create";
-    const genreName = data.name || original?.name || "";
-
-    setOpen(false);
-    setEditGenre(original ?? null);
-
-    openConfirm(
-      isCreate ? "Xác nhận thêm thể loại" : "Xác nhận cập nhật thể loại",
-      <>
-        Bạn có chắc muốn <b>{isCreate ? "thêm mới" : "cập nhật"}</b> thể loại{" "}
-        <span className="text-blue-600 font-semibold">{genreName}</span> không?
-      </>,
-      async () => {
-        setIsConfirmDialogOpen(false);
-        try {
-          setLoading(true);
-
-          if (isCreate) {
-            await genreService.addGenre({
-              name: data.name,
-              description: data.description,
-            });
-          } else if (original) {
-            await genreService.updateGenre(original.id, {
-              name: data.name,
-              description: data.description,
-            });
-          }
-
-          setDialogTitle("Thành công");
-          setDialogMessage(
-            isCreate
-              ? "Đã thêm thể loại mới."
-              : "Đã cập nhật thông tin thể loại."
-          );
-          setIsSuccessDialogOpen(true);
-
-          setEditGenre(null);
-          await fetchGenres();
-        } catch (err) {
-          console.error(err);
-          alert("Thao tác thất bại: " + err);
-        } finally {
-          setLoading(false);
-        }
-      }
-    );
-  };
-
-  const clearFilters = () => setQueryName("");
-
+  // Định nghĩa cột hiển thị
   const columns: Column<Genre>[] = [
     { header: "Tên thể loại", key: "name" },
     { header: "Mô tả", key: "description" },
@@ -302,7 +140,7 @@ const GenresListPage: React.FC = () => {
         <Table<Genre> columns={columns} data={genres} getRowKey={(r) => r.id} />
 
         {totalItems > 0 && (
-          <div className="flex items-center justify-between px-6 py-4 bg-gray-50">
+          <div className="flex items-center justify-between px-4 py-2 bg-gray-50">
             <button
               onClick={() =>
                 pagination?.hasPrevPage && setPage((p) => Math.max(1, p - 1))
@@ -334,7 +172,10 @@ const GenresListPage: React.FC = () => {
         type="info"
         title={dialogTitle}
         message={dialogMessage}
-        onCancel={() => setIsConfirmDialogOpen(false)}
+        onCancel={() => {
+          setIsConfirmDialogOpen(false);
+          setOpen(true);
+        }}
         cancelText="Hủy"
         onConfirm={() => {
           onConfirm();
@@ -347,6 +188,15 @@ const GenresListPage: React.FC = () => {
         isOpen={isSuccessDialogOpen}
         onClose={() => setIsSuccessDialogOpen(false)}
         type="success"
+        title={dialogTitle}
+        message={dialogMessage}
+        confirmText="Đóng"
+      />
+
+      <Modal
+        isOpen={isErrorDialogOpen}
+        onClose={() => setIsErrorDialogOpen(false)}
+        type="error"
         title={dialogTitle}
         message={dialogMessage}
         confirmText="Đóng"

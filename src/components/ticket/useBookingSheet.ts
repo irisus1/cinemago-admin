@@ -31,6 +31,27 @@ interface UseBookingLogicProps {
   date: string;
 }
 
+const pad = (n: number) => String(n).padStart(2, "0");
+
+// dateStr: "2025-11-28" (giờ VN)
+// -> startTime, endTime là UTC có Z, bao trọn ngày 28 theo giờ VN
+const toUtcDayRangeFromLocal = (dateStr: string) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    return { startTime: undefined, endTime: undefined };
+  }
+
+  const [y, m, d] = dateStr.split("-").map(Number);
+
+  // m-1 vì JS month 0–11
+  const localStart = new Date(y, m - 1, d, 0, 0, 0, 0); // 28/11 00:00 VN
+  const localNext = new Date(y, m - 1, d + 1, 0, 0, 0, 0); // 29/11 00:00 VN
+
+  const startTime = localStart.toISOString(); // 27/11 17:00Z
+  const endTime = new Date(localNext.getTime() - 1).toISOString(); // 28/11 16:59:59.999Z
+
+  return { startTime, endTime };
+};
+
 export const useBookingLogic = ({
   isOpen,
   movie,
@@ -80,12 +101,15 @@ export const useBookingLogic = ({
   // 2. Fetch Showtimes & Foods
   useEffect(() => {
     if (!isOpen || !movie || !cinemaId) return;
+    const { startTime, endTime } = toUtcDayRangeFromLocal(date);
+    if (!startTime || !endTime) return;
+
     const fetchData = async () => {
       setLoading(true);
       try {
         const resSt = await showTimeService.getShowTimes({
-          startTime: `${date}T00:00:00`,
-          endTime: `${date}T23:59:59`,
+          startTime, // UTC có Z
+          endTime,
           cinemaId,
           movieId: movie.id,
         });

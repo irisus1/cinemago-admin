@@ -65,23 +65,7 @@ export default function Sidebar({
         </button>
       </div>
 
-      {/* Search */}
-      {/* {isSidebarOpen && (
-        <div className="p-4">
-          <div className="relative">
-            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Tìm kiếm chức năng..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-        </div>
-      )} */}
-
-      {/* Tabs */}
+      {/* Search Bar */}
       <nav className="p-3 flex-1 overflow-y-auto">
         <ul className="space-y-2">
           {filteredTabs.map((tab, index) => {
@@ -177,7 +161,10 @@ export default function Sidebar({
           </div>
         </div>
       )} */}
-      <AccountDropdown onOpenProfile={() => setOpenProfile(true)} />
+      <AccountDropdown
+        isSidebarOpen={isSidebarOpen}
+        onOpenProfile={() => setOpenProfile(true)}
+      />
 
       <ProfileModal open={openProfile} onClose={() => setOpenProfile(false)} />
     </div>

@@ -13,38 +13,46 @@ import { DateNativeVN } from "@/components/DateNativeVN";
 import BookingSheet from "./bookingSheet";
 
 /** Helpers */
+/** Helpers */
 const todayLocalISODate = () => {
   const d = new Date();
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+  return `${y}-${m}-${day}`; // YYYY-MM-DD (local VN)
 };
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
-const toLocalNaive = (d: Date) =>
-  `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
-  `T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-
-const toLocalRangeTailNaive = (dateStr: string) => {
+/**
+ * Nhận vào ngày local (YYYY-MM-DD, user chọn theo giờ VN)
+ * → Trả về khoảng [startTime, endTime] là ISO UTC (có Z)
+ *    tương ứng với 00:00:00 - 23:59:59 của NGÀY ĐÓ THEO LOCAL.
+ */
+// Trả về khoảng UTC cho 1 ngày local (giờ VN)
+const toUtcDayRangeFromLocalISO = (dateStr: string) => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
     const today = todayLocalISODate();
-    return toLocalRangeTailNaive(today);
+    return toUtcDayRangeFromLocalISO(today);
   }
 
   const [y, m, d] = dateStr.split("-").map((n) => parseInt(n, 10));
 
-  const start = new Date(y, m - 1, d, 0, 0, 0, 0);
+  // local start / end (VN)
+  const localStart = new Date(y, m - 1, d, 0, 0, 0, 0);
+  const localEndExclusive = new Date(y, m - 1, d + 1, 0, 0, 0, 0);
 
-  const end = new Date(y, m - 1, d, 23, 59, 59);
+  // chuyển sang ISO UTC có Z
+  const startTime = localStart.toISOString(); // 27T17:00Z
+  const endTime = new Date(localEndExclusive.getTime() - 1).toISOString(); // 28T16:59:59.999Z
 
-  return { startTime: toLocalNaive(start), endTime: toLocalNaive(end) };
+  return { startTime, endTime };
 };
 
 export default function AdminWalkupBookingPage() {
   const [dateStr, setDateStr] = useState<string>(() => todayLocalISODate());
-  const dayRange = useMemo(() => toLocalRangeTailNaive(dateStr), [dateStr]);
+  // Khoảng UTC tương ứng với 00:00 - 23:59 ngày dateStr theo giờ VN
+  const dayRange = useMemo(() => toUtcDayRangeFromLocalISO(dateStr), [dateStr]);
 
   const [cinemas, setCinemas] = useState<Cinema[]>([]);
   const [selectedCinemaId, setSelectedCinemaId] = useState<string>("");

@@ -1,7 +1,6 @@
-// components/RoomCard.tsx
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -22,170 +21,50 @@ import { Modal } from "@/components/Modal";
 import RoomModal from "@/components/modal/RoomModal";
 import SeatLayoutBuilder from "./RoomLayout";
 
-// === Services (điều chỉnh theo project của bạn) ===
-import { roomService, type Room, PaginationMeta } from "@/services";
+import { type Room } from "@/services";
+import { useRoomLogic } from "@/hooks/useRoomCardLogic";
 
 export default function RoomCard({ cinemaId }: { cinemaId: string }) {
-  // server data + paging
+  const {
+    // Data & State
+    displayRows,
+    pagination,
+    loading,
+    setPage,
+    searchInput,
+    setSearchInput,
+    status,
+    setStatus,
+    open,
+    setOpen,
+    openLayout,
+    setOpenLayout,
+    openRoom,
+    editRoom,
+    isConfirmDialogOpen,
+    setIsConfirmDialogOpen,
+    isSuccessDialogOpen,
+    setIsSuccessDialogOpen,
+    isErrorDialogOpen,
+    setIsErrorDialogOpen,
+    dialogTitle,
+    dialogMessage,
+    onConfirm,
 
-  const [rooms, setRooms] = useState<Room[]>([]);
-  const [pagination, setPagination] = useState<PaginationMeta | null>(null);
-  const [page, setPage] = useState(1);
-  const [limit] = useState(10);
+    // Actions
+    fetchRooms,
+    clearFilters,
+    handleRefresh,
+    handleViewLayoutOpen,
+    handleAddOpen,
+    handleEditOpen,
+    handleDelete,
+    handleRestore,
 
-  // filters (client)
-  const [search, setSearch] = useState("");
-  const [searchInput, setSearchInput] = useState("");
-  const [status, setStatus] = useState<"__ALL__" | "active" | "inactive">(
-    "__ALL__"
-  );
-
-  // ui states
-  const [loading, setLoading] = useState(false);
-  const [reloadTick, setReloadTick] = useState(0);
-
-  // modal
-  const [open, setOpen] = useState(false);
-  const [openLayout, setOpenLayout] = useState(false);
-  const [openRoom, setOpenRoom] = useState<Room | null>(null);
-  const [editRoom, setEditRoom] = useState<Room | null>(null);
-
-  // dialogs
-  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
-  const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
-  const [dialogTitle, setDialogTitle] = useState("");
-  const [dialogMessage, setDialogMessage] = useState<React.ReactNode>("");
-  const [onConfirm, setOnConfirm] = useState<() => void>(() => () => {});
-
-  useEffect(() => {
-    const t = setTimeout(() => setSearch(searchInput), 400);
-    return () => clearTimeout(t);
-  }, [searchInput]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [search]);
-  // ===== fetch =====
-  const fetchRooms = async (toPage = page) => {
-    setLoading(true);
-    try {
-      const res = await roomService.getRooms({
-        cinemaId,
-        page: toPage,
-        limit,
-        search: search.trim() || undefined,
-      });
-      const { data, pagination } = res;
-      console.log("payload: ", res);
-
-      setRooms(data ?? []);
-      setPagination(pagination ?? null);
-      if (pagination?.currentPage && pagination.currentPage !== page) {
-        setPage(pagination.currentPage);
-      }
-    } catch (e) {
-      console.error("Error fetching rooms:", e);
-      setRooms([]);
-      setPagination(null);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchRooms();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cinemaId, page, limit, reloadTick, search]);
-
-  // filter client theo trạng thái
-  const displayRows = useMemo(() => {
-    const list =
-      status === "__ALL__"
-        ? rooms
-        : rooms.filter((r) => (status === "active" ? r.isActive : !r.isActive));
-    return list;
-  }, [rooms, status]);
-
-  // ===== handlers =====
-
-  const handleViewLayoutOpen = (r: Room) => {
-    console.log("data room: ", r);
-
-    setOpenRoom(r);
-    setOpenLayout(true);
-  };
-
-  const handleAddOpen = () => {
-    setEditRoom(null);
-    setOpen(true);
-  };
-
-  const handleEditOpen = (r: Room) => {
-    setEditRoom(r);
-    setOpen(true);
-  };
-  const handleRefresh = () => setReloadTick((x) => x + 1);
-
-  const openConfirm = (
-    title: string,
-    message: React.ReactNode,
-    action: () => void
-  ) => {
-    setDialogTitle(title);
-    setDialogMessage(message);
-    setOnConfirm(() => action);
-    setIsConfirmDialogOpen(true);
-  };
-
-  const handleDelete = (room: Room) => {
-    openConfirm(
-      "Xác nhận xóa",
-      <>
-        Bạn có chắc chắn muốn xóa (ẩn) phòng <b>{room.name}</b> không?
-        <br />
-        Việc này không thể hoàn tác.
-      </>,
-      async () => {
-        setIsConfirmDialogOpen(false);
-        try {
-          await roomService.deleteRoom(room.id);
-          setDialogTitle("Thành công");
-          setDialogMessage("Đã ẩn (soft-delete) phòng.");
-          setIsSuccessDialogOpen(true);
-          handleRefresh();
-        } catch (err) {
-          alert("Thao tác thất bại: " + err);
-        }
-      }
-    );
-  };
-
-  const handleRestore = (room: Room) => {
-    openConfirm(
-      "Xác nhận khôi phục",
-      <>
-        Khôi phục phòng <b>{room.name}</b>?
-      </>,
-      async () => {
-        setIsConfirmDialogOpen(false);
-        try {
-          await roomService.restoreRoom(room.id);
-          setDialogTitle("Thành công");
-          setDialogMessage("Khôi phục phòng thành công");
-          setIsSuccessDialogOpen(true);
-          handleRefresh();
-        } catch (err) {
-          alert("Thao tác thất bại: " + err);
-        }
-      }
-    );
-  };
-
-  const clearFilters = () => {
-    setSearch("");
-    setStatus("__ALL__");
-    setPage(1);
-  };
+    // New Submit Logic
+    isSubmitting,
+    handleSubmitRoom,
+  } = useRoomLogic(cinemaId);
 
   // ===== columns =====
   const columns: Column<Room>[] = [
@@ -344,7 +223,7 @@ export default function RoomCard({ cinemaId }: { cinemaId: string }) {
 
         {/* Pagination (server-side) */}
         {pagination && (
-          <div className="flex items-center justify-between px-6 py-4 bg-gray-50">
+          <div className="flex items-center justify-between px-4 py-2 bg-gray-50">
             <button
               onClick={() =>
                 pagination.hasPrevPage && setPage((p) => Math.max(1, p - 1))
@@ -368,6 +247,7 @@ export default function RoomCard({ cinemaId }: { cinemaId: string }) {
         )}
       </Card>
 
+      {/* Modal Layout Builder */}
       <div className="mt-6">
         <SeatLayoutBuilder
           open={openLayout}
@@ -379,21 +259,30 @@ export default function RoomCard({ cinemaId }: { cinemaId: string }) {
             console.log("seatLayout to save:", seatLayout);
             handleRefresh();
             setOpenLayout(false);
-            // ví dụ gọi API cập nhật
-            // await api.put(`/rooms/${openRoom.id}`, { seatLayout });
           }}
         />
       </div>
+      {/* Modal Thêm/Sửa phòng */}
+      <RoomModal
+        open={open}
+        onClose={() => setOpen(false)}
+        mode={editRoom ? "edit" : "create"}
+        room={editRoom}
+        isSubmitting={isSubmitting}
+        onSubmit={handleSubmitRoom}
+      />
 
       {/* Dialogs */}
-
       <Modal
         isOpen={isConfirmDialogOpen}
         onClose={() => setIsConfirmDialogOpen(false)}
         type="info"
         title={dialogTitle}
         message={dialogMessage}
-        onCancel={() => setIsConfirmDialogOpen(false)}
+        onCancel={() => {
+          setIsConfirmDialogOpen(false);
+          setOpen(true);
+        }}
         cancelText="Hủy"
         onConfirm={() => {
           onConfirm();
@@ -411,18 +300,13 @@ export default function RoomCard({ cinemaId }: { cinemaId: string }) {
         confirmText="Đóng"
       />
 
-      {/* Modal Thêm/Sửa phòng */}
-      <RoomModal
-        open={open}
-        onClose={() => setOpen(false)}
-        mode={editRoom ? "edit" : "create"}
-        room={editRoom ?? undefined}
-        cinemaId={cinemaId}
-        onSuccess={() => {
-          setOpen(false);
-          setEditRoom(null);
-          setReloadTick((x) => x + 1); // reload lại list
-        }}
+      <Modal
+        isOpen={isErrorDialogOpen}
+        onClose={() => setIsErrorDialogOpen(false)}
+        type="error"
+        title={dialogTitle}
+        message={dialogMessage}
+        confirmText="Đóng"
       />
     </div>
   );

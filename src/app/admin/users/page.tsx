@@ -1,289 +1,51 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React from "react";
 import Table, { Column } from "@/components/Table";
 import { FiEdit2, FiTrash2 } from "react-icons/fi";
 import { BiRefresh } from "react-icons/bi";
 import { Modal } from "@/components/Modal";
 import RefreshLoader from "@/components/Loading";
 import UserModal from "@/components/modal/UserModal";
-
-import {
-  userService,
-  type User,
-  PaginationMeta,
-  CreateUserRequest,
-} from "@/services";
 import { Badge } from "@/components/ui/badge";
+import type { User } from "@/services";
+import { useUsersLogic } from "@/hooks/useUserLogic";
 
 const UsersListPage: React.FC = () => {
-  const [users, setUsers] = useState<User[]>([]);
-  const [search, setSearch] = useState("");
-  const [searchInput, setSearchInput] = useState("");
-  const [role, setRole] = useState<"__ALL__" | "ADMIN" | "USER">("__ALL__");
-  const [status, setStatus] = useState<"__ALL__" | "ACTIVE" | "INACTIVE">(
-    "__ALL__"
-  );
-
-  const [loading, setLoading] = useState(false);
-  const [page, setPage] = useState(1);
-  const [pageSize] = useState(7);
-  const [pagination, setPagination] = useState<PaginationMeta | null>(null);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
-
-  const [open, setOpen] = useState(false);
-  const [editUser, setEditUser] = useState<User | null>(null);
-
-  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
-  const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
-  const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
-  const [dialogTitle, setDialogTitle] = useState("");
-  const [dialogMessage, setDialogMessage] = useState<React.ReactNode>("");
-  const [onConfirm, setOnConfirm] = useState<() => void>(() => () => {});
-
-  useEffect(() => {
-    const t = setTimeout(() => setSearch(searchInput), 300);
-    return () => clearTimeout(t);
-  }, [searchInput]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [search, role, status]);
-
-  const fetchUsers = async (toPage = page) => {
-    try {
-      setLoading(true);
-
-      const isActiveParam =
-        status === "__ALL__" ? undefined : status === "ACTIVE";
-
-      const res = await userService.getAllUsers({
-        page: toPage,
-        limit: pageSize,
-        search: search.trim() || undefined,
-        role: role !== "__ALL__" ? role : undefined,
-        isActive: isActiveParam,
-      });
-      const { data, pagination } = res;
-      console.log(data);
-
-      setUsers(data ?? []);
-      setPagination(pagination ?? null);
-      setTotalPages(pagination?.totalPages ?? 1);
-      setTotalItems(pagination?.totalItems ?? 0);
-      if (pagination?.currentPage && pagination.currentPage !== page) {
-        setPage(pagination.currentPage);
-      }
-    } catch (e) {
-      console.error(e);
-      setUsers([]);
-      setPagination(null);
-      setTotalPages(1);
-      setTotalItems(0);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchUsers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, search, role, status]);
-
-  const handleAddOpen = () => {
-    setEditUser(null);
-    setOpen(true);
-  };
-  const handleEditOpen = (u: User) => {
-    setEditUser(u);
-    setOpen(true);
-  };
-  const handleRefresh = () => fetchUsers();
-
-  const openConfirm = (
-    title: string,
-    message: React.ReactNode,
-    action: () => void
-  ) => {
-    setDialogTitle(title);
-    setDialogMessage(message);
-    setOnConfirm(() => action);
-    setIsConfirmDialogOpen(true);
-  };
-
-  const handleDelete = (u: User) => {
-    openConfirm(
-      "Xác nhận vô hiệu hóa",
-      <>Bạn có chắc muốn vô hiệu hóa tài khoản này?</>,
-      async () => {
-        setIsConfirmDialogOpen(false);
-        try {
-          await userService.deleteUser(u.id);
-          setUsers((prev) =>
-            prev.map((it) => (it.id === u.id ? { ...it, isActive: false } : it))
-          );
-          setDialogTitle("Thành công");
-          setDialogMessage("Đã vô hiệu hóa tài khoản.");
-          setIsSuccessDialogOpen(true);
-        } catch (err) {
-          alert("Thao tác thất bại: " + err);
-        }
-      }
-    );
-  };
-
-  const handleRestore = (u: User) => {
-    openConfirm(
-      "Xác nhận kích hoạt",
-      <>Kích hoạt lại tài khoản này?</>,
-      async () => {
-        setIsConfirmDialogOpen(false);
-        try {
-          await userService.restoreUser(u.id);
-          setUsers((prev) =>
-            prev.map((it) => (it.id === u.id ? { ...it, isActive: true } : it))
-          );
-          setDialogTitle("Thành công");
-          setDialogMessage("Đã kích hoạt tài khoản.");
-          setIsSuccessDialogOpen(true);
-        } catch (err) {
-          alert("Thao tác thất bại: " + err);
-        }
-      }
-    );
-  };
-
-  const handleSubmitUser = (
-    payload: CreateUserRequest,
-    mode: "create" | "edit",
-    user?: User
-  ) => {
-    const isCreate = mode === "create";
-
-    openConfirm(
-      isCreate ? "Xác nhận tạo người dùng" : "Xác nhận cập nhật người dùng",
-      <>
-        Bạn có chắc muốn{" "}
-        {isCreate ? "tạo tài khoản người dùng này?" : "cập nhật tài khoản này?"}
-      </>,
-      async () => {
-        setIsConfirmDialogOpen(false);
-        try {
-          if (isCreate) {
-            await userService.createUser(payload);
-          } else if (user) {
-            await userService.updateUser(user.id, payload);
-          }
-
-          setDialogTitle("Thành công");
-          setDialogMessage(
-            isCreate
-              ? "Đã tạo người dùng mới."
-              : "Đã cập nhật thông tin người dùng."
-          );
-          setIsSuccessDialogOpen(true);
-
-          await fetchUsers();
-          setOpen(false);
-          setEditUser(null);
-        } catch (err) {
-          console.error(err);
-          setDialogTitle("Thất bại");
-          setDialogMessage(
-            isCreate
-              ? "Đã có lỗi trong quá trình tạo người dùng mới."
-              : "Đã có lỗi trong quá trình cập nhật thông tin người dùng."
-          );
-          setIsErrorDialogOpen(true);
-        }
-      }
-    );
-  };
-
-  const clearFilters = () => {
-    setSearchInput("");
-    setSearch("");
-    setRole("__ALL__");
-    setStatus("__ALL__");
-  };
-
-  const columns: Column<User>[] = useMemo(
-    () => [
-      { header: "Email", key: "email" },
-      { header: "Họ tên", key: "fullname" },
-      {
-        header: "Giới tính",
-        key: "gender",
-        render: (v) => mapGender(v),
-      },
-      {
-        header: "Vai trò",
-        key: "role",
-        render: (v) => (
-          <Badge variant="secondary">{String(v).toUpperCase()}</Badge>
-        ),
-      },
-      {
-        header: "Trạng thái",
-        key: "isActive",
-        render: (_: unknown, r) => (
-          <Badge variant={r.isActive ? "default" : "secondary"}>
-            {r.isActive ? "Hoạt động" : "Đã khóa"}
-          </Badge>
-        ),
-      },
-      {
-        header: "Tạo lúc",
-        key: "createdAt",
-        render: (v) =>
-          v
-            ? Intl.DateTimeFormat("vi-VN", {
-                hour: "2-digit",
-                minute: "2-digit",
-                day: "2-digit",
-                month: "2-digit",
-                year: "numeric",
-              }).format(new Date(v as string))
-            : "—",
-      },
-      {
-        header: "Hành động",
-        key: "actions",
-        render: (_: unknown, row: User) => (
-          <div className="flex space-x-3">
-            {row.isActive ? (
-              <>
-                <button
-                  className="text-blue-600 hover:text-blue-800"
-                  onClick={() => handleEditOpen(row)}
-                  title="Chỉnh sửa"
-                >
-                  <FiEdit2 className="w-4 h-4" />
-                </button>
-                <button
-                  className="text-red-600 hover:text-red-800"
-                  onClick={() => handleDelete(row)}
-                  title="Vô hiệu hóa"
-                >
-                  <FiTrash2 className="w-4 h-4" />
-                </button>
-              </>
-            ) : (
-              <button
-                className="text-green-600 hover:text-green-800"
-                onClick={() => handleRestore(row)}
-                title="Kích hoạt"
-              >
-                <BiRefresh className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-        ),
-      },
-    ],
-    []
-  );
+  const {
+    users,
+    searchInput,
+    setSearchInput,
+    role,
+    setRole,
+    status,
+    setStatus,
+    loading,
+    page,
+    setPage,
+    totalPages,
+    totalItems,
+    pagination,
+    open,
+    setOpen,
+    editUser,
+    isConfirmDialogOpen,
+    setIsConfirmDialogOpen,
+    isSuccessDialogOpen,
+    setIsSuccessDialogOpen,
+    isErrorDialogOpen,
+    setIsErrorDialogOpen,
+    dialogTitle,
+    dialogMessage,
+    onConfirm,
+    handleAddOpen,
+    handleEditOpen,
+    handleRefresh,
+    handleDelete,
+    handleRestore,
+    handleSubmitUser,
+    clearFilters,
+  } = useUsersLogic();
 
   type GenderVN = "Nam" | "Nữ" | "Khác" | "—";
 
@@ -305,6 +67,80 @@ const UsersListPage: React.FC = () => {
 
     return "Khác";
   };
+
+  const columns: Column<User>[] = [
+    { header: "Email", key: "email" },
+    { header: "Họ tên", key: "fullname" },
+    {
+      header: "Giới tính",
+      key: "gender",
+      render: (v) => mapGender(v),
+    },
+    {
+      header: "Vai trò",
+      key: "role",
+      render: (v) => (
+        <Badge variant="secondary">{String(v).toUpperCase()}</Badge>
+      ),
+    },
+    {
+      header: "Trạng thái",
+      key: "isActive",
+      render: (_: unknown, r) => (
+        <Badge variant={r.isActive ? "default" : "secondary"}>
+          {r.isActive ? "Hoạt động" : "Đã khóa"}
+        </Badge>
+      ),
+    },
+    {
+      header: "Tạo lúc",
+      key: "createdAt",
+      render: (v) =>
+        v
+          ? Intl.DateTimeFormat("vi-VN", {
+              hour: "2-digit",
+              minute: "2-digit",
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+            }).format(new Date(v as string))
+          : "—",
+    },
+    {
+      header: "Hành động",
+      key: "actions",
+      render: (_: unknown, row: User) => (
+        <div className="flex space-x-3">
+          {row.isActive ? (
+            <div className="flex space-x-3">
+              <button
+                className="text-blue-600 hover:text-blue-800"
+                onClick={() => handleEditOpen(row)}
+                title="Chỉnh sửa"
+              >
+                <FiEdit2 className="w-4 h-4" />
+              </button>
+              <button
+                className="text-red-600 hover:text-red-800"
+                onClick={() => handleDelete(row)}
+                title="Vô hiệu hóa"
+              >
+                <FiTrash2 className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <button
+              className="text-green-600 hover:text-green-800"
+              onClick={() => handleRestore(row)}
+              title="Kích hoạt"
+            >
+              <BiRefresh className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      ),
+    },
+  ];
 
   return (
     <div>
@@ -388,7 +224,7 @@ const UsersListPage: React.FC = () => {
         <Table<User> columns={columns} data={users} getRowKey={(r) => r.id} />
 
         {totalItems > 0 && (
-          <div className="flex items-center justify-between px-6 py-4 bg-gray-50">
+          <div className="flex items-center justify-between px-4 py-2 bg-gray-50">
             <button
               onClick={() =>
                 pagination?.hasPrevPage && setPage((p) => Math.max(1, p - 1))

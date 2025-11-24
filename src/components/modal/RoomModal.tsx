@@ -1,4 +1,3 @@
-// components/RoomModal.tsx
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -12,205 +11,145 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { roomService, type Room, RoomUpdate, RoomCreate } from "@/services";
+import { type Room } from "@/services";
+import type { RoomFormData } from "@/hooks/useRoomCardLogic";
 
-// services tuỳ dự án bạn, đổi tên nếu khác
-
+// Định nghĩa Props mới
 export type RoomModalProps = {
   open: boolean;
   onClose: () => void;
-  onSuccess?: () => void;
   mode: "create" | "edit";
-  cinemaId: string;
-  room?: Room;
-};
-
-type SeatCell = {
-  row: string;
-  col: number;
-  type: "EMPTY" | "NORMAL" | "VIP" | "COUPLE";
-};
-
-const makeBaseLayout5x5 = (): SeatCell[] => {
-  const rows = ["A", "B", "C", "D", "E"];
-  const cols = 5;
-  const out: SeatCell[] = [];
-  for (const r of rows) {
-    for (let c = 1; c <= cols; c++)
-      out.push({ row: r, col: c, type: "NORMAL" });
-  }
-  return out;
+  room?: Room | null; // Cho phép null
+  isSubmitting: boolean;
+  onSubmit: (data: RoomFormData) => void;
 };
 
 export default function RoomModal({
   open,
   onClose,
-  onSuccess,
   mode,
-  cinemaId,
   room,
+  isSubmitting,
+  onSubmit,
 }: RoomModalProps) {
-  const [saving, setSaving] = useState(false);
-  const [loading, setLoadingRoom] = useState(false);
+  // Local Form State
+  const [name, setName] = useState("");
+  const [vipBonus, setVipBonus] = useState<number | "">("");
+  const [coupleBonus, setCoupleBonus] = useState<number | "">("");
 
-  const [name, setName] = useState(room?.name ?? "");
-  const [vipBonus, setVipBonus] = useState<number | "">(room?.VIP ?? 0);
-  const [coupleBonus, setCoupleBonus] = useState<number | "">(
-    room?.COUPLE ?? 0
-  );
+  // UI Helper State (để disable input nếu phòng không có loại ghế đó)
   const [hasVipSeat, setHasVipSeat] = useState(false);
   const [hasCoupleSeat, setHasCoupleSeat] = useState(false);
 
+  // Reset form khi mở modal hoặc khi room thay đổi
   useEffect(() => {
-    if (mode === "create") {
-      setName("");
-      setVipBonus(0);
-      setCoupleBonus(0);
-      const layout = makeBaseLayout5x5();
-      setHasVipSeat(layout.some((s) => s.type === "VIP"));
-      setHasCoupleSeat(layout.some((s) => s.type === "COUPLE"));
-    }
-  }, [mode]);
-
-  // reset khi mở / đổi room
-  useEffect(() => {
-    if (!open || !room?.id) return;
-
-    (async () => {
-      try {
-        setLoadingRoom(true);
-        const res = await roomService.getRoomById(room.id); // { data: Room }
-        console.log(res);
-        setName(res?.name ?? "");
-        setVipBonus(Number(res?.VIP ?? 0));
-        setCoupleBonus(Number(res?.COUPLE ?? 0));
-        if (res?.seatLayout?.length) {
-          setHasVipSeat(res.seatLayout.some((s) => s.type === "VIP"));
-          setHasCoupleSeat(res.seatLayout.some((s) => s.type === "COUPLE"));
-        }
-      } catch (e) {
-        console.log("Không tải được thông tin phòng");
-      } finally {
-        setLoadingRoom(false);
-      }
-    })();
-  }, [open, room?.id]);
-
-  const handleSave = async () => {
-    if (!name.trim()) return;
-    setSaving(true);
-    try {
-      const payloadBase = {
-        cinemaId,
-        name: name.trim(),
-        vipPrice: Number(vipBonus || 1),
-        couplePrice: Number(coupleBonus || 1),
-      };
-
-      console.log("edit create payload: ", payloadBase);
-
+    if (open) {
       if (mode === "create") {
-        const payloadCreate: RoomCreate = {
-          ...payloadBase,
-          seatLayout: makeBaseLayout5x5(), // A..E x 1..5, type: EMPTY
-        };
-        await roomService.createRoom(payloadCreate);
-      } else if (room?.id) {
-        const payloadUpdate: RoomUpdate = {
-          ...payloadBase,
-          seatLayout: room.seatLayout, // A..E x 1..5, type: EMPTY
-        };
-        await roomService.updateRoom(room.id, payloadUpdate); // không đụng layout khi edit metadata
-      }
+        setName("");
+        setVipBonus(0);
+        setCoupleBonus(0);
+        // Khi tạo mới, ta giả định layout mặc định có cả 2 loại ghế (hoặc tùy logic bạn)
+        setHasVipSeat(false);
+        setHasCoupleSeat(false);
+      } else if (room) {
+        console.log("room modal: ", room);
 
-      onSuccess?.();
-    } catch (e) {
-      // bạn có thể thay bằng toast
-      alert("Lưu phòng thất bại");
-      console.error(e);
-    } finally {
-      setSaving(false);
+        setName(room.name);
+        setVipBonus(Number(room.VIP ?? 0));
+        setCoupleBonus(Number(room.COUPLE ?? 0));
+
+        // Kiểm tra layout có sẵn trong room để enable/disable input
+        if (room.seatLayout && room.seatLayout.length > 0) {
+          setHasVipSeat(room.seatLayout.some((s) => s.type === "VIP"));
+          setHasCoupleSeat(room.seatLayout.some((s) => s.type === "COUPLE"));
+        } else {
+          // Fallback nếu chưa load được layout
+          setHasVipSeat(true);
+          setHasCoupleSeat(true);
+        }
+      }
     }
+  }, [open, mode, room]);
+
+  const handleSave = () => {
+    if (!name.trim()) return;
+
+    const formData: RoomFormData = {
+      name: name.trim(),
+      vipPrice: Number(vipBonus || 1),
+      couplePrice: Number(coupleBonus || 1),
+    };
+
+    onSubmit(formData);
   };
 
   return (
-    <>
-      <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-        <DialogContent className="sm:max-w-[520px]">
-          <DialogHeader>
-            <DialogTitle>
-              {mode === "create" ? "Thêm phòng" : "Chỉnh sửa phòng"}
-            </DialogTitle>
-          </DialogHeader>
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
+      <DialogContent className="sm:max-w-[520px] z-50">
+        <DialogHeader>
+          <DialogTitle>
+            {mode === "create" ? "Thêm phòng mới" : `Chỉnh sửa: ${room?.name}`}
+          </DialogTitle>
+        </DialogHeader>
 
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Tên phòng</Label>
-              <Input
-                autoFocus
-                placeholder="Ví dụ: Phòng 1"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Giá bonus ghế VIP (VND)</Label>
-                <Input
-                  type="number"
-                  inputMode="numeric"
-                  step="1000"
-                  placeholder="0"
-                  disabled={!hasVipSeat}
-                  className={!hasVipSeat ? "opacity-50 cursor-not-allowed" : ""}
-                  value={vipBonus}
-                  onChange={(e) =>
-                    setVipBonus(
-                      e.target.value === "" ? "" : Number(e.target.value)
-                    )
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Giá bonus ghế đôi (VND)</Label>
-                <Input
-                  type="number"
-                  inputMode="numeric"
-                  step="1000"
-                  disabled={!hasCoupleSeat}
-                  className={
-                    !hasCoupleSeat ? "opacity-50 cursor-not-allowed" : ""
-                  }
-                  placeholder="0"
-                  value={coupleBonus}
-                  onChange={(e) =>
-                    setCoupleBonus(
-                      e.target.value === "" ? "" : Number(e.target.value)
-                    )
-                  }
-                />
-              </div>
-            </div>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label>Tên phòng</Label>
+            <Input
+              autoFocus
+              placeholder="Ví dụ: Phòng 01"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
           </div>
 
-          <DialogFooter className="gap-2">
-            <Button variant="ghost" onClick={onClose} disabled={saving}>
-              Hủy
-            </Button>
-            <Button
-              onClick={handleSave}
-              disabled={saving || !name.trim() || loading}
-            >
-              {saving
-                ? "Đang lưu..."
-                : mode === "create"
-                ? "Thêm phòng"
-                : "Lưu thay đổi"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Phụ thu ghế VIP (VNĐ)</Label>
+              <Input
+                type="number"
+                step="1000"
+                placeholder="0"
+                value={vipBonus}
+                disabled={!hasVipSeat}
+                className={!hasVipSeat ? "opacity-50 cursor-not-allowed" : ""}
+                onChange={(e) =>
+                  setVipBonus(
+                    e.target.value === "" ? "" : Number(e.target.value)
+                  )
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Phụ thu ghế Đôi (VNĐ)</Label>
+              <Input
+                type="number"
+                step="1000"
+                placeholder="0"
+                value={coupleBonus}
+                disabled={!hasCoupleSeat}
+                className={
+                  !hasCoupleSeat ? "opacity-50 cursor-not-allowed" : ""
+                }
+                onChange={(e) =>
+                  setCoupleBonus(
+                    e.target.value === "" ? "" : Number(e.target.value)
+                  )
+                }
+              />
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
+            Hủy
+          </Button>
+          <Button onClick={handleSave} disabled={isSubmitting || !name.trim()}>
+            {isSubmitting ? "Đang lưu..." : "Lưu"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

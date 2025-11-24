@@ -14,8 +14,10 @@ import Image from "next/image";
 
 export default function AccountDropdown({
   onOpenProfile,
+  isSidebarOpen,
 }: {
   onOpenProfile: () => void;
+  isSidebarOpen: boolean;
 }) {
   const { user, logout } = useAuth();
 
@@ -29,10 +31,12 @@ export default function AccountDropdown({
           height={80}
           className="w-10 h-10 rounded-full object-cover"
         />
-        <div className="flex flex-col text-left">
-          <span className="font-semibold">{user?.fullname}</span>
-          <span className="text-sm text-gray-500">{user?.email}</span>
-        </div>
+        {isSidebarOpen && (
+          <div className="flex flex-col text-left">
+            <span className="font-semibold">{user?.fullname}</span>
+            <span className="text-sm text-gray-500">{user?.email}</span>
+          </div>
+        )}
       </DropdownMenuTrigger>
 
       <DropdownMenuContent

@@ -35,6 +35,32 @@ interface ShowtimeListProps {
   ) => void;
 }
 
+const formatToVNTime = (isoString: string) => {
+  if (!isoString) return "--:--";
+  try {
+    // 1. Nếu chuỗi chưa có múi giờ (không có Z hoặc +), ta ép nó thành UTC bằng cách thêm Z
+    let safeIso = isoString;
+    if (!safeIso.endsWith("Z") && !safeIso.includes("+")) {
+      safeIso += "Z";
+    }
+
+    const date = new Date(safeIso);
+
+    // 2. Kiểm tra nếu ngày không hợp lệ
+    if (isNaN(date.getTime())) return "--:--";
+
+    // 3. Format sang múi giờ HCM
+    return new Intl.DateTimeFormat("vi-VN", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+      timeZone: "Asia/Ho_Chi_Minh",
+    }).format(date);
+  } catch (e) {
+    return "--:--";
+  }
+};
+
 export default function ShowtimeList({
   groupedData,
   loading,
@@ -71,6 +97,8 @@ export default function ShowtimeList({
                   {times.map((st) => {
                     const isActive =
                       String(selectedShowtimeId) === String(st.id);
+                    console.log(st.startTime);
+
                     return (
                       <Button
                         key={st.id}
@@ -93,7 +121,7 @@ export default function ShowtimeList({
                           )
                         }
                       >
-                        {formatTime(st.startTime)}
+                        {formatToVNTime(st.startTime)}
                       </Button>
                     );
                   })}
