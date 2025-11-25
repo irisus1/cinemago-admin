@@ -68,6 +68,17 @@ class UserService {
     }
   }
 
+  async getUserById(id: string): Promise<User> {
+    try {
+      const { data } = await api.get<{ data: User }>(`/users/${id}`);
+      return data.data;
+    } catch (e: unknown) {
+      const msg = getMsg(e, "Không thể lấy danh sách người dùng.");
+      console.error("Get users error:", e);
+      throw new Error(msg);
+    }
+  }
+
   // Tạo người dùng (trả về user vừa tạo)
   async createUser(payload: CreateUserRequest): Promise<User> {
     try {

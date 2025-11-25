@@ -14,6 +14,8 @@ import {
 } from "@/services";
 import { type TicketType, calculateSeatCounts } from "./seat-helper";
 import { type GroupedByRoom } from "./showtimelist";
+import { toast } from "sonner";
+import { is } from "date-fns/locale";
 
 export interface SelectedShowtimeInfo {
   id: string;
@@ -62,6 +64,7 @@ export const useBookingLogic = ({
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPaymentStarted, setIsPaymentStarted] = useState(false);
   const [groupedData, setGroupedData] = useState<GroupedByRoom[]>([]);
   const [selectedShowtime, setSelectedShowtime] =
     useState<SelectedShowtimeInfo | null>(null);
@@ -340,13 +343,23 @@ export const useBookingLogic = ({
 
       // 4. Redirect user đến trang thanh toán
       if (paymentRes) {
-        window.location.href = paymentRes;
+        try {
+          window.localStorage.setItem("cinemago_lastBookingId", bookingId);
+        } catch (e) {
+          console.error("Cannot save bookingId to localStorage", e);
+        }
+        // window.location.href = paymentRes;
+        window.open(paymentRes, "_blank", "noopener,noreferrer");
+
+        setIsSubmitting(false);
+        setIsPaymentStarted(true);
       } else {
-        alert("Không nhận được link thanh toán!");
+        toast.error("Không nhận được link thanh toán!");
+        setIsSubmitting(false);
       }
     } catch (error) {
       console.error("Payment Process Error:", error);
-      alert("Có lỗi xảy ra trong quá trình xử lý thanh toán.");
+      toast.error("Có lỗi xảy ra trong quá trình xử lý thanh toán.");
       setIsSubmitting(false); // Chỉ tắt loading nếu lỗi, nếu thành công thì trang đã redirect
     }
   };
@@ -430,6 +443,7 @@ export const useBookingLogic = ({
     foodQuantities,
     isPaymentModalOpen,
     isSubmitting,
+    isPaymentStarted,
 
     heldSeats,
     handleToggleSeat,

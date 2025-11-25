@@ -61,6 +61,7 @@ export default function BookingSheet({
     isPaymentModalOpen,
     setIsPaymentModalOpen,
     isSubmitting,
+    isPaymentStarted,
 
     setSelectedShowtime,
     setSelectedSeats,
@@ -203,6 +204,7 @@ export default function BookingSheet({
               totalPrice={totalPrice}
               onConfirm={handleProcessPayment}
               isProcessing={isSubmitting}
+              isPaymentStarted={isPaymentStarted}
             />
           </>
         )}

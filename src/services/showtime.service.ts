@@ -65,7 +65,7 @@ class ShowTimeService {
   ): Promise<ServerPaginated<ShowTime>> {
     try {
       const { data } = await api.get<ServerPaginated<ShowTime>>(
-        "/ShowTimes/public",
+        "/showtimes/public",
         {
           params: {
             ...params,
@@ -77,7 +77,7 @@ class ShowTimeService {
       return data;
     } catch (e: unknown) {
       const msg = getMsg(e, "Không thể lấy danh sách suất chiếu.");
-      console.error("Get ShowTimes error:", e);
+      console.error("Get showtimes error:", e);
       throw new Error(msg);
     }
   }
@@ -89,13 +89,13 @@ class ShowTimeService {
   ): Promise<ServerPaginated<ShowTime>> {
     try {
       const { data } = await api.get<ServerPaginated<ShowTime>>(
-        `/ShowTimes/by-movie/${movieId}`,
+        `/showtimes/by-movie/${movieId}`,
         { params }
       );
       return data;
     } catch (e: unknown) {
       const msg = getMsg(e, "Không thể lấy suất chiếu theo phim.");
-      console.error("Get ShowTimes by movie error:", e);
+      console.error("Get showtimes by movie error:", e);
       throw new Error(msg);
     }
   }
@@ -103,11 +103,13 @@ class ShowTimeService {
   // GET /ShowTimes/:id -> { data }
   async getShowTimeById(id: string): Promise<ShowTime> {
     try {
-      const { data } = await api.get<{ data: ShowTime }>(`/ShowTimes/${id}`);
+      const { data } = await api.get<{ data: ShowTime }>(
+        `/showtimes/public/${id}`
+      );
       return data.data;
     } catch (e: unknown) {
       const msg = getMsg(e, "Không thể lấy thông tin suất chiếu.");
-      console.error("Get ShowTime detail error:", e);
+      console.error("Get showtimes detail error:", e);
       throw new Error(msg);
     }
   }
@@ -129,11 +131,11 @@ class ShowTimeService {
         startTime: toIso(payload.startTime)!,
         endTime: toIso(payload.endTime)!,
       };
-      const { data } = await api.post<{ data: ShowTime }>("/ShowTimes", body);
+      const { data } = await api.post<{ data: ShowTime }>("/showtimes", body);
       return data.data;
     } catch (e: unknown) {
       const msg = getMsg(e, "Không thể tạo suất chiếu.");
-      console.error("Create ShowTime error:", e);
+      console.error("Create showtimes error:", e);
       throw new Error(msg);
     }
   }
@@ -160,13 +162,13 @@ class ShowTimeService {
         endTime: toIso(payload.endTime),
       };
       const { data } = await api.put<{ data: ShowTime }>(
-        `/ShowTimes/${id}`,
+        `/showtimes/${id}`,
         body
       );
       return data.data;
     } catch (e: unknown) {
       const msg = getMsg(e, "Không thể cập nhật suất chiếu.");
-      console.error("Update ShowTime error:", e);
+      console.error("Update showtimes error:", e);
       throw new Error(msg);
     }
   }
@@ -174,11 +176,11 @@ class ShowTimeService {
   // PUT /ShowTimes/archive/:id -> string
   async deleteShowTime(id: string): Promise<string> {
     try {
-      const { data } = await api.put<string>(`/ShowTimes/archive/${id}`);
+      const { data } = await api.put<string>(`/showtimes/archive/${id}`);
       return data;
     } catch (e: unknown) {
       const msg = getMsg(e, "Không thể xóa (archive) suất chiếu.");
-      console.error("Archive ShowTime error:", e);
+      console.error("Archive showtimes error:", e);
       throw new Error(msg);
     }
   }
@@ -186,11 +188,11 @@ class ShowTimeService {
   // PUT /ShowTimes/restore/:id -> string
   async restoreShowTime(id: string): Promise<string> {
     try {
-      const { data } = await api.put<string>(`/ShowTimes/restore/${id}`);
+      const { data } = await api.put<string>(`/showtimes/restore/${id}`);
       return data;
     } catch (e: unknown) {
       const msg = getMsg(e, "Không thể khôi phục suất chiếu.");
-      console.error("Restore ShowTime error:", e);
+      console.error("Restore showtimes error:", e);
       throw new Error(msg);
     }
   }
@@ -203,7 +205,7 @@ class ShowTimeService {
   }): Promise<string[]> {
     try {
       const { data } = await api.get<{ data: string[] }>(
-        "/ShowTimes/busy-rooms",
+        "/showtimes/busy-rooms",
         {
           params: {
             ...params,

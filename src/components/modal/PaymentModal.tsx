@@ -17,6 +17,7 @@ interface PaymentMethodModalProps {
   totalPrice: number;
   onConfirm: (method: "MOMO" | "VNPAY" | "ZALOPAY") => void;
   isProcessing: boolean;
+  isPaymentStarted: boolean;
 }
 
 export default function PaymentMethodModal({
@@ -25,6 +26,7 @@ export default function PaymentMethodModal({
   totalPrice,
   onConfirm,
   isProcessing,
+  isPaymentStarted,
 }: PaymentMethodModalProps) {
   const methods = [
     {
@@ -92,6 +94,12 @@ export default function PaymentMethodModal({
           <div className="text-center text-sm text-gray-500 pb-2">
             Đang khởi tạo giao dịch, vui lòng chờ...
           </div>
+        )}
+        {!isProcessing && isPaymentStarted && (
+          <p className="mt-2 text-xs text-gray-500">
+            Cổng thanh toán đã được mở trong một tab mới. Vui lòng chuyển sang
+            tab đó để hoàn tất thanh toán.
+          </p>
         )}
       </DialogContent>
     </Dialog>

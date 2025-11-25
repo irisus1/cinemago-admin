@@ -1,11 +1,10 @@
 import { FiFilm, FiChrome, FiUser } from "react-icons/fi";
 import { MdStars } from "react-icons/md";
 import { TbTheater } from "react-icons/tb";
-import { FaUserShield } from "react-icons/fa";
 import { LucideTicket } from "lucide-react";
 import { RxDashboard } from "react-icons/rx";
 import { BiFoodMenu } from "react-icons/bi";
-
+import { MdOutlineBookmarks } from "react-icons/md";
 export const adminTabs = [
   {
     name: "Trang chủ",
@@ -16,6 +15,11 @@ export const adminTabs = [
     name: "Đặt vé trực tiếp",
     path: "/admin/ticket",
     icon: <LucideTicket className="w-6 h-6" />,
+  },
+  {
+    name: "Quản lý đơn vé",
+    path: "/admin/bookings",
+    icon: <MdOutlineBookmarks className="w-6 h-6" />,
   },
   {
     name: "Quản lý phim",
