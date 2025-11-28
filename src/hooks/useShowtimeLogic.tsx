@@ -12,25 +12,46 @@ import {
   cinemaService,
   roomService,
   showTimeService,
+  movieService,
   type ShowTime,
+  Movie,
+  Cinema,
+  ShowTimeQuery,
 } from "@/services";
-// Giả sử file helper nằm cùng cấp hoặc ở thư mục utils, bạn hãy điều chỉnh import này
-import { fetchNamesFromPaginated, PageResp, HasIdName } from "./helper";
-import { log } from "console";
+import {
+  fetchNamesFromPaginated,
+  fetchAllPaginatedCached,
+  PageResp,
+  HasIdName,
+} from "./helper";
 
-export function useShowtimeLogic(movieId: string) {
-  // --- State ---
+type MovieOpt = { id: string; title: string };
+type CinemaOpt = { id: string; name: string };
+
+export function useShowtimeLogic() {
   const [showtimes, setShowtimes] = useState<ShowTime[]>([]);
   const [loadingShow, setLoadingShow] = useState(false);
+
+  const [movieOptions, setMovieOptions] = useState<MovieOpt[]>([]);
+  const [cinemaOptions, setCinemaOptions] = useState<CinemaOpt[]>([]);
+
+  const [initialMovieId, setInitialMovieId] = useState<string | null>(null);
+  const [movieId, setMovieId] = useState<string>("");
+  const [cinemaId, setCinemaId] = useState<string>("__ALL__");
+  const [isActive, setIsActive] = useState<"all" | "active" | "inactive">(
+    "all"
+  );
+  const [startTime, setStartTime] = useState<string>("");
+  const [endTime, setEndTime] = useState<string>("");
+
   const [filterLang, setFilterLang] = useState<string | undefined>(undefined);
+
   const [reloadTick, setReloadTick] = useState(0);
 
-  // Pagination
   const [page, setPage] = useState(1);
-  const pageSize = 6;
+  const pageSize = 10;
   const [totalItems, setTotalItems] = useState(0);
 
-  // Modals & Dialogs
   const [open, setOpen] = useState(false);
   const [editShowtime, setEditShowtme] = useState<ShowTime | null>(null);
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
@@ -38,13 +59,10 @@ export function useShowtimeLogic(movieId: string) {
   const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
   const [dialogTitle, setDialogTitle] = useState("");
   const [dialogMessage, setDialogMessage] = useState<ReactNode>("");
-  const [onConfirm, setOnConfirm] = useState<() => void>(() => () => {});
+  const [onConfirm, setOnConfirm] = useState<() => void>(() => {});
 
-  // Cache tên rạp/phòng để không phải fetch lại nhiều lần
   const cinemaCache = useRef(new Map<string, string>());
   const roomCache = useRef(new Map<string, string>());
-
-  // --- Helpers ---
 
   const patchShowtime = useCallback((id: string, patch: Partial<ShowTime>) => {
     setShowtimes((prev) =>
@@ -52,7 +70,6 @@ export function useShowtimeLogic(movieId: string) {
     );
   }, []);
 
-  // Hàm fetch danh sách rạp cho helper (để mapping ID -> Name)
   const getCinemasPage = useCallback(
     async (p: number, limit: number): Promise<PageResp<HasIdName>> => {
       const res = await cinemaService.getAllCinemas({ page: p, limit });
@@ -64,7 +81,6 @@ export function useShowtimeLogic(movieId: string) {
     []
   );
 
-  // Hàm fetch danh sách phòng cho helper
   const getRoomsPage = useCallback(
     async (p: number, limit: number): Promise<PageResp<HasIdName>> => {
       const res = await roomService.getRooms({ page: p, limit });
@@ -76,26 +92,82 @@ export function useShowtimeLogic(movieId: string) {
     []
   );
 
-  // --- Main Data Fetching ---
   useEffect(() => {
+    (async () => {
+      try {
+        const [movies, cinemas] = await Promise.all([
+          fetchAllPaginatedCached<Movie>("all-movies", (page, limit) =>
+            movieService.getAllMovies({ page, limit }).then((res) => ({
+              data: res.data ?? [],
+              pagination: res.pagination,
+            }))
+          ),
+          fetchAllPaginatedCached<Cinema>("all-cinemas", (page, limit) =>
+            cinemaService.getAllCinemas({ page, limit }).then((res) => ({
+              data: res.data ?? [],
+              pagination: res.pagination,
+            }))
+          ),
+        ]);
+
+        const mOpts: MovieOpt[] = movies.map((m: Movie) => ({
+          id: String(m.id),
+          title: m.title,
+        }));
+        const cOpts: CinemaOpt[] = cinemas.map((c: Cinema) => ({
+          id: String(c.id),
+          name: c.name,
+        }));
+
+        setMovieOptions(mOpts);
+        setCinemaOptions(cOpts);
+
+        if (mOpts.length > 0) {
+          setInitialMovieId(mOpts[0].id);
+          if (!movieId) {
+            setMovieId(mOpts[0].id);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load movie/cinema options", err);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // === FETCH SHOWTIME THEO FILTER + PAGINATION ===
+  useEffect(() => {
+    if (!movieId) {
+      setShowtimes([]);
+      setTotalItems(0);
+      return;
+    }
+
     let cancelled = false;
     (async () => {
       try {
         setLoadingShow(true);
 
-        // 1. Gọi API lấy suất chiếu
-        const res = await showTimeService.getShowTimes({
-          movieId: movieId,
+        const params: ShowTimeQuery = {
+          movieId,
           page,
           limit: pageSize,
-        });
+        };
+        if (cinemaId && cinemaId !== "__ALL__") {
+          params.cinemaId = cinemaId;
+        }
+        if (isActive === "active") params.isActive = true;
+        else if (isActive === "inactive") params.isActive = false;
+        if (startTime) params.startTime = startTime;
+        if (endTime) params.endTime = endTime;
 
-        console.log(res.data);
+        const res = await showTimeService.getShowTimes(params);
 
-        const { data, pagination } = res;
-        const safeData = data ?? [];
+        const data = res.data ?? [];
+        const pagination = res.pagination;
 
-        // 2. Tính toán Total Items
+        const safeData: ShowTime[] = data ?? [];
+
         const totalFromServer = (pagination?.totalItems ?? 0) as number;
         const limitFromServer = (pagination?.pageSize ?? pageSize) || pageSize;
         const totalFallback =
@@ -105,8 +177,6 @@ export function useShowtimeLogic(movieId: string) {
 
         if (!cancelled) setTotalItems(totalFallback);
 
-        // 3. Enrich Data (Lấy tên Rạp & Phòng từ ID)
-        // Tìm những ID chưa có trong cache
         const needCinemaIds = new Set<string>();
         const needRoomIds = new Set<string>();
 
@@ -119,17 +189,14 @@ export function useShowtimeLogic(movieId: string) {
           }
         });
 
-        // Fetch tên bổ sung (nếu cần)
         const [cinemaMapNew, roomMapNew] = await Promise.all([
-          fetchNamesFromPaginated(needCinemaIds, getCinemasPage, 200),
-          fetchNamesFromPaginated(needRoomIds, getRoomsPage, 200),
+          fetchNamesFromPaginated(needCinemaIds, getCinemasPage),
+          fetchNamesFromPaginated(needRoomIds, getRoomsPage),
         ]);
 
-        // Cập nhật cache
         cinemaMapNew.forEach((v, k) => cinemaCache.current.set(k, v));
         roomMapNew.forEach((v, k) => roomCache.current.set(k, v));
 
-        // Gán tên vào data
         const enriched = safeData.map((s) => ({
           ...s,
           cinemaName: cinemaCache.current.get(String(s.cinemaId)) || "Unknown",
@@ -147,9 +214,18 @@ export function useShowtimeLogic(movieId: string) {
     return () => {
       cancelled = true;
     };
-  }, [movieId, page, pageSize, getCinemasPage, getRoomsPage, reloadTick]);
+  }, [
+    movieId,
+    cinemaId,
+    isActive,
+    startTime,
+    endTime,
+    page,
+    getCinemasPage,
+    getRoomsPage,
+    reloadTick,
+  ]);
 
-  // --- Filtering Logic ---
   const langOptions = useMemo(() => {
     const set = new Set(
       showtimes.map((s) => (s.language && s.language.trim()) || "Unknown")
@@ -170,12 +246,10 @@ export function useShowtimeLogic(movieId: string) {
     );
   }, [showtimes, filterLang]);
 
-  // Reset page khi filter đổi
   useEffect(() => {
     setPage(1);
-  }, [filterLang, movieId]);
+  }, [movieId, cinemaId, isActive, startTime, endTime, filterLang]);
 
-  // --- Handlers ---
   const handleRefresh = () => setReloadTick((x) => x + 1);
 
   const handleAddOpen = () => {
@@ -221,7 +295,8 @@ export function useShowtimeLogic(movieId: string) {
             console.log(err);
             setDialogTitle("Thất bại");
             setDialogMessage(
-              "Thao tác thất bại: " + (err instanceof Error ? err.message : err)
+              "Thao tác thất bại: " +
+                (err instanceof Error ? err.message : String(err))
             );
             setIsErrorDialogOpen(true);
           }
@@ -249,7 +324,8 @@ export function useShowtimeLogic(movieId: string) {
             console.log(err);
             setDialogTitle("Thất bại");
             setDialogMessage(
-              "Thao tác thất bại: " + (err instanceof Error ? err.message : err)
+              "Thao tác thất bại: " +
+                (err instanceof Error ? err.message : String(err))
             );
             setIsErrorDialogOpen(true);
           }
@@ -259,29 +335,100 @@ export function useShowtimeLogic(movieId: string) {
     [patchShowtime]
   );
 
+  const clearFilters = () => {
+    const firstMovieId =
+      initialMovieId || (movieOptions.length > 0 ? movieOptions[0].id : "");
+
+    if (firstMovieId) {
+      setMovieId(firstMovieId);
+    }
+
+    setCinemaId("__ALL__");
+    setIsActive("all");
+    setStartTime("");
+    setEndTime("");
+    setFilterLang(undefined);
+    setPage(1);
+  };
+
+  const canClearFilters = useMemo(() => {
+    const firstMovieId =
+      initialMovieId || (movieOptions.length > 0 ? movieOptions[0].id : "");
+
+    const isDefaultMovie = !firstMovieId || movieId === firstMovieId;
+    const isDefaultCinema = cinemaId === "__ALL__";
+    const isDefaultStatus = isActive === "all";
+    const isDefaultStart = !startTime;
+    const isDefaultEnd = !endTime;
+    const isDefaultLang = !filterLang;
+
+    return !(
+      isDefaultMovie &&
+      isDefaultCinema &&
+      isDefaultStatus &&
+      isDefaultStart &&
+      isDefaultEnd &&
+      isDefaultLang
+    );
+  }, [
+    initialMovieId,
+    movieOptions,
+    movieId,
+    cinemaId,
+    isActive,
+    startTime,
+    endTime,
+    filterLang,
+  ]);
+
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+
+  // === RETURN ===
   return {
-    // Data
+    // data
     showtimes,
     filteredShowtimes,
     loadingShow,
-    langOptions,
-    filterLang,
-    setFilterLang,
 
-    // Pagination
+    // pagination
     page,
     setPage,
     pageSize,
     totalItems,
+    totalPages,
 
-    // Actions
+    // movie / cinema dropdown
+    movieOptions,
+    cinemaOptions,
+    movieId,
+    setMovieId,
+    cinemaId,
+    setCinemaId,
+
+    // filters
+    isActive,
+    setIsActive,
+    startTime,
+    setStartTime,
+    endTime,
+    setEndTime,
+    langOptions,
+    filterLang,
+    setFilterLang,
+
+    // actions
     handleRefresh,
     handleAddOpen,
     handleEditOpen,
     handleDelete,
     handleRestore,
 
-    // Modal States
+    // filter
+    initialMovieId,
+    canClearFilters,
+    clearFilters,
+
+    // modal states
     open,
     setOpen,
     editShowtime,

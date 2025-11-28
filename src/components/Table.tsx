@@ -17,17 +17,16 @@ export type Column<T> = {
   key?: keyof T | string;
   render?: (value: unknown, row: T) => React.ReactNode;
   getValue?: (row: T) => unknown;
-  className?: string; // optional: canh lề từng cột
+  className?: string;
 };
 
 export type TableProps<T> = {
   columns: ReadonlyArray<Column<T>>;
   data: ReadonlyArray<T>;
   getRowKey?: (row: T, index: number) => React.Key;
-  /** style options */
-  striped?: boolean; // zebra rows
-  hoverable?: boolean; // hover row
-  dense?: boolean; // bảng “compact”
+  striped?: boolean;
+  hoverable?: boolean;
+  dense?: boolean;
 };
 
 export default function TableGeneric<T extends object>({

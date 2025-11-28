@@ -4,7 +4,6 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import MovieForm from "@/components/modal/MovieForm";
 
-import ShowtimesCard from "./ShowTimeCard";
 import { movieService, type Movie } from "@/services";
 
 export default function MovieDetailPage() {
@@ -37,9 +36,6 @@ export default function MovieDetailPage() {
         )}
         {movie && <MovieForm mode="view" readOnly film={movie} />}
       </div>
-
-      {/* Suất chiếu (đã tách thành component riêng) */}
-      <ShowtimesCard movieId={id} />
     </div>
   );
 }

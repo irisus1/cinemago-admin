@@ -49,7 +49,7 @@ export default function MovieForm({
   const [trailerUrl, setTrailerUrl] = useState<string>("");
   const [thumbUrl, setThumbUrl] = useState<string | undefined>(undefined);
   const [thumbFile, setThumbFile] = useState<File | null>(null);
-  const [status, setStatus] = useState<"COMING_SOON" | "SHOWING" | "ENDED">(
+  const [status, setStatus] = useState<"COMING_SOON" | "NOW_SHOWING" | "ENDED">(
     "COMING_SOON"
   );
   const [openStatusBox, setOpenStatusBox] = useState(false);
@@ -90,7 +90,7 @@ export default function MovieForm({
     setTrailerUrl(film.trailerUrl ?? "");
     setThumbUrl(film.thumbnail ?? undefined);
     setStatus(
-      (film.status as "COMING_SOON" | "SHOWING" | "ENDED") ?? "COMING_SOON"
+      (film.status as "COMING_SOON" | "NOW_SHOWING" | "ENDED") ?? "COMING_SOON"
     );
   }, [film]);
 
@@ -394,7 +394,7 @@ export default function MovieForm({
                     >
                       {status === "COMING_SOON"
                         ? "Sắp chiếu"
-                        : status === "SHOWING"
+                        : status === "NOW_SHOWING"
                         ? "Đang chiếu"
                         : "Đã kết thúc"}
                       <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
@@ -426,14 +426,14 @@ export default function MovieForm({
 
                           <CommandItem
                             onSelect={() => {
-                              setStatus("SHOWING");
+                              setStatus("NOW_SHOWING");
                               setOpenStatusBox(false);
                             }}
                           >
                             <Check
                               className={cn(
                                 "mr-2 h-4 w-4",
-                                status === "SHOWING"
+                                status === "NOW_SHOWING"
                                   ? "opacity-100"
                                   : "opacity-0"
                               )}

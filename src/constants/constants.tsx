@@ -1,3 +1,4 @@
+// adminTabs.tsx
 import { FiFilm, FiChrome, FiUser } from "react-icons/fi";
 import { MdStars } from "react-icons/md";
 import { TbTheater } from "react-icons/tb";
@@ -5,7 +6,30 @@ import { LucideTicket } from "lucide-react";
 import { RxDashboard } from "react-icons/rx";
 import { BiFoodMenu } from "react-icons/bi";
 import { MdOutlineBookmarks } from "react-icons/md";
-export const adminTabs = [
+import { MdOutlineSchedule } from "react-icons/md";
+import { LuScreenShare } from "react-icons/lu";
+import { GiFilmSpool } from "react-icons/gi";
+import { GiTheaterCurtains } from "react-icons/gi";
+
+export type SidebarTab =
+  | {
+      type?: "item"; // mặc định
+      name: string;
+      path: string;
+      icon: React.ReactNode;
+    }
+  | {
+      type: "group";
+      name: string;
+      icon: React.ReactNode;
+      children: {
+        name: string;
+        path: string;
+        icon: React.ReactNode;
+      }[];
+    };
+
+export const adminTabs: SidebarTab[] = [
   {
     name: "Trang chủ",
     path: "/admin/dashboard",
@@ -21,20 +45,49 @@ export const adminTabs = [
     path: "/admin/bookings",
     icon: <MdOutlineBookmarks className="w-6 h-6" />,
   },
+
+  // ==== GROUP: Phim & suất chiếu ====
   {
-    name: "Quản lý phim",
-    path: "/admin/movies",
-    icon: <FiFilm className="w-6 h-6" />,
+    type: "group",
+    name: "Phim & suất chiếu",
+    icon: <GiFilmSpool className="w-6 h-6" />,
+    children: [
+      {
+        name: "Quản lý phim",
+        path: "/admin/movies",
+        icon: <FiFilm className="w-5 h-5" />,
+      },
+      {
+        name: "Quản lý suất chiếu",
+        path: "/admin/showtimes",
+        icon: <MdOutlineSchedule className="w-5 h-5" />,
+      },
+    ],
   },
+
+  // ==== GROUP: Rạp & phòng chiếu ====
+  {
+    type: "group",
+    name: "Rạp & phòng chiếu",
+    icon: <GiTheaterCurtains className="w-6 h-6" />,
+    children: [
+      {
+        name: "Quản lý rạp chiếu phim",
+        path: "/admin/cinema",
+        icon: <TbTheater className="w-5 h-5" />,
+      },
+      {
+        name: "Quản lý phòng chiếu",
+        path: "/admin/rooms",
+        icon: <LuScreenShare className="w-5 h-5" />,
+      },
+    ],
+  },
+
   {
     name: "Quản lý thể loại phim",
     path: "/admin/genres",
     icon: <FiChrome className="w-6 h-6" />,
-  },
-  {
-    name: "Quản lý rạp chiếu phim",
-    path: "/admin/cinema",
-    icon: <TbTheater className="w-6 h-6" />,
   },
   {
     name: "Quản lý đồ ăn/uống",
@@ -51,9 +104,4 @@ export const adminTabs = [
     path: "/admin/users",
     icon: <FiUser className="w-6 h-6" />,
   },
-  // {
-  //   name: "Thông tin cá nhân",
-  //   path: "/admin/me",
-  //   icon: <FaUserShield className="w-6 h-6" />,
-  // },
 ];
