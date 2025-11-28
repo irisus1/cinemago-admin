@@ -1,11 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import FilmForm from "@/components/MovieForm";
+import MovieForm from "@/components/modal/MovieForm";
 
 export default function NewMoviePage() {
   const router = useRouter();
   return (
-    <FilmForm mode="create" onSuccess={() => router.push("/admin/movies")} />
+    <MovieForm mode="create" onSuccess={() => router.push("/admin/movies")} />
   );
 }

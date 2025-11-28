@@ -3,7 +3,6 @@ import api from "@/config/api";
 import { jwtDecode } from "jwt-decode";
 import type { User } from "./user.service";
 import { ACCESS_TOKEN_KEY } from "@/constants/auth";
-import { log } from "console";
 
 export interface LoginResponse {
   accessToken: string;
@@ -77,6 +76,24 @@ class AuthService {
     }
   }
 
+  // === CHANGE PASS ===
+  async changePassword(payload: {
+    oldPassword: string;
+    newPassword: string;
+  }): Promise<string> {
+    try {
+      const { data } = await api.post<{ message: string }>(
+        "/auth/change-password",
+        payload
+      );
+      return data.message || "Đổi mật khẩu thành công.";
+    } catch (e: unknown) {
+      const msg = getMsg(e, "Không thể đổi mật khẩu.");
+      console.error("Change password error:", e);
+      throw new Error(msg);
+    }
+  }
+
   // === REFRESH TOKEN ===
   async refreshAccessToken(): Promise<{ accessToken: string }> {
     try {
@@ -88,10 +105,17 @@ class AuthService {
         refreshToken?: string;
       }>("/auth/refresh-token", { refreshToken });
 
+      console.log("Token refreshed proactively: ", data);
+
       if (data.accessToken)
         localStorage.setItem(ACCESS_TOKEN_KEY, data.accessToken);
-      if (data.refreshToken) this.setRefreshCookie(data.refreshToken);
+      if (data.refreshToken) {
+        this.setRefreshCookie(data.refreshToken);
 
+        await new Promise((resolve) => setTimeout(resolve, 300));
+      }
+
+      console.log("cookie sau refresh = ", document.cookie);
       return { accessToken: data.accessToken };
     } catch (e) {
       this.clearLocalAuth();
@@ -127,7 +151,11 @@ class AuthService {
   // === Cookie helpers ===
   setRefreshCookie(token: string) {
     const exp = 7 * 24 * 60 * 60; // 7 ngày
-    document.cookie = `refreshToken=${token}; Max-Age=${exp}; Path=/; SameSite=Strict; Secure`;
+    const isProd = process.env.NODE_ENV === "production";
+
+    document.cookie = `refreshToken=${token}; Path=/; Max-Age=${exp}; SameSite=Lax; ${
+      isProd ? "Secure" : ""
+    }`;
   }
 
   getRefreshCookie(): string | null {
@@ -136,8 +164,7 @@ class AuthService {
   }
 
   deleteRefreshCookie() {
-    document.cookie =
-      "refreshToken=; Max-Age=0; Path=/; SameSite=Strict; Secure";
+    document.cookie = "refreshToken=; Max-Age=0; Path=/; SameSite=Lax;";
   }
 
   // === Token expiration ===

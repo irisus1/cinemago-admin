@@ -82,7 +82,7 @@ export const Modal = ({
         onClick={onClose}
       />
 
-      <div className="relative bg-white rounded-3xl shadow-2xl max-w-md w-full animate-in zoom-in-95 duration-200">
+      <div className="relative z[70] bg-white rounded-3xl shadow-2xl max-w-md w-full animate-in zoom-in-95 duration-200">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 transition-colors"

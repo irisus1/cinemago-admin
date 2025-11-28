@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import FilmForm from "@/components/MovieForm";
+import MovieForm from "@/components/modal/MovieForm";
 import RefreshLoader from "@/components/Loading";
 import { movieService, type Movie } from "@/services";
 
@@ -31,7 +31,7 @@ export default function EditMoviePage() {
   if (loading) return <RefreshLoader isOpen />;
 
   return (
-    <FilmForm
+    <MovieForm
       mode="edit"
       film={film}
       onSuccess={() => router.push("/admin/movies", { scroll: false })}

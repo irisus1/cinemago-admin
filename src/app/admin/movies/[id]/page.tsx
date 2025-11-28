@@ -2,11 +2,9 @@
 
 import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import MovieForm from "@/components/MovieForm";
+import MovieForm from "@/components/modal/MovieForm";
 
-import ShowtimesCard from "./ShowTimeCard";
 import { movieService, type Movie } from "@/services";
-
 
 export default function MovieDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -21,7 +19,6 @@ export default function MovieDetailPage() {
 
         const res = await movieService.getMovieById(id);
         if (!cancelled) setMovie(res);
-
       } finally {
         if (!cancelled) setLoadingMovie(false);
       }
@@ -39,9 +36,6 @@ export default function MovieDetailPage() {
         )}
         {movie && <MovieForm mode="view" readOnly film={movie} />}
       </div>
-
-      {/* Suất chiếu (đã tách thành component riêng) */}
-      <ShowtimesCard movieId={id} />
     </div>
   );
 }

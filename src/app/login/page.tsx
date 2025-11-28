@@ -40,7 +40,6 @@ export default function LoginPage() {
       await login(formData.username, formData.password);
 
       router.replace("/admin/dashboard");
-      // router.push("/admin"); // chuyển trang
     } catch {
       toast.error("Đăng nhập thất bại!");
     } finally {

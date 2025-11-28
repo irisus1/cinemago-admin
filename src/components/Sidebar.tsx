@@ -1,21 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { FiMenu, FiSearch, FiLogOut } from "react-icons/fi";
-import { useAuth } from "@/context/AuthContext";
-import { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
+import { FiMenu, FiChevronDown, FiChevronRight } from "react-icons/fi";
+import { useState } from "react";
 
-interface Tab {
-  name: string;
-  path: string;
-  icon: React.ReactNode;
-}
+import ProfileModal from "./profile/ProfileModal";
+import AccountDropdown from "./profile/AccountDropdown";
+import type { SidebarTab } from "@/constants/constants";
 
 interface SidebarProps {
   isSidebarOpen: boolean;
   setIsSidebarOpen: (open: boolean) => void;
-  tabs: { name: string; path: string; icon: React.ReactNode }[];
+  tabs: SidebarTab[];
 }
 
 export default function Sidebar({
@@ -24,20 +21,14 @@ export default function Sidebar({
   tabs,
 }: SidebarProps) {
   const pathname = usePathname();
-  const router = useRouter();
-  const { logout } = useAuth();
+  const [openProfile, setOpenProfile] = useState(false);
 
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filteredTabs, setFilteredTabs] = useState<Tab[]>(tabs);
+  // lưu trạng thái mở/đóng của từng group
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
-  useEffect(() => {
-    const normalized = searchTerm.normalize("NFC").toLowerCase();
-    setFilteredTabs(
-      tabs.filter((tab) =>
-        tab.name.normalize("NFC").toLowerCase().includes(normalized)
-      )
-    );
-  }, [searchTerm, tabs]);
+  const toggleGroup = (name: string) => {
+    setOpenGroups((prev) => ({ ...prev, [name]: !prev[name] }));
+  };
 
   return (
     <div
@@ -46,11 +37,9 @@ export default function Sidebar({
       } bg-white shadow-lg transition-all duration-300 ease-in-out h-screen flex flex-col`}
     >
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b">
+      <div className="flex items-center justify-between p-3 border-b">
         {isSidebarOpen && (
-          <h1 className="font-bold text-xl text-gray-800">
-            Các màn hình quản lý
-          </h1>
+          <h1 className="font-bold text-xl text-gray-800">CinemaGo</h1>
         )}
         <button
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -60,34 +49,107 @@ export default function Sidebar({
         </button>
       </div>
 
-      {/* Search */}
-      {isSidebarOpen && (
-        <div className="p-4">
-          <div className="relative">
-            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Tìm kiếm chức năng..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Tabs */}
-      <nav className="p-4 flex-1 overflow-y-auto">
+      {/* Nav */}
+      <nav className="p-3 flex-1 overflow-y-auto">
         <ul className="space-y-2">
-          {filteredTabs.map((tab, index) => {
+          {tabs.map((tab, index) => {
+            if (tab.type === "group") {
+              const isChildActive = tab.children.some(
+                (child) => child.path === pathname
+              );
+              const isGroupOpen = openGroups[tab.name] ?? isChildActive;
+
+              return (
+                <li key={index}>
+                  {/* Header group */}
+                  <button
+                    type="button"
+                    onClick={() => toggleGroup(tab.name)}
+                    className={`flex items-center w-full px-3 py-3.5 rounded-xl justify-between text-[15px] ${
+                      isChildActive
+                        ? "text-blue-600 font-semibold bg-blue-50"
+                        : "text-gray-700 hover:bg-gray-100"
+                    } transition-colors duration-200`}
+                  >
+                    <div className="flex items-center">
+                      <span
+                        className={
+                          isChildActive ? "text-blue-600" : "text-gray-700"
+                        }
+                      >
+                        {/* icon group to hơn 1 xíu */}
+                        {tab.icon}
+                      </span>
+                      {isSidebarOpen && (
+                        <span className="ml-3">{tab.name}</span>
+                      )}
+                    </div>
+
+                    {isSidebarOpen && (
+                      <span className="ml-2">
+                        {isGroupOpen ? (
+                          <FiChevronDown className="w-4 h-4" />
+                        ) : (
+                          <FiChevronRight className="w-4 h-4" />
+                        )}
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Children – luôn render nhưng ẩn bằng max-h để có animation */}
+                  <ul
+                    className={`
+            ml-4 space-y-1 overflow-hidden
+            transition-all duration-300 ease-in-out
+            ${
+              isSidebarOpen && isGroupOpen
+                ? "max-h-40 opacity-100 mt-1"
+                : "max-h-0 opacity-0"
+            }
+          `}
+                  >
+                    {tab.children.map((child, childIndex) => {
+                      const isActive = pathname === child.path;
+                      return (
+                        <li key={childIndex}>
+                          <Link
+                            href={child.path}
+                            className={`flex items-center px-3 py-2.5 rounded-lg text-[14px] ${
+                              isActive
+                                ? "text-blue-600 font-semibold bg-blue-50"
+                                : "text-gray-700 hover:bg-gray-100"
+                            } transition-colors duration-200`}
+                          >
+                            <span
+                              className={
+                                isActive ? "text-blue-600" : "text-gray-700"
+                              }
+                            >
+                              {/* icon child cũng hơi to hơn */}
+                              {child.icon}
+                            </span>
+                            <span className="ml-2">{child.name}</span>
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </li>
+              );
+            }
+
+            // --- TAB THƯỜNG ---
             const isActive = pathname === tab.path;
+
             return (
               <li key={index}>
                 <Link
                   href={tab.path}
                   className={`flex items-center p-3 rounded-lg ${
-                    isActive ? "text-blue-500 font-bold" : "text-gray-700"
-                  } hover:bg-gray-100`}
+                    isActive
+                      ? "text-blue-500 font-bold bg-blue-50"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
                 >
                   <span
                     className={isActive ? "text-blue-500" : "text-gray-700"}
@@ -102,19 +164,11 @@ export default function Sidebar({
         </ul>
       </nav>
 
-      {/* Logout */}
-      <div className="border-t p-4">
-        <button
-          onClick={() => {
-            logout();
-            router.push("/login");
-          }}
-          className="flex items-center w-full p-3 rounded-lg text-gray-700 hover:bg-gray-100"
-        >
-          <FiLogOut className="w-6 h-6" />
-          {isSidebarOpen && <span className="ml-3">Đăng xuất</span>}
-        </button>
-      </div>
+      <AccountDropdown
+        isSidebarOpen={isSidebarOpen}
+        onOpenProfile={() => setOpenProfile(true)}
+      />
+      <ProfileModal open={openProfile} onClose={() => setOpenProfile(false)} />
     </div>
   );
 }
