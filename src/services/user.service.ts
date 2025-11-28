@@ -19,6 +19,7 @@ export type UserParams = {
   limit?: number;
   search?: string;
   role?: "ADMIN" | "USER";
+  isActive?: boolean;
 };
 
 type PaginationMeta = {
@@ -32,7 +33,10 @@ type PaginationMeta = {
 
 export type Paginated<T> = { pagination: PaginationMeta; data: T[] };
 
-export type CreateUserRequest = Omit<User, "id" | "createdAt" | "isActive">;
+export type CreateUserRequest = Omit<
+  User,
+  "id" | "createdAt" | "isActive" | "avatarUrl"
+>;
 export type UpdateUserRequest = Partial<Omit<User, "id" | "createdAt">>;
 
 type ApiErrorBody = { message?: string };
@@ -57,6 +61,17 @@ class UserService {
     try {
       const res = await api.get<Paginated<User>>("/users", { params });
       return res.data;
+    } catch (e: unknown) {
+      const msg = getMsg(e, "Không thể lấy danh sách người dùng.");
+      console.error("Get users error:", e);
+      throw new Error(msg);
+    }
+  }
+
+  async getUserById(id: string): Promise<User> {
+    try {
+      const { data } = await api.get<{ data: User }>(`/users/${id}`);
+      return data.data;
     } catch (e: unknown) {
       const msg = getMsg(e, "Không thể lấy danh sách người dùng.");
       console.error("Get users error:", e);

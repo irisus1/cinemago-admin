@@ -1,25 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { FiMenu, FiSearch, FiLogOut } from "react-icons/fi";
-import { useAuth } from "@/context/AuthContext";
-import { useState, useEffect } from "react";
-import Image from "next/image";
-import { UserCircle2 } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { FiMenu, FiChevronDown, FiChevronRight } from "react-icons/fi";
+import { useState } from "react";
+
 import ProfileModal from "./profile/ProfileModal";
 import AccountDropdown from "./profile/AccountDropdown";
-
-interface Tab {
-  name: string;
-  path: string;
-  icon: React.ReactNode;
-}
+import type { SidebarTab } from "@/constants/constants";
 
 interface SidebarProps {
   isSidebarOpen: boolean;
   setIsSidebarOpen: (open: boolean) => void;
-  tabs: { name: string; path: string; icon: React.ReactNode }[];
+  tabs: SidebarTab[];
 }
 
 export default function Sidebar({
@@ -28,23 +21,14 @@ export default function Sidebar({
   tabs,
 }: SidebarProps) {
   const pathname = usePathname();
-  const router = useRouter();
-  const { logout, user } = useAuth();
   const [openProfile, setOpenProfile] = useState(false);
 
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filteredTabs, setFilteredTabs] = useState<Tab[]>(tabs);
-  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  // lưu trạng thái mở/đóng của từng group
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
-  useEffect(() => {
-    const normalized = searchTerm.normalize("NFC").toLowerCase();
-    setFilteredTabs(
-      tabs.filter((tab) =>
-        tab.name.normalize("NFC").toLowerCase().includes(normalized)
-      )
-    );
-  }, [searchTerm, tabs]);
+  const toggleGroup = (name: string) => {
+    setOpenGroups((prev) => ({ ...prev, [name]: !prev[name] }));
+  };
 
   return (
     <div
@@ -65,34 +49,107 @@ export default function Sidebar({
         </button>
       </div>
 
-      {/* Search */}
-      {/* {isSidebarOpen && (
-        <div className="p-4">
-          <div className="relative">
-            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Tìm kiếm chức năng..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-        </div>
-      )} */}
-
-      {/* Tabs */}
+      {/* Nav */}
       <nav className="p-3 flex-1 overflow-y-auto">
         <ul className="space-y-2">
-          {filteredTabs.map((tab, index) => {
+          {tabs.map((tab, index) => {
+            if (tab.type === "group") {
+              const isChildActive = tab.children.some(
+                (child) => child.path === pathname
+              );
+              const isGroupOpen = openGroups[tab.name] ?? isChildActive;
+
+              return (
+                <li key={index}>
+                  {/* Header group */}
+                  <button
+                    type="button"
+                    onClick={() => toggleGroup(tab.name)}
+                    className={`flex items-center w-full px-3 py-3.5 rounded-xl justify-between text-[15px] ${
+                      isChildActive
+                        ? "text-blue-600 font-semibold bg-blue-50"
+                        : "text-gray-700 hover:bg-gray-100"
+                    } transition-colors duration-200`}
+                  >
+                    <div className="flex items-center">
+                      <span
+                        className={
+                          isChildActive ? "text-blue-600" : "text-gray-700"
+                        }
+                      >
+                        {/* icon group to hơn 1 xíu */}
+                        {tab.icon}
+                      </span>
+                      {isSidebarOpen && (
+                        <span className="ml-3">{tab.name}</span>
+                      )}
+                    </div>
+
+                    {isSidebarOpen && (
+                      <span className="ml-2">
+                        {isGroupOpen ? (
+                          <FiChevronDown className="w-4 h-4" />
+                        ) : (
+                          <FiChevronRight className="w-4 h-4" />
+                        )}
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Children – luôn render nhưng ẩn bằng max-h để có animation */}
+                  <ul
+                    className={`
+            ml-4 space-y-1 overflow-hidden
+            transition-all duration-300 ease-in-out
+            ${
+              isSidebarOpen && isGroupOpen
+                ? "max-h-40 opacity-100 mt-1"
+                : "max-h-0 opacity-0"
+            }
+          `}
+                  >
+                    {tab.children.map((child, childIndex) => {
+                      const isActive = pathname === child.path;
+                      return (
+                        <li key={childIndex}>
+                          <Link
+                            href={child.path}
+                            className={`flex items-center px-3 py-2.5 rounded-lg text-[14px] ${
+                              isActive
+                                ? "text-blue-600 font-semibold bg-blue-50"
+                                : "text-gray-700 hover:bg-gray-100"
+                            } transition-colors duration-200`}
+                          >
+                            <span
+                              className={
+                                isActive ? "text-blue-600" : "text-gray-700"
+                              }
+                            >
+                              {/* icon child cũng hơi to hơn */}
+                              {child.icon}
+                            </span>
+                            <span className="ml-2">{child.name}</span>
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </li>
+              );
+            }
+
+            // --- TAB THƯỜNG ---
             const isActive = pathname === tab.path;
+
             return (
               <li key={index}>
                 <Link
                   href={tab.path}
                   className={`flex items-center p-3 rounded-lg ${
-                    isActive ? "text-blue-500 font-bold" : "text-gray-700"
-                  } hover:bg-gray-100`}
+                    isActive
+                      ? "text-blue-500 font-bold bg-blue-50"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
                 >
                   <span
                     className={isActive ? "text-blue-500" : "text-gray-700"}
@@ -107,78 +164,10 @@ export default function Sidebar({
         </ul>
       </nav>
 
-      {/* <div className="border-t p-1">
-        <div
-          className="flex items-center gap-2 p-2 rounded-lg cursor-pointer hover:bg-gray-100"
-          onClick={() => setIsUserMenuOpen(true)}
-        >
-          {user?.avatarUrl ? (
-            <Image
-              src={user.avatarUrl}
-              alt="avatar"
-              width={36}
-              height={36}
-              className="rounded-full object-cover"
-            />
-          ) : (
-            <UserCircle2 className="w-9 h-9 text-gray-500" />
-          )}
-
-          {isSidebarOpen && (
-            <div>
-              <div className="font-semibold text-gray-800">
-                {user?.fullname}
-              </div>
-              <div className="text-xs text-gray-500">{user?.email}</div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {isUserMenuOpen && (
-        <div className="absolute bottom-20 left-4 w-64 bg-white shadow-xl rounded-xl border p-2 z-50">
-          <div className="flex flex-col items-center ">
-            {user?.avatarUrl ? (
-              <Image
-                src={user.avatarUrl}
-                width={70}
-                height={70}
-                className="rounded-full object-cover"
-                alt=""
-              />
-            ) : (
-              <UserCircle2 className="w-14 h-14 text-gray-500" />
-            )}
-
-            <div className="font-semibold">{user?.fullname}</div>
-            <div className="text-gray-500 text-sm">{user?.email}</div>
-          </div>
-
-          <div className="mt-4 space-y-2">
-            <button
-              onClick={() => {
-                setIsUserMenuOpen(false);
-                setIsProfileModalOpen(true);
-              }}
-              className="w-full py-2 rounded-lg bg-gray-100 hover:bg-gray-200"
-            >
-              Thông tin cá nhân
-            </button>
-
-            <button
-              onClick={() => {
-                logout();
-                router.push("/login");
-              }}
-              className="w-full py-2 rounded-lg bg-red-100 text-red-600 hover:bg-red-200"
-            >
-              Đăng xuất
-            </button>
-          </div>
-        </div>
-      )} */}
-      <AccountDropdown onOpenProfile={() => setOpenProfile(true)} />
-
+      <AccountDropdown
+        isSidebarOpen={isSidebarOpen}
+        onOpenProfile={() => setOpenProfile(true)}
+      />
       <ProfileModal open={openProfile} onClose={() => setOpenProfile(false)} />
     </div>
   );

@@ -1,7 +1,6 @@
 import React from "react";
-import MovieCard from "./MovieCard";
 import type { Movie } from "@/services";
-import { useRouter } from "next/navigation";
+import MovieCard from "./MovieCard";
 
 type MovieCardItem = Movie & {
   showtimeMeta?: {
@@ -15,18 +14,13 @@ type MovieCardItem = Movie & {
 
 export default function MovieGrid({
   movies,
-  date,
+  onMovieSelect,
 }: {
   movies: MovieCardItem[];
   date?: string;
+  cinemaId: string;
+  onMovieSelect: (movie: MovieCardItem) => void;
 }) {
-  const router = useRouter();
-
-  const goToTicket = (id?: string | number) => {
-    if (id === undefined || id === null) return;
-    router.push(`/admin/ticket/${id}`);
-  };
-
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 justify-items-center">
       {movies.map((m) => (
@@ -35,7 +29,6 @@ export default function MovieGrid({
           filmId={m.id}
           imageUrl={m.thumbnail}
           name={m.title}
-          // truyền mảng tên trực tiếp
           type={(m.genres || []).map((g) => g.name)}
           duration={m.duration}
           isShowing={true}
@@ -43,7 +36,7 @@ export default function MovieGrid({
           twoDthreeD={m.showtimeMeta?.formats}
           languages={m.showtimeMeta?.languages}
           subtitle={m.showtimeMeta?.hasSubtitle}
-          onSelect={goToTicket}
+          onSelect={() => onMovieSelect(m)}
         />
       ))}
     </div>

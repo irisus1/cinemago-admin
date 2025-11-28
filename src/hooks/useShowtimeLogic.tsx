@@ -1,0 +1,446 @@
+"use client";
+
+import {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+  ReactNode,
+} from "react";
+import {
+  cinemaService,
+  roomService,
+  showTimeService,
+  movieService,
+  type ShowTime,
+  Movie,
+  Cinema,
+  ShowTimeQuery,
+} from "@/services";
+import {
+  fetchNamesFromPaginated,
+  fetchAllPaginatedCached,
+  PageResp,
+  HasIdName,
+} from "./helper";
+
+type MovieOpt = { id: string; title: string };
+type CinemaOpt = { id: string; name: string };
+
+export function useShowtimeLogic() {
+  const [showtimes, setShowtimes] = useState<ShowTime[]>([]);
+  const [loadingShow, setLoadingShow] = useState(false);
+
+  const [movieOptions, setMovieOptions] = useState<MovieOpt[]>([]);
+  const [cinemaOptions, setCinemaOptions] = useState<CinemaOpt[]>([]);
+
+  const [initialMovieId, setInitialMovieId] = useState<string | null>(null);
+  const [movieId, setMovieId] = useState<string>("");
+  const [cinemaId, setCinemaId] = useState<string>("__ALL__");
+  const [isActive, setIsActive] = useState<"all" | "active" | "inactive">(
+    "all"
+  );
+  const [startTime, setStartTime] = useState<string>("");
+  const [endTime, setEndTime] = useState<string>("");
+
+  const [filterLang, setFilterLang] = useState<string | undefined>(undefined);
+
+  const [reloadTick, setReloadTick] = useState(0);
+
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+  const [totalItems, setTotalItems] = useState(0);
+
+  const [open, setOpen] = useState(false);
+  const [editShowtime, setEditShowtme] = useState<ShowTime | null>(null);
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
+  const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
+  const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
+  const [dialogTitle, setDialogTitle] = useState("");
+  const [dialogMessage, setDialogMessage] = useState<ReactNode>("");
+  const [onConfirm, setOnConfirm] = useState<() => void>(() => {});
+
+  const cinemaCache = useRef(new Map<string, string>());
+  const roomCache = useRef(new Map<string, string>());
+
+  const patchShowtime = useCallback((id: string, patch: Partial<ShowTime>) => {
+    setShowtimes((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, ...patch } : s))
+    );
+  }, []);
+
+  const getCinemasPage = useCallback(
+    async (p: number, limit: number): Promise<PageResp<HasIdName>> => {
+      const res = await cinemaService.getAllCinemas({ page: p, limit });
+      return {
+        data: (res.data ?? []).map((x) => ({ id: String(x.id), name: x.name })),
+        pagination: res.pagination,
+      };
+    },
+    []
+  );
+
+  const getRoomsPage = useCallback(
+    async (p: number, limit: number): Promise<PageResp<HasIdName>> => {
+      const res = await roomService.getRooms({ page: p, limit });
+      return {
+        data: (res.data ?? []).map((x) => ({ id: String(x.id), name: x.name })),
+        pagination: res.pagination,
+      };
+    },
+    []
+  );
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const [movies, cinemas] = await Promise.all([
+          fetchAllPaginatedCached<Movie>("all-movies", (page, limit) =>
+            movieService.getAllMovies({ page, limit }).then((res) => ({
+              data: res.data ?? [],
+              pagination: res.pagination,
+            }))
+          ),
+          fetchAllPaginatedCached<Cinema>("all-cinemas", (page, limit) =>
+            cinemaService.getAllCinemas({ page, limit }).then((res) => ({
+              data: res.data ?? [],
+              pagination: res.pagination,
+            }))
+          ),
+        ]);
+
+        const mOpts: MovieOpt[] = movies.map((m: Movie) => ({
+          id: String(m.id),
+          title: m.title,
+        }));
+        const cOpts: CinemaOpt[] = cinemas.map((c: Cinema) => ({
+          id: String(c.id),
+          name: c.name,
+        }));
+
+        setMovieOptions(mOpts);
+        setCinemaOptions(cOpts);
+
+        if (mOpts.length > 0) {
+          setInitialMovieId(mOpts[0].id);
+          if (!movieId) {
+            setMovieId(mOpts[0].id);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load movie/cinema options", err);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // === FETCH SHOWTIME THEO FILTER + PAGINATION ===
+  useEffect(() => {
+    if (!movieId) {
+      setShowtimes([]);
+      setTotalItems(0);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        setLoadingShow(true);
+
+        const params: ShowTimeQuery = {
+          movieId,
+          page,
+          limit: pageSize,
+        };
+        if (cinemaId && cinemaId !== "__ALL__") {
+          params.cinemaId = cinemaId;
+        }
+        if (isActive === "active") params.isActive = true;
+        else if (isActive === "inactive") params.isActive = false;
+        if (startTime) params.startTime = startTime;
+        if (endTime) params.endTime = endTime;
+
+        const res = await showTimeService.getShowTimes(params);
+
+        const data = res.data ?? [];
+        const pagination = res.pagination;
+
+        const safeData: ShowTime[] = data ?? [];
+
+        const totalFromServer = (pagination?.totalItems ?? 0) as number;
+        const limitFromServer = (pagination?.pageSize ?? pageSize) || pageSize;
+        const totalFallback =
+          totalFromServer > 0
+            ? totalFromServer
+            : (page - 1) * limitFromServer + safeData.length;
+
+        if (!cancelled) setTotalItems(totalFallback);
+
+        const needCinemaIds = new Set<string>();
+        const needRoomIds = new Set<string>();
+
+        safeData.forEach((s) => {
+          if (s.cinemaId && !cinemaCache.current.has(String(s.cinemaId))) {
+            needCinemaIds.add(String(s.cinemaId));
+          }
+          if (s.roomId && !roomCache.current.has(String(s.roomId))) {
+            needRoomIds.add(String(s.roomId));
+          }
+        });
+
+        const [cinemaMapNew, roomMapNew] = await Promise.all([
+          fetchNamesFromPaginated(needCinemaIds, getCinemasPage),
+          fetchNamesFromPaginated(needRoomIds, getRoomsPage),
+        ]);
+
+        cinemaMapNew.forEach((v, k) => cinemaCache.current.set(k, v));
+        roomMapNew.forEach((v, k) => roomCache.current.set(k, v));
+
+        const enriched = safeData.map((s) => ({
+          ...s,
+          cinemaName: cinemaCache.current.get(String(s.cinemaId)) || "Unknown",
+          roomName: roomCache.current.get(String(s.roomId)) || "Unknown",
+        }));
+
+        if (!cancelled) setShowtimes(enriched);
+      } catch (e) {
+        console.error("Failed to load showtimes", e);
+      } finally {
+        if (!cancelled) setLoadingShow(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    movieId,
+    cinemaId,
+    isActive,
+    startTime,
+    endTime,
+    page,
+    getCinemasPage,
+    getRoomsPage,
+    reloadTick,
+  ]);
+
+  const langOptions = useMemo(() => {
+    const set = new Set(
+      showtimes.map((s) => (s.language && s.language.trim()) || "Unknown")
+    );
+    const arr = Array.from(set);
+    arr.sort((a, b) => {
+      if (a === "Unknown") return 1;
+      if (b === "Unknown") return -1;
+      return a.localeCompare(b, "vi");
+    });
+    return arr;
+  }, [showtimes]);
+
+  const filteredShowtimes = useMemo(() => {
+    if (!filterLang) return showtimes;
+    return showtimes.filter(
+      (s) => ((s.language && s.language.trim()) || "Unknown") === filterLang
+    );
+  }, [showtimes, filterLang]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [movieId, cinemaId, isActive, startTime, endTime, filterLang]);
+
+  const handleRefresh = () => setReloadTick((x) => x + 1);
+
+  const handleAddOpen = () => {
+    setEditShowtme(null);
+    setOpen(true);
+  };
+
+  const handleEditOpen = (s: ShowTime) => {
+    setEditShowtme(s);
+    setOpen(true);
+  };
+
+  const openConfirm = (
+    title: string,
+    message: ReactNode,
+    action: () => void
+  ) => {
+    setDialogTitle(title);
+    setDialogMessage(message);
+    setOnConfirm(() => action);
+    setIsConfirmDialogOpen(true);
+  };
+
+  const handleDelete = useCallback(
+    (showtime: ShowTime) => {
+      openConfirm(
+        "Xác nhận xóa",
+        <>
+          Bạn có chắc chắn muốn xóa suất chiếu này không?
+          <br />
+          Việc này không thể hoàn tác.
+        </>,
+        async () => {
+          setIsConfirmDialogOpen(false);
+          try {
+            await showTimeService.deleteShowTime(showtime.id);
+            patchShowtime(showtime.id, { isActive: false });
+            handleRefresh();
+            setDialogTitle("Thành công");
+            setDialogMessage("Xóa suất chiếu thành công");
+            setIsSuccessDialogOpen(true);
+          } catch (err) {
+            console.log(err);
+            setDialogTitle("Thất bại");
+            setDialogMessage(
+              "Thao tác thất bại: " +
+                (err instanceof Error ? err.message : String(err))
+            );
+            setIsErrorDialogOpen(true);
+          }
+        }
+      );
+    },
+    [patchShowtime]
+  );
+
+  const handleRestore = useCallback(
+    (showtime: ShowTime) => {
+      openConfirm(
+        "Xác nhận khôi phục",
+        <>Khôi phục suất chiếu này?</>,
+        async () => {
+          setIsConfirmDialogOpen(false);
+          try {
+            await showTimeService.restoreShowTime(showtime.id);
+            patchShowtime(showtime.id, { isActive: true });
+            handleRefresh();
+            setDialogTitle("Thành công");
+            setDialogMessage("Khôi phục suất chiếu thành công");
+            setIsSuccessDialogOpen(true);
+          } catch (err) {
+            console.log(err);
+            setDialogTitle("Thất bại");
+            setDialogMessage(
+              "Thao tác thất bại: " +
+                (err instanceof Error ? err.message : String(err))
+            );
+            setIsErrorDialogOpen(true);
+          }
+        }
+      );
+    },
+    [patchShowtime]
+  );
+
+  const clearFilters = () => {
+    const firstMovieId =
+      initialMovieId || (movieOptions.length > 0 ? movieOptions[0].id : "");
+
+    if (firstMovieId) {
+      setMovieId(firstMovieId);
+    }
+
+    setCinemaId("__ALL__");
+    setIsActive("all");
+    setStartTime("");
+    setEndTime("");
+    setFilterLang(undefined);
+    setPage(1);
+  };
+
+  const canClearFilters = useMemo(() => {
+    const firstMovieId =
+      initialMovieId || (movieOptions.length > 0 ? movieOptions[0].id : "");
+
+    const isDefaultMovie = !firstMovieId || movieId === firstMovieId;
+    const isDefaultCinema = cinemaId === "__ALL__";
+    const isDefaultStatus = isActive === "all";
+    const isDefaultStart = !startTime;
+    const isDefaultEnd = !endTime;
+    const isDefaultLang = !filterLang;
+
+    return !(
+      isDefaultMovie &&
+      isDefaultCinema &&
+      isDefaultStatus &&
+      isDefaultStart &&
+      isDefaultEnd &&
+      isDefaultLang
+    );
+  }, [
+    initialMovieId,
+    movieOptions,
+    movieId,
+    cinemaId,
+    isActive,
+    startTime,
+    endTime,
+    filterLang,
+  ]);
+
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+
+  // === RETURN ===
+  return {
+    // data
+    showtimes,
+    filteredShowtimes,
+    loadingShow,
+
+    // pagination
+    page,
+    setPage,
+    pageSize,
+    totalItems,
+    totalPages,
+
+    // movie / cinema dropdown
+    movieOptions,
+    cinemaOptions,
+    movieId,
+    setMovieId,
+    cinemaId,
+    setCinemaId,
+
+    // filters
+    isActive,
+    setIsActive,
+    startTime,
+    setStartTime,
+    endTime,
+    setEndTime,
+    langOptions,
+    filterLang,
+    setFilterLang,
+
+    // actions
+    handleRefresh,
+    handleAddOpen,
+    handleEditOpen,
+    handleDelete,
+    handleRestore,
+
+    // filter
+    initialMovieId,
+    canClearFilters,
+    clearFilters,
+
+    // modal states
+    open,
+    setOpen,
+    editShowtime,
+    setEditShowtme,
+    isConfirmDialogOpen,
+    setIsConfirmDialogOpen,
+    isSuccessDialogOpen,
+    setIsSuccessDialogOpen,
+    isErrorDialogOpen,
+    setIsErrorDialogOpen,
+    dialogTitle,
+    dialogMessage,
+    onConfirm,
+  };
+}

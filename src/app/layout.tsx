@@ -1,6 +1,7 @@
 import { AuthProvider } from "@/context/AuthContext";
 import { Toaster } from "@/components/ui/sonner";
 import AuthBridge from "./admin/authBrigde";
+import "react-datepicker/dist/react-datepicker.css";
 import "./global.css";
 
 export default function RootLayout({

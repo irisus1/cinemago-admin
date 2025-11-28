@@ -1,31 +1,47 @@
 "use client";
-import { Fragment, useState } from "react";
-import { Dialog, Transition } from "@headlessui/react";
-import { useEffect } from "react";
-// đổi sang service thật của bạn
-import { genreService, type Genre } from "@/services";
+
+import { Fragment, useEffect, useState } from "react";
+import {
+  Dialog,
+  DialogPanel,
+  DialogTitle,
+  Transition,
+  TransitionChild,
+} from "@headlessui/react";
+import type { Genre } from "@/services";
+
+type GenreFormPayload = {
+  name: string;
+  description: string;
+};
+
+type GenreModalProps = {
+  open: boolean;
+  onClose: () => void;
+  mode: "create" | "edit";
+  genre?: Genre;
+  onSubmit?: (
+    payload: GenreFormPayload,
+    mode: "create" | "edit",
+    genre?: Genre
+  ) => void | Promise<void>;
+};
 
 export default function GenreModal({
   open,
   onClose,
   mode,
   genre,
-  onSuccess,
-}: {
-  open: boolean;
-  onClose: () => void;
-  mode: "create" | "edit";
-  genre?: Genre;
-  onSuccess?: () => void;
-}) {
+  onSubmit,
+}: GenreModalProps) {
   const [name, setName] = useState(genre?.name ?? "");
   const [description, setDescription] = useState(genre?.description ?? "");
-  const [loading, setLoading] = useState(false);
 
   const valid = name.trim().length > 0;
 
   useEffect(() => {
     if (!open) return;
+
     if (mode === "edit" && genre) {
       setName(genre.name ?? "");
       setDescription(genre.description ?? "");
@@ -35,34 +51,21 @@ export default function GenreModal({
     }
   }, [open, mode, genre]);
 
-  async function handleSubmit() {
-    if (!valid) return;
-    try {
-      setLoading(true);
-      if (mode === "create") {
-        await genreService.addGenre({
-          name: name.trim(),
-          description: description.trim(),
-        });
-      } else {
-        if (!genre?.id) throw new Error("Thiếu ID");
-        await genreService.updateGenre(genre.id, {
-          name: name.trim(),
-          description: description.trim(),
-        });
-      }
-      onSuccess?.();
-      onClose();
-    } finally {
-      setLoading(false);
-    }
-  }
+  const handleSubmit = async () => {
+    if (!valid || !onSubmit) return;
+
+    const payload: GenreFormPayload = {
+      name: name.trim(),
+      description: description.trim(),
+    };
+
+    await onSubmit(payload, mode, genre);
+  };
 
   return (
     <Transition show={open} as={Fragment}>
       <Dialog onClose={onClose} className="relative z-50">
-        {/* Overlay */}
-        <Transition.Child
+        <TransitionChild
           as={Fragment}
           enter="ease-out duration-200"
           enterFrom="opacity-0"
@@ -72,11 +75,10 @@ export default function GenreModal({
           leaveTo="opacity-0"
         >
           <div className="fixed inset-0 bg-black/40" />
-        </Transition.Child>
+        </TransitionChild>
 
-        {/* Panel */}
         <div className="fixed inset-0 flex items-center justify-center p-4">
-          <Transition.Child
+          <TransitionChild
             as={Fragment}
             enter="ease-out duration-200"
             enterFrom="opacity-0 scale-95"
@@ -85,15 +87,15 @@ export default function GenreModal({
             leaveFrom="opacity-100 scale-100"
             leaveTo="opacity-0 scale-95"
           >
-            <Dialog.Panel className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl">
-              <Dialog.Title className="text-lg font-semibold mb-3">
+            <DialogPanel className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl">
+              <DialogTitle className="text-lg font-semibold mb-3">
                 {mode === "create" ? "Thêm thể loại" : "Chỉnh sửa thể loại"}
-              </Dialog.Title>
+              </DialogTitle>
 
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">
-                    Tên thể loại *
+                    Tên thể loại <span className="text-red-500">*</span>
                   </label>
                   <input
                     value={name}
@@ -124,19 +126,17 @@ export default function GenreModal({
                   Hủy
                 </button>
                 <button
-                  disabled={!valid || loading}
+                  disabled={!valid}
                   onClick={handleSubmit}
                   className={`px-4 py-2 rounded-lg text-white ${
-                    valid && !loading
-                      ? "bg-blue-600 hover:bg-blue-700"
-                      : "bg-gray-400"
+                    valid ? "bg-blue-600 hover:bg-blue-700" : "bg-gray-400"
                   }`}
                 >
                   {mode === "create" ? "Thêm" : "Lưu"}
                 </button>
               </div>
-            </Dialog.Panel>
-          </Transition.Child>
+            </DialogPanel>
+          </TransitionChild>
         </div>
       </Dialog>
     </Transition>

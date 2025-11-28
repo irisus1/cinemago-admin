@@ -6,7 +6,6 @@ import Sidebar from "@/components/Sidebar";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { adminTabs } from "@/constants/constants";
-import { ACCESS_TOKEN_KEY } from "@/constants/auth";
 
 export default function AdminLayout({
   children,
@@ -14,7 +13,7 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const { user, refreshUser, logout, isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {

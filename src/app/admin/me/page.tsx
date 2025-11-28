@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,280 +8,44 @@ import { Button } from "@/components/ui/button";
 import { Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { Modal } from "@/components/Modal";
 import RefreshLoader from "@/components/Loading";
+import { useProfileLogic, type GenderVN } from "@/hooks/useProfileLogic";
 
-// ====== Services (điều chỉnh theo project) ======
-import { userService, authService } from "@/services";
-import { useAuth } from "@/context/AuthContext";
-import { toast } from "sonner";
-
-// ====== Types ======
-type Me = {
-  id: string;
-  email: string;
-  fullname: string; // BE trả "fullname"
-  gender: "MALE" | "FEMALE" | "OTHER" | string | null;
-  role: string;
-  avatarUrl?: string;
-  isActive: boolean;
-  createdAt?: string;
-  updatedAt?: string;
-};
-
-// ====== Helpers ======
-type GenderVN = "Nam" | "Nữ" | "Khác" | "—";
-const isGenderVN = (x: string): x is Exclude<GenderVN, "—"> =>
-  x === "Nam" || x === "Nữ" || x === "Khác";
-
-const mapGender = (v: unknown): GenderVN => {
-  if (v == null) return "—";
-  const s = String(v).trim();
-  if (!s) return "—";
-  const key = s.normalize("NFC").toLowerCase();
-  if (["male", "m", "nam"].includes(key)) return "Nam";
-  if (["female", "f", "nu", "nữ"].includes(key)) return "Nữ";
-  if (["other", "khac", "khác"].includes(key)) return "Khác";
-  if (isGenderVN(s)) return s;
-  return "Khác";
-};
-
-// đánh giá độ mạnh mật khẩu (0–4)
-function passwordScore(pw: string) {
-  let score = 0;
-  if (pw.length >= 8) score++;
-  if (/[a-z]/.test(pw) && /[A-Z]/.test(pw)) score++;
-  if (/[0-9]/.test(pw)) score++;
-  if (/[^A-Za-z0-9]/.test(pw)) score++;
-  return score;
-}
-
-// ====== Page ======
 export default function ProfilePage() {
-  const [me, setMe] = useState<Me | null>(null);
-  const [loading, setLoading] = useState(false);
-  const { refreshUser } = useAuth();
-
-  // form info
-  const [fullName, setFullName] = useState("");
-  const [genderVN, setGenderVN] = useState<GenderVN>("—");
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-
-  const baselineRef = useRef<{ fullName: string; genderVN: GenderVN }>({
-    fullName: "",
-    genderVN: "—",
-  });
-
-  // change password
-  const [curPw, setCurPw] = useState("");
-  const [newPw, setNewPw] = useState("");
-  const [cfPw, setCfPw] = useState("");
-  const [showCurPw, setShowCurPw] = useState(false);
-  const [showNewPw, setShowNewPw] = useState(false);
-  const [showCfPw, setShowCfPw] = useState(false);
-  const [pwTooLong, setPwTooLong] = useState(false);
-
-  // dialogs
-  const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
-  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
-  const [dialogTitle, setDialogTitle] = useState("");
-  const [dialogMessage, setDialogMessage] = useState<React.ReactNode>("");
-  const [onConfirm, setOnConfirm] = useState<() => void>(() => () => {});
-
-  // fetch profile
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await userService.getMe();
-      const data = res;
-      const user: Me = {
-        id: data.id,
-        email: data.email,
-        fullname: data.fullname,
-        gender: data.gender,
-        role: data.role,
-        avatarUrl: data.avatarUrl,
-        isActive: data.isActive,
-        createdAt: data.createdAt,
-        updatedAt: data.updatedAt,
-      };
-      setMe(user);
-      // refreshUser(); // Cập nhật thông tin người dùng vào context AuthContext
-      const baseName = (user.fullname ?? "").trim().replace(/\s+/g, " ");
-      const baseGenderVN = mapGender(user.gender);
-
-      setFullName(baseName);
-      setGenderVN(baseGenderVN);
-      setAvatarFile(null);
-      setAvatarPreview(null);
-
-      baselineRef.current = {
-        fullName: baseName,
-        genderVN: baseGenderVN,
-      };
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    load();
-  }, []);
-
-  useEffect(() => {
-    // cleanup object URL
-    return () => {
-      if (avatarPreview) URL.revokeObjectURL(avatarPreview);
-    };
-  }, [avatarPreview]);
-
-  //check form changed
-  const normalize = (s: string) => s.trim().replace(/\s+/g, " ");
-
-  const dirty = useMemo(() => {
-    const base = baselineRef.current;
-    const nameChanged = normalize(fullName) !== normalize(base.fullName);
-    const genderChanged = genderVN !== base.genderVN; // so sánh cùng format VN
-    const avatarChanged = !!avatarFile;
-    return nameChanged || genderChanged || avatarChanged;
-  }, [fullName, genderVN, avatarFile]);
-
-  //upload avatar
-  const MAX_MB = 3;
-  const ACCEPTED = ["image/jpeg", "image/png", "image/webp"];
-
-  const onPickAvatar: React.ChangeEventHandler<HTMLInputElement> = (e) => {
-    const file = e.currentTarget.files?.[0] ?? null;
-    if (!file) return;
-
-    if (!ACCEPTED.includes(file.type)) {
-      toast.warning("Chỉ chấp nhận JPG/PNG/WebP");
-      e.currentTarget.value = "";
-      return;
-    }
-    if (file.size > MAX_MB * 1024 * 1024) {
-      toast.warning(`Kích thước tối đa ${MAX_MB}MB`);
-      e.currentTarget.value = "";
-      return;
-    }
-    // tạo preview và lưu file
-    const url = URL.createObjectURL(file);
-    setAvatarFile(file);
-    setAvatarPreview((prev) => {
-      if (prev) URL.revokeObjectURL(prev);
-      return url;
-    });
-  };
-
-  // save profile info
-  const handleSaveInfo = async () => {
-    if (!dirty) return;
-    setLoading(true);
-    try {
-      const fd = new FormData();
-      fd.set("fullname", normalize(fullName));
-      fd.set("gender", genderVN);
-      if (avatarFile) fd.set("avatar", avatarFile);
-
-      await userService.updateProfile(fd);
-
-      // Cập nhật baseline sau khi lưu thành công
-      baselineRef.current = {
-        fullName: normalize(fullName),
-        genderVN,
-      };
-      setAvatarFile(null);
-      setAvatarPreview(null);
-
-      await refreshUser();
-      await load();
-      // Hiện dialog thành công
-      setDialogTitle("Lưu thay đổi thành công");
-      setDialogMessage("Thông tin cá nhân đã được cập nhật.");
-      setIsSuccessDialogOpen(true);
-    } catch (e) {
-      setDialogTitle("Lưu thay đổi thất bại");
-      setDialogMessage(
-        <>
-          Không thể cập nhật thông tin. Vui lòng thử lại sau.
-          <br />
-          <small className="text-muted">
-            {String((e as Error)?.message || "")}
-          </small>
-        </>
-      );
-      setIsSuccessDialogOpen(true);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // change password
-  const handleChangePassword = async () => {
-    if (!newPw || newPw !== cfPw) {
-      toast.warning("Mật khẩu xác nhận không khớp.");
-      return;
-    }
-    if (passwordScore(newPw) < 2) {
-      toast.warning(
-        "Mật khẩu mới quá yếu. Vui lòng dùng tối thiểu 8 ký tự, có chữ hoa, chữ thường, số."
-      );
-      return;
-    }
-    setLoading(true);
-    try {
-      await authService.changePassword({
-        oldPassword: curPw,
-        newPassword: newPw,
-      });
-      setCurPw("");
-      setNewPw("");
-      setCfPw("");
-      setDialogTitle("Đổi mật khẩu thành công");
-      setDialogMessage(
-        "Bạn đã đổi mật khẩu. Hãy dùng mật khẩu mới cho lần đăng nhập tiếp theo."
-      );
-      setIsSuccessDialogOpen(true);
-    } catch (e) {
-      toast.error("Đổi mật khẩu thất bại. Kiểm tra lại mật khẩu hiện tại.");
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const openConfirm = (
-    title: string,
-    message: React.ReactNode,
-    action: () => void
-  ) => {
-    setDialogTitle(title);
-    setDialogMessage(message);
-    setOnConfirm(() => action);
-    setIsConfirmDialogOpen(true);
-  };
-
-  const onClickChangePassword = () => {
-    openConfirm(
-      "Xác nhận đổi mật khẩu",
-      <>Bạn có chắc chắn muốn đổi mật khẩu?</>,
-      async () => {
-        setIsConfirmDialogOpen(false);
-        await handleChangePassword();
-      }
-    );
-  };
-
-  const onClickSave = () => {
-    if (!dirty) return;
-    openConfirm(
-      "Xác nhận lưu thay đổi",
-      <>Bạn có chắc muốn lưu các thay đổi chứ?</>,
-      async () => {
-        setIsConfirmDialogOpen(false);
-        await handleSaveInfo();
-      }
-    );
-  };
+  const {
+    me,
+    loading,
+    dirty,
+    normalize,
+    fullName,
+    setFullName,
+    genderVN,
+    setGenderVN,
+    avatarPreview,
+    onPickAvatar,
+    curPw,
+    setCurPw,
+    newPw,
+    setNewPw,
+    cfPw,
+    setCfPw,
+    showCurPw,
+    setShowCurPw,
+    showNewPw,
+    setShowNewPw,
+    showCfPw,
+    setShowCfPw,
+    pwTooLong,
+    setPwTooLong,
+    isSuccessDialogOpen,
+    setIsSuccessDialogOpen,
+    isConfirmDialogOpen,
+    setIsConfirmDialogOpen,
+    dialogTitle,
+    dialogMessage,
+    onConfirm,
+    onClickSave,
+    onClickChangePassword,
+  } = useProfileLogic();
 
   return (
     <div className="space-y-6">
@@ -308,7 +71,6 @@ export default function ProfilePage() {
                     className="h-16 w-16 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center cursor-pointer ring-1 ring-gray-200 hover:ring-2 hover:ring-primary transition"
                     title="Bấm để đổi ảnh đại diện"
                   >
-                    {/* Ưu tiên preview nếu người dùng vừa chọn ảnh */}
                     {avatarPreview ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -328,11 +90,11 @@ export default function ProfilePage() {
                     )}
                   </label>
 
-                  {/* input file ẩn, click vào label ở trên sẽ kích hoạt */}
+                  {/* input file ẩn */}
                   <input
                     id="avatar-input"
                     type="file"
-                    accept={ACCEPTED.join(",")}
+                    accept="image/jpeg,image/png,image/webp"
                     className="hidden"
                     onChange={onPickAvatar}
                   />
@@ -373,7 +135,7 @@ export default function ProfilePage() {
                   <div className="space-y-2">
                     <Label>Giới tính</Label>
                     <select
-                      className="h-10 rounded-md border px-3"
+                      className="h-10 rounded-md border px-3 w-full"
                       value={genderVN}
                       onChange={(e) => setGenderVN(e.target.value as GenderVN)}
                     >
@@ -389,7 +151,6 @@ export default function ProfilePage() {
                   <Button
                     onClick={onClickSave}
                     disabled={loading || !dirty || normalize(fullName) === ""}
-                    className=""
                   >
                     Lưu thay đổi
                   </Button>
@@ -441,7 +202,7 @@ export default function ProfilePage() {
                     const val = e.target.value;
                     if (val.length > 30) {
                       setPwTooLong(true);
-                      return; // Không cập nhật giá trị
+                      return;
                     }
                     setPwTooLong(false);
                     setNewPw(val);
@@ -478,7 +239,7 @@ export default function ProfilePage() {
                     const val = e.target.value;
                     if (val.length > 30) {
                       setPwTooLong(true);
-                      return; // Không cập nhật giá trị
+                      return;
                     }
                     setPwTooLong(false);
                     setCfPw(val);
