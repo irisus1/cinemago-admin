@@ -3,19 +3,22 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   roomService,
+  cinemaService,
   type Room,
-  PaginationMeta,
-  RoomUpdate,
-  RoomCreate,
+  type PaginationMeta,
+  type RoomUpdate,
+  type RoomCreate,
+  type Cinema,
 } from "@/services";
 
 const makeBaseLayout5x5 = () => {
   const rows = ["A", "B", "C", "D", "E"];
   const cols = 5;
-  const out = [];
+  const out: { row: string; col: number; type: "NORMAL" }[] = [];
   for (const r of rows) {
-    for (let c = 1; c <= cols; c++)
-      out.push({ row: r, col: c, type: "NORMAL" as const });
+    for (let c = 1; c <= cols; c++) {
+      out.push({ row: r, col: c, type: "NORMAL" });
+    }
   }
   return out;
 };
@@ -26,33 +29,43 @@ export type RoomFormData = {
   couplePrice: number;
 };
 
-export function useRoomLogic(cinemaId: string) {
-  // --- STATE ---
+type CinemaOption = {
+  id: string;
+  name: string;
+  city?: string | null;
+};
 
-  // Server data + paging
+export function useRoomLogic(initialCinemaId?: string) {
+  // --- CINEMA SELECT (bắt buộc theo rạp) ---
+  const [cinemaOptions, setCinemaOptions] = useState<CinemaOption[]>([]);
+  const [cinemaId, setCinemaId] = useState<string>(initialCinemaId ?? "");
+  const [cinemaSearch, setCinemaSearch] = useState<string>("");
+  const [cinemaSearchInput, setCinemaSearchInput] = useState("");
+
+  // --- SERVER DATA + PAGING ---
   const [rooms, setRooms] = useState<Room[]>([]);
   const [pagination, setPagination] = useState<PaginationMeta | null>(null);
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
 
-  // Filters (client)
+  // --- FILTERS (client) ---
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [status, setStatus] = useState<"__ALL__" | "active" | "inactive">(
     "__ALL__"
   );
 
-  // UI states
+  // --- UI STATES ---
   const [loading, setLoading] = useState(false);
   const [reloadTick, setReloadTick] = useState(0);
 
-  // Modals
+  // --- MODALS ---
   const [open, setOpen] = useState(false); // Modal Create/Edit Room
   const [openLayout, setOpenLayout] = useState(false); // Modal Layout
   const [openRoom, setOpenRoom] = useState<Room | null>(null); // Room đang xem layout
   const [editRoom, setEditRoom] = useState<Room | null>(null); // Room đang edit
 
-  // Dialogs
+  // --- DIALOGS ---
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
   const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
@@ -61,22 +74,75 @@ export function useRoomLogic(cinemaId: string) {
   const [onConfirm, setOnConfirm] = useState<() => void>(() => () => {});
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  // --- EFFECTS ---
 
-  // Debounce search
+  // ==================== LOAD DANH SÁCH RẠP ====================
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await cinemaService.getAllCinemas({ page: 1, limit: 1000 });
+        const data = (res.data ?? []) as Cinema[];
+
+        if (cancelled) return;
+
+        const opts: CinemaOption[] = data.map((c) => ({
+          id: String(c.id),
+          name: c.name,
+          city: c.city,
+        }));
+        setCinemaOptions(opts);
+
+        if (!cinemaId && (initialCinemaId || opts.length > 0)) {
+          setCinemaId(initialCinemaId ?? opts[0].id);
+        }
+      } catch (e) {
+        console.error("Error loading cinemas:", e);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [initialCinemaId, cinemaId]);
+
+  useEffect(() => {
+    const t = setTimeout(() => setCinemaSearch(cinemaSearchInput), 300);
+    return () => clearTimeout(t);
+  }, [cinemaSearchInput]);
+  const filteredCinemaOptions = useMemo(
+    () =>
+      cinemaOptions.filter((c) => {
+        if (!cinemaSearch.trim()) return true;
+        const kw = cinemaSearch.trim().toLowerCase();
+        return (
+          c.name.toLowerCase().includes(kw) ||
+          (c.city && c.city.toLowerCase().includes(kw))
+        );
+      }),
+    [cinemaOptions, cinemaSearch]
+  );
+
+  // ==================== DEBOUNCE SEARCH TÊN PHÒNG ====================
   useEffect(() => {
     const t = setTimeout(() => setSearch(searchInput), 400);
     return () => clearTimeout(t);
   }, [searchInput]);
 
-  // Reset page khi search đổi
+  // reset page khi search thay đổi
   useEffect(() => {
     setPage(1);
   }, [search]);
 
-  // Fetch API
+  // ==================== FETCH ROOMS THEO RẠP + SEARCH ====================
   const fetchRooms = useCallback(
     async (toPage = page) => {
+      // chưa chọn rạp => clear list & bỏ qua
+      if (!cinemaId) {
+        setRooms([]);
+        setPagination(null);
+        return;
+      }
+
       setLoading(true);
       try {
         const res = await roomService.getRooms({
@@ -85,10 +151,11 @@ export function useRoomLogic(cinemaId: string) {
           limit,
           search: search.trim() || undefined,
         });
-        const { data, pagination } = res;
 
+        const { data, pagination } = res;
         setRooms(data ?? []);
         setPagination(pagination ?? null);
+
         if (pagination?.currentPage && pagination.currentPage !== page) {
           setPage(pagination.currentPage);
         }
@@ -107,7 +174,7 @@ export function useRoomLogic(cinemaId: string) {
     fetchRooms();
   }, [fetchRooms, reloadTick]);
 
-  // Filter client-side (status)
+  // ==================== FILTER CLIENT-SIDE (STATUS) ====================
   const displayRows = useMemo(() => {
     if (status === "__ALL__") return rooms;
     return rooms.filter((r) =>
@@ -115,7 +182,14 @@ export function useRoomLogic(cinemaId: string) {
     );
   }, [rooms, status]);
 
-  // --- HANDLERS ---
+  // nút "Xóa lọc" có thể active không (để tô đỏ)
+  const canClearFilters = useMemo(() => {
+    const hasSearch = search.trim().length > 0;
+    const hasStatusFilter = status !== "__ALL__";
+    return hasSearch || hasStatusFilter;
+  }, [search, status]);
+
+  // ===================== HANDLERS =====================
 
   const handleRefresh = () => setReloadTick((x) => x + 1);
 
@@ -124,6 +198,7 @@ export function useRoomLogic(cinemaId: string) {
     setSearch("");
     setStatus("__ALL__");
     setPage(1);
+    // KHÔNG reset cinemaId, vì luôn phải thuộc 1 rạp cụ thể
   };
 
   const handleViewLayoutOpen = (r: Room) => {
@@ -138,12 +213,8 @@ export function useRoomLogic(cinemaId: string) {
 
   const handleEditOpen = async (r: Room) => {
     try {
-      // Có thể set loading riêng nếu muốn
       const fullRoom = await roomService.getRoomById(r.id);
-
-      console.log("full room from API: ", fullRoom);
-
-      setEditRoom(fullRoom); //  giờ room đã có VIP, COUPLE, seatLayout...
+      setEditRoom(fullRoom);
       setOpen(true);
     } catch (e) {
       console.error(e);
@@ -153,7 +224,7 @@ export function useRoomLogic(cinemaId: string) {
     }
   };
 
-  // Dialog Helper
+  // Dialog helper
   const openConfirm = (
     title: string,
     message: React.ReactNode,
@@ -165,7 +236,6 @@ export function useRoomLogic(cinemaId: string) {
     setIsConfirmDialogOpen(true);
   };
 
-  // Actions
   const handleDelete = (room: Room) => {
     openConfirm(
       "Xác nhận xóa",
@@ -183,7 +253,10 @@ export function useRoomLogic(cinemaId: string) {
           setIsSuccessDialogOpen(true);
           handleRefresh();
         } catch (err) {
-          alert("Thao tác thất bại: " + err);
+          console.error(err);
+          setDialogTitle("Lỗi");
+          setDialogMessage("Thao tác xóa thất bại");
+          setIsErrorDialogOpen(true);
         }
       }
     );
@@ -204,31 +277,40 @@ export function useRoomLogic(cinemaId: string) {
           setIsSuccessDialogOpen(true);
           handleRefresh();
         } catch (err) {
-          alert("Thao tác thất bại: " + err);
+          console.error(err);
+          setDialogTitle("Lỗi");
+          setDialogMessage("Thao tác khôi phục thất bại");
+          setIsErrorDialogOpen(true);
         }
       }
     );
   };
 
-  // Submit form Room
+  // Submit form Room (tạo / cập nhật)
   const handleSubmitRoom = (formData: RoomFormData) => {
     const isCreate = !editRoom;
+
+    // phải có cinemaId, vì phòng luôn thuộc 1 rạp
+    if (!cinemaId) {
+      setDialogTitle("Thiếu thông tin rạp");
+      setDialogMessage("Vui lòng chọn rạp trước khi lưu phòng.");
+      setIsErrorDialogOpen(true);
+      return;
+    }
+
     setOpen(false);
     openConfirm(
       isCreate ? "Xác nhận tạo phòng" : "Xác nhận cập nhật phòng",
-      <>
-        {isCreate ? (
-          <>
-            Bạn có chắc muốn tạo phòng mới <b>{formData.name}</b> không?
-          </>
-        ) : (
-          <>
-            Bạn có chắc muốn cập nhật phòng <b>{editRoom?.name}</b> không?
-          </>
-        )}
-      </>,
+      isCreate ? (
+        <>
+          Bạn có chắc muốn tạo phòng mới <b>{formData.name}</b> không?
+        </>
+      ) : (
+        <>
+          Bạn có chắc muốn cập nhật phòng <b>{editRoom?.name}</b> không?
+        </>
+      ),
       async () => {
-        // User đã bấm "Đồng ý" trong confirm
         setIsConfirmDialogOpen(false);
         setIsSubmitting(true);
 
@@ -243,25 +325,22 @@ export function useRoomLogic(cinemaId: string) {
           if (isCreate) {
             const payloadCreate: RoomCreate = {
               ...payloadBase,
-              seatLayout: makeBaseLayout5x5(), // logic tạo layout
+              seatLayout: makeBaseLayout5x5(),
             };
             await roomService.createRoom(payloadCreate);
-
             setDialogTitle("Thành công");
             setDialogMessage("Tạo phòng thành công");
-          } else {
+          } else if (editRoom) {
             const payloadUpdate: RoomUpdate = {
               ...payloadBase,
-              seatLayout: editRoom.seatLayout, // giữ layout cũ
+              seatLayout: editRoom.seatLayout,
             };
             await roomService.updateRoom(editRoom.id, payloadUpdate);
-
             setDialogTitle("Thành công");
             setDialogMessage("Cập nhật phòng thành công");
           }
 
-          setIsSuccessDialogOpen(true); // Mở dialog thông báo thành công
-          setOpen(false); // đóng modal form
+          setIsSuccessDialogOpen(true);
           setEditRoom(null);
           handleRefresh();
         } catch (e) {
@@ -283,7 +362,7 @@ export function useRoomLogic(cinemaId: string) {
   };
 
   return {
-    // Data
+    // dữ liệu
     rooms,
     displayRows,
     pagination,
@@ -291,14 +370,25 @@ export function useRoomLogic(cinemaId: string) {
     page,
     setPage,
 
-    // Filters
+    // rạp
+    cinemaOptions,
+    filteredCinemaOptions,
+    cinemaId,
+    setCinemaId,
+    cinemaSearch,
+    setCinemaSearch,
+    cinemaSearchInput,
+    setCinemaSearchInput,
+
+    // filters
     searchInput,
     setSearchInput,
     status,
     setStatus,
     clearFilters,
+    canClearFilters,
 
-    // Modals state
+    // modal state
     open,
     setOpen,
     openLayout,
@@ -306,7 +396,7 @@ export function useRoomLogic(cinemaId: string) {
     openRoom,
     editRoom,
 
-    // Dialogs state
+    // dialogs state
     isConfirmDialogOpen,
     setIsConfirmDialogOpen,
     isSuccessDialogOpen,
@@ -317,7 +407,7 @@ export function useRoomLogic(cinemaId: string) {
     dialogMessage,
     onConfirm,
 
-    // Handlers
+    // handlers
     fetchRooms,
     handleRefresh,
     handleViewLayoutOpen,
@@ -327,7 +417,7 @@ export function useRoomLogic(cinemaId: string) {
     handleRestore,
     handleModalSuccess,
 
-    // New Logic Actions
+    // submit
     isSubmitting,
     handleSubmitRoom,
   };

@@ -182,6 +182,11 @@ export function useCinemaLogic() {
     setAddrKw("");
   };
 
+  const canClearFilters = useMemo(
+    () => temp.trim() !== "" || cityKw.trim() !== "" || addrKw.trim() !== "",
+    [temp, cityKw, addrKw]
+  );
+
   const handleAddOpen = () => {
     setEditCinema(null);
     setOpen(true);
@@ -326,6 +331,7 @@ export function useCinemaLogic() {
     addrKw,
     setAddrKw,
     clearFilters,
+    canClearFilters,
 
     // Actions
     handleRefresh,

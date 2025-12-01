@@ -27,6 +27,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  SearchableCombobox,
+  type SelectOption,
+} from "@/components/SearchableCombobox";
 
 export default function ShowtimesListPage() {
   const {
@@ -201,6 +205,16 @@ export default function ShowtimesListPage() {
 
   const canPrev = page > 1;
   const canNext = page < totalPages;
+  const movieSelectOptions: SelectOption[] = movieOptions.map((m) => ({
+    value: m.id,
+    label: m.title,
+  }));
+
+  const filteredCinemaOptions: SelectOption[] = cinemaOptions.map((c) => ({
+    value: String(c.id),
+    label: c.name,
+    meta: c.city ?? undefined,
+  }));
 
   return (
     <div>
@@ -211,48 +225,33 @@ export default function ShowtimesListPage() {
 
         <div className="grid w-full grid-cols-[1fr_auto] gap-x-4 gap-y-3">
           <div className="flex flex-wrap items-center gap-4 min-w-0">
-            <div className="min-w-0 w-[260px] border border-gray-400 rounded-lg">
-              <Select
+            <div className="min-w-0 w-[260px]">
+              <SearchableCombobox
+                options={movieSelectOptions}
                 value={movieId}
-                onValueChange={(v) => {
-                  setMovieId(v);
+                onChange={(id) => {
+                  setMovieId(id);
                   setPage(1);
                 }}
-              >
-                <SelectTrigger className="h-10 w-full">
-                  <SelectValue placeholder="Chọn phim" />
-                </SelectTrigger>
-                <SelectContent>
-                  {movieOptions.map((m) => (
-                    <SelectItem key={m.id} value={m.id}>
-                      {m.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="Chọn phim"
+                searchPlaceholder="Tìm theo tên phim..."
+                widthClass="w-[260px]"
+              />
             </div>
 
             {/* Lọc theo rạp */}
-            <div className="min-w-0 w-[220px] border border-gray-400 rounded-lg">
-              <Select
+            <div className="min-w-0 w-[260px] ">
+              <SearchableCombobox
+                options={filteredCinemaOptions}
                 value={cinemaId}
-                onValueChange={(v) => {
-                  setCinemaId(v);
+                onChange={(id) => {
+                  setCinemaId(id);
                   setPage(1);
                 }}
-              >
-                <SelectTrigger className="h-10 w-full">
-                  <SelectValue placeholder="Lọc theo rạp" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__ALL__">Tất cả rạp</SelectItem>
-                  {cinemaOptions.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="Chọn rạp"
+                searchPlaceholder="Tìm theo tên rạp / thành phố..."
+                widthClass="w-[260px] "
+              />
             </div>
 
             {/* Lọc theo trạng thái active */}
