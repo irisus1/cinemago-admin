@@ -9,6 +9,15 @@ import { type Movie, Genre } from "@/services";
 import GenreMultiSelect from "@/components/GenreMultiSelect";
 import { Modal } from "@/components/Modal";
 import { useMovieLogic } from "@/hooks/useMovieLogic";
+import { Plus, Search } from "lucide-react";
+import {
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 
 const VI_MOVIE_STATUS = {
   COMING_SOON: "Sắp chiếu",
@@ -24,6 +33,7 @@ const MoviesListPage: React.FC = () => {
     loadingSearch,
     globalLoading,
     isSearchMode,
+
     page,
     setPage,
     totalPages,
@@ -32,6 +42,7 @@ const MoviesListPage: React.FC = () => {
     searchPage,
     setSearchPage,
     searchTotalPages,
+
     q,
     setQ,
     genreIds,
@@ -41,12 +52,15 @@ const MoviesListPage: React.FC = () => {
     status,
     setStatus,
     clearFilters,
+    canClearFilters,
+
     handleRefresh,
     handleAddNavigate,
     handleViewNavigate,
     handleEditNavigate,
     handleDelete,
     handleRestore,
+
     selectedIds,
     selectionMode,
     bulkStatus,
@@ -55,6 +69,7 @@ const MoviesListPage: React.FC = () => {
     toggleAllOnPage,
     clearSelection,
     handleBulkUpdate,
+
     isConfirmDialogOpen,
     setIsConfirmDialogOpen,
     isSuccessDialogOpen,
@@ -136,8 +151,9 @@ const MoviesListPage: React.FC = () => {
     {
       header: "Hành động",
       key: "actions",
+      headerClassName: "text-center",
       render: (_, row) => (
-        <div className="flex space-x-3">
+        <div className="flex w-full items-center justify-center space-x-3">
           {row.isActive ? (
             <>
               <button
@@ -184,31 +200,21 @@ const MoviesListPage: React.FC = () => {
         </h2>
 
         <div className="grid w-full grid-cols-[1fr_auto] gap-x-4 gap-y-3">
-          {/* LEFT: filters */}
           <div className="flex flex-wrap items-center gap-4 min-w-0">
-            <button
-              onClick={handleRefresh}
-              className="h-10 w-10 grid place-items-center rounded-lg border hover:bg-gray-50 disabled:opacity-60"
-              disabled={globalLoading}
-            >
-              <BiRefresh
-                className={`text-3xl ${
-                  globalLoading
-                    ? "animate-spin"
-                    : "hover:rotate-180 transition-transform duration-300"
-                }`}
-              />
-            </button>
-
-            <div className="min-w-0 w-[280px]">
-              <input
-                type="text"
-                placeholder="Tên phim…"
-                disabled={selectionMode}
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                className="w-full h-10 px-4 rounded-lg focus:outline-none border disabled:opacity-60"
-              />
+            <div className="min-w-0 w-[280px] border border-gray-400 rounded-lg">
+              <div className="relative">
+                <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-400">
+                  <Search className="w-4 h-4" />
+                </span>
+                <input
+                  type="text"
+                  placeholder="Tên phim…"
+                  disabled={selectionMode}
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  className="w-full h-10 pl-9 pr-3 rounded-lg border focus:outline-none disabled:opacity-60"
+                />
+              </div>
             </div>
 
             <div className="min-w-0 w-[320px]">
@@ -221,54 +227,77 @@ const MoviesListPage: React.FC = () => {
               />
             </div>
 
-            <input
-              type="number"
-              min={0}
-              max={10}
-              step={1}
-              placeholder="Đánh giá ≥"
-              disabled={selectionMode}
-              value={ratingFrom}
-              onChange={(e) =>
-                setRatingFrom(
-                  e.target.value === "" ? "" : Number(e.target.value)
-                )
-              }
-              className="w-[120px] h-10 px-3 rounded-lg border disabled:opacity-60"
-            />
+            <div className="w-[160px] border border-gray-400 rounded-lg">
+              <Select
+                disabled={selectionMode}
+                value={ratingFrom === null ? "ALL" : String(ratingFrom)}
+                onValueChange={(v) => {
+                  if (v === "ALL") setRatingFrom(null);
+                  else setRatingFrom(Number(v));
+                }}
+              >
+                <SelectTrigger className="h-10 w-full rounded-lg border disabled:opacity-60">
+                  <SelectValue placeholder="Đánh giá ≥" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">Tất cả đánh giá</SelectItem>
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <SelectItem key={n} value={String(n)}>
+                      {n} sao trở lên
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-            <select
-              value={selectionMode ? bulkStatus : status}
-              onChange={(e) =>
-                selectionMode
-                  ? setBulkStatus(e.target.value)
-                  : setStatus(e.target.value)
-              }
-              className="h-10 w-[200px] px-3 rounded-lg border disabled:opacity-60"
-            >
-              <option value="" disabled={selectionMode}>
-                Trạng thái: Tất cả
-              </option>
-              <option value="COMING_SOON">Sắp chiếu</option>
-              <option value="NOW_SHOWING">Đang chiếu</option>
-              <option value="ENDED">Đã kết thúc</option>
-            </select>
+            <div className="w-[200px] border border-gray-400 rounded-lg">
+              <Select
+                value={selectionMode ? bulkStatus || "COMING_SOON" : status}
+                onValueChange={(v) => {
+                  if (selectionMode) {
+                    setBulkStatus(v);
+                  } else {
+                    setStatus(
+                      v as "__ALL__" | "COMING_SOON" | "NOW_SHOWING" | "ENDED"
+                    );
+                  }
+                }}
+              >
+                <SelectTrigger className="h-10 w-full px-3 rounded-lg border disabled:opacity-60">
+                  <SelectValue placeholder="Trạng thái" />
+                </SelectTrigger>
+
+                <SelectContent>
+                  <SelectItem value="__ALL__" disabled={selectionMode}>
+                    Tất cả trạng thái
+                  </SelectItem>
+                  <SelectItem value="COMING_SOON">Sắp chiếu</SelectItem>
+                  <SelectItem value="NOW_SHOWING">Đang chiếu</SelectItem>
+                  <SelectItem value="ENDED">Đã kết thúc</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {/* RIGHT: actions */}
           <div className="flex items-center gap-3 justify-self-end self-start">
             <button
-              className="px-4 h-10 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300"
+              className={
+                "px-4 h-10 rounded-lg text-sm font-medium transition-colors " +
+                (canClearFilters
+                  ? "bg-red-100 text-red-700 hover:bg-red-200"
+                  : "bg-gray-100 text-gray-400 cursor-not-allowed")
+              }
               onClick={clearFilters}
+              disabled={!canClearFilters}
             >
               Xóa lọc
             </button>
-            <button
-              className="px-4 h-10 bg-black text-white rounded-lg hover:bg-blue-700"
-              onClick={handleAddNavigate}
-            >
-              Thêm phim +
-            </button>
+
+            <Button className="h-10 px-4" onClick={handleAddNavigate}>
+              <Plus className="w-4 h-4 mr-1" />
+              Thêm phim
+            </Button>
           </div>
         </div>
       </div>

@@ -4,6 +4,13 @@ import React from "react";
 import Image from "next/image";
 import { BiRefresh } from "react-icons/bi";
 import { FiEdit2, FiTrash2, FiPlusCircle } from "react-icons/fi";
+import {
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectValue,
+  SelectItem,
+} from "@/components/ui/select";
 
 import RefreshLoader from "@/components/Loading";
 import Table, { Column } from "@/components/Table";
@@ -13,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import FoodDrinkModal from "@/components/modal/FoodDrinkModal";
 import { useFoodDrinkLogic } from "@/hooks/useFoodDrinkLogic";
 import { type FoodDrink } from "@/services";
+import { Plus, Search } from "lucide-react";
 
 const VI_TYPE = { SNACK: "Đồ ăn", DRINK: "Thức uống", COMBO: "Combo" };
 const VI_AVAIL = { true: "Còn bán", false: "Ngừng bán" };
@@ -36,6 +44,9 @@ export default function FoodDrinkListPage() {
     toggleOne,
     toggleAllOnPage,
     clearSelection,
+    clearFilters,
+    canClearFilters,
+
     handleBulkToggle,
     showForm,
     setShowForm,
@@ -129,8 +140,9 @@ export default function FoodDrinkListPage() {
     {
       header: "Hành động",
       key: "actions",
+      headerClassName: "text-center",
       render: (_, r) => (
-        <div className="flex space-x-3">
+        <div className="flex w-full items-center justify-center space-x-3">
           <button
             className="text-blue-600 hover:text-blue-800"
             onClick={() => handleEdit(r)}
@@ -157,59 +169,74 @@ export default function FoodDrinkListPage() {
           Danh sách đồ ăn & thức uống
         </h2>
         <div className="flex flex-wrap items-center justify-between mb-6 gap-4">
-          <div className="flex flex-wrap items-center gap-4 p-4 rounded-lg flex-1 ">
-            <Button
-              variant="outline"
-              onClick={handleRefresh}
-              disabled={loading}
-              className="h-10 w-10 grid place-items-center"
-              title="Làm mới"
-            >
-              <BiRefresh
-                className={`text-2xl ${
-                  loading
-                    ? "animate-spin"
-                    : "hover:rotate-180 transition-transform duration-300"
-                }`}
+          <div className="flex flex-wrap items-center gap-4 rounded-lg flex-1 ">
+            <div className="relative w-[260px]">
+              <span className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                <Search className="w-4 h-4 text-gray-400" />
+              </span>
+              <Input
+                type="text"
+                placeholder="Tìm theo tên món..."
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                className="h-10 w-full pl-9 pr-3 rounded-lg border border-gray-300 bg-slate-50 "
               />
-            </Button>
+            </div>
 
-            <Input
-              type="text"
-              placeholder="Tìm theo tên món..."
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              className="w-[260px] border-gray-300 focus:ring-2 focus:ring-blue-400"
-            />
-
-            <select
-              value={type}
-              onChange={(e) => setType(e.target.value)}
-              className="h-10 rounded-md border border-gray-300 px-3 focus:ring-2 focus:ring-blue-400"
+            <Select
+              value={type === "" ? "ALL" : type}
+              onValueChange={(val) => {
+                // "ALL" = Tất cả → lưu "" trong state
+                setType(val === "ALL" ? "" : val);
+              }}
             >
-              <option value="">Loại: Tất cả</option>
-              <option value="SNACK">Đồ ăn</option>
-              <option value="DRINK">Thức uống</option>
-              <option value="COMBO">Combo</option>
-            </select>
+              <SelectTrigger className="h-10 w-[180px] rounded-lg border border-gray-300 bg-slate-50">
+                <SelectValue placeholder="Loại: Tất cả" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Tất cả loại</SelectItem>
+                <SelectItem value="SNACK">Đồ ăn</SelectItem>
+                <SelectItem value="DRINK">Thức uống</SelectItem>
+                <SelectItem value="COMBO">Combo</SelectItem>
+              </SelectContent>
+            </Select>
 
-            <select
-              value={isAvailable}
-              onChange={(e) => setIsAvailable(e.target.value)}
-              className="h-10 rounded-md border border-gray-300 px-3 focus:ring-2 focus:ring-blue-400"
+            <Select
+              value={isAvailable === "" ? "ALL" : isAvailable}
+              onValueChange={(val) => {
+                setIsAvailable(val === "ALL" ? "" : val);
+              }}
             >
-              <option value="">Trạng thái: Tất cả</option>
-              <option value="true">Còn bán</option>
-              <option value="false">Ngừng bán</option>
-            </select>
+              <SelectTrigger className="h-10 w-[190px] rounded-lg border border-gray-300 bg-slate-50">
+                <SelectValue placeholder="Trạng thái: Tất cả" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Tất cả trạng thái</SelectItem>
+                <SelectItem value="true">Còn bán</SelectItem>
+                <SelectItem value="false">Ngừng bán</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
-          <Button
-            onClick={handleAdd}
-            className="bg-black text-white hover:bg-blue-700 h-10 px-5 ml-auto shadow-md transition-colors duration-300"
-          >
-            <FiPlusCircle className="mr-2 text-lg" /> Thêm món
-          </Button>
+          <div className="flex items-center gap-3">
+            <button
+              className={
+                "px-4 h-10 rounded-lg text-sm font-medium transition-colors " +
+                (canClearFilters
+                  ? "bg-red-100 text-red-700 hover:bg-red-200"
+                  : "bg-gray-100 text-gray-400 cursor-not-allowed")
+              }
+              onClick={clearFilters}
+              disabled={!canClearFilters}
+            >
+              Xóa lọc
+            </button>
+
+            <Button className="h-10 px-4" onClick={handleAdd}>
+              <Plus className="w-4 h-4 mr-1" />
+              Thêm món
+            </Button>
+          </div>
         </div>
       </div>
 

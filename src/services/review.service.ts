@@ -20,6 +20,7 @@ export interface ResponseItem {
   userId: string;
   content: string;
   createdAt: string;
+  userDetail?: UserDetail | null;
 }
 
 export interface UserDetail {
@@ -48,7 +49,7 @@ export interface PaginatedReviews {
 }
 
 export interface ReviewOverview {
-  averageRating: number; // BE đang toFixed(1) => string, nếu bị lỗi thì đổi thành number | string
+  averageRating: number;
   totalReviews: number;
   ratingDistribution: number[];
 }
@@ -72,7 +73,6 @@ export interface ReviewFilterValues {
   status?: string;
   type?: string;
   isActive?: boolean;
-  // nếu sau này cần lọc theo user: userId?: string;
 }
 
 export interface CreateReviewInput {

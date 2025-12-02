@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Search } from "lucide-react";
+import { Search, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +12,7 @@ import {
   SelectItem,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus } from "lucide-react";
+
 import { FiEdit2, FiTrash2, FiEye } from "react-icons/fi";
 import { BiRefresh } from "react-icons/bi";
 import Table, { Column } from "@/components/Table";
@@ -113,8 +113,9 @@ export default function RoomCard() {
     {
       header: "Hành động",
       key: "actions",
+      headerClassName: "text-center",
       render: (_: unknown, row: Room) => (
-        <div className="flex space-x-3">
+        <div className="flex w-full items-center justify-center space-x-3">
           {row.isActive ? (
             <>
               {/* Xem chi tiết (modal) */}
@@ -210,11 +211,11 @@ export default function RoomCard() {
                   setPage(1);
                 }}
               >
-                <SelectTrigger className="h-10 w-full">
+                <SelectTrigger className=" w-full">
                   <SelectValue placeholder="Trạng thái" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__ALL__">Tất cả</SelectItem>
+                  <SelectItem value="__ALL__">Tất cả trạng thái</SelectItem>
                   <SelectItem value="active">Đang hoạt động</SelectItem>
                   <SelectItem value="inactive">Đã ẩn</SelectItem>
                 </SelectContent>

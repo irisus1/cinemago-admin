@@ -3,7 +3,8 @@
 import React from "react";
 import { FiEdit2, FiTrash2 } from "react-icons/fi";
 import { BiRefresh } from "react-icons/bi";
-
+import { Search, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import Table, { Column } from "@/components/Table";
 import RefreshLoader from "@/components/Loading";
 import { Modal } from "@/components/Modal";
@@ -20,8 +21,8 @@ const GenresListPage: React.FC = () => {
     pagination,
     totalPages,
     totalItems,
-    time,
-    setTime,
+    genre,
+    setGenre,
     open,
     setOpen,
     editGenre,
@@ -34,7 +35,8 @@ const GenresListPage: React.FC = () => {
     dialogTitle,
     dialogMessage,
     onConfirm,
-    handleRefresh,
+    canClearFilters,
+
     clearFilters,
     handleAddOpen,
     handleEditOpen,
@@ -49,10 +51,10 @@ const GenresListPage: React.FC = () => {
     { header: "Mô tả", key: "description" },
     {
       header: "Hành động",
-      className: "w-[120px] text-right",
+      className: "w-[120px]  text-center",
       key: "actions",
       render: (_: unknown, row: Genre) => (
-        <div className="flex gap-2 items-center">
+        <div className="flex w-full  justify-center gap-2 items-center">
           {row.isActive ? (
             <>
               <button
@@ -93,45 +95,36 @@ const GenresListPage: React.FC = () => {
 
         <div className="flex items-center justify-between w-full">
           <div className="flex items-center gap-4">
-            <button
-              onClick={handleRefresh}
-              className="p-3 rounded-full hover:bg-gray-100 transition-all duration-300"
-              disabled={loading}
-              title="Làm mới"
-            >
-              <BiRefresh
-                className={`text-3xl ${
-                  loading
-                    ? "animate-spin"
-                    : "hover:rotate-180 transition-transform duration-300"
-                }`}
-              />
-            </button>
-
-            <div className="w-[280px]">
+            <div className="relative w-[240px]">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Tên thể loại…"
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
-                className="w-full px-4 py-2 rounded-lg focus:outline-none border"
+                placeholder="Tìm theo tên thể loại…"
+                value={genre}
+                onChange={(e) => setGenre(e.target.value)}
+                className="h-10 w-full pl-8 pr-3 border-gray-400 rounded-lg border text-sm"
               />
             </div>
           </div>
 
           <div className="flex items-center gap-3">
             <button
-              className="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300"
+              className={
+                "px-4 h-10 rounded-lg text-sm font-medium transition-colors " +
+                (canClearFilters
+                  ? "bg-red-100 text-red-700 hover:bg-red-200"
+                  : "bg-gray-100 text-gray-400 cursor-not-allowed")
+              }
               onClick={clearFilters}
+              disabled={!canClearFilters}
             >
               Xóa lọc
             </button>
-            <button
-              className="px-4 py-2 bg-black text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
-              onClick={handleAddOpen}
-            >
-              Thêm thể loại +
-            </button>
+
+            <Button className="h-10 px-4" onClick={handleAddOpen}>
+              <Plus className="w-4 h-4 mr-1" />
+              Thêm thể loại
+            </Button>
           </div>
         </div>
       </div>

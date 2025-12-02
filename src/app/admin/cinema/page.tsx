@@ -3,8 +3,9 @@
 import React, { useState } from "react";
 import Table, { Column } from "@/components/Table";
 import { FiEdit2, FiTrash2, FiEye } from "react-icons/fi";
+import { Button } from "@/components/ui/button";
 import { BiRefresh } from "react-icons/bi";
-import { Search } from "lucide-react";
+import { Search, Plus } from "lucide-react";
 import RefreshLoader from "@/components/Loading";
 import { Modal } from "@/components/Modal";
 import CinemaModal from "@/components/modal/CinemaModal";
@@ -69,24 +70,22 @@ const CinemasListPage: React.FC = () => {
     },
     {
       header: "Hành động",
-      className: "text-right w-[140px]",
+      headerClassName: "text-center w-[140px]",
       key: "actions",
       render: (_: unknown, row: Cinema) => (
-        <div className="flex space-x-3 justify-end">
-          {/* Nút xem chi tiết dùng modal */}
-          <button
-            className="text-green-600 hover:text-green-800"
-            onClick={() => {
-              setViewCinema(row);
-              setViewOpen(true);
-            }}
-            title="Xem chi tiết"
-          >
-            <FiEye className="w-4 h-4" />
-          </button>
-
+        <div className="flex space-x-3 w-full items-center justify-center">
           {row.isActive ? (
             <>
+              <button
+                className="text-green-600 hover:text-green-800"
+                onClick={() => {
+                  setViewCinema(row);
+                  setViewOpen(true);
+                }}
+                title="Xem chi tiết"
+              >
+                <FiEye className="w-4 h-4" />
+              </button>
               <button
                 className="text-blue-600 hover:text-blue-800"
                 onClick={() => handleEditOpen(row)}
@@ -172,12 +171,11 @@ const CinemasListPage: React.FC = () => {
             >
               Xóa lọc
             </button>
-            <button
-              className="px-4 py-2 bg-black text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
-              onClick={handleAddOpen}
-            >
-              + Thêm rạp
-            </button>
+
+            <Button className="h-10 px-4" onClick={handleAddOpen}>
+              <Plus className="w-4 h-4 mr-1" />
+              Thêm rạp
+            </Button>
           </div>
         </div>
       </div>

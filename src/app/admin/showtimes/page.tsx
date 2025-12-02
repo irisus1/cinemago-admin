@@ -50,8 +50,6 @@ export default function ShowtimesListPage() {
     setIsActive,
     startTime,
     setStartTime,
-    endTime,
-    setEndTime,
 
     // actions
     handleRefresh,
@@ -160,8 +158,9 @@ export default function ShowtimesListPage() {
     {
       header: "Hành động",
       key: "actions",
+      headerClassName: "text-center",
       render: (_, row) => (
-        <div className="flex space-x-3">
+        <div className="flex w-full items-center justify-center space-x-3">
           {row.isActive ? (
             <>
               <button
@@ -267,7 +266,7 @@ export default function ShowtimesListPage() {
                   <SelectValue placeholder="Trạng thái" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Tất cả</SelectItem>
+                  <SelectItem value="all">Tất cả trạng thái</SelectItem>
                   <SelectItem value="active">Đang hoạt động</SelectItem>
                   <SelectItem value="inactive">Đã xóa</SelectItem>
                 </SelectContent>

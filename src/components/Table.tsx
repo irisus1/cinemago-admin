@@ -18,6 +18,7 @@ export type Column<T> = {
   render?: (value: unknown, row: T) => React.ReactNode;
   getValue?: (row: T) => unknown;
   className?: string;
+  headerClassName?: string;
 };
 
 export type TableProps<T> = {
@@ -48,6 +49,7 @@ export default function TableGeneric<T extends object>({
                 className={[
                   "text-gray-700 font-semibold",
                   dense ? "px-4 py-2 text-sm" : "px-6 py-3 text-sm",
+                  c.headerClassName ?? "",
                 ].join(" ")}
               >
                 {c.header}

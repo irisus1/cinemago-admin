@@ -22,11 +22,14 @@ export default function Sidebar({
 }: SidebarProps) {
   const pathname = usePathname();
   const [openProfile, setOpenProfile] = useState(false);
-
-  // lưu trạng thái mở/đóng của từng group
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
   const toggleGroup = (name: string) => {
+    if (!isSidebarOpen) {
+      setIsSidebarOpen(true);
+      setOpenGroups((prev) => ({ ...prev, [name]: true }));
+      return;
+    }
     setOpenGroups((prev) => ({ ...prev, [name]: !prev[name] }));
   };
 
@@ -34,7 +37,7 @@ export default function Sidebar({
     <div
       className={`${
         isSidebarOpen ? "w-[300px]" : "w-20"
-      } bg-white shadow-lg transition-all duration-300 ease-in-out h-screen flex flex-col`}
+      } bg-white shadow-lg transition-all duration-300 ease-in-out h-screen flex flex-col z-50 relative`} // Thêm z-50 để sidebar nổi lên trên nội dung chính
     >
       {/* Header */}
       <div className="flex items-center justify-between p-3 border-b">
@@ -49,8 +52,11 @@ export default function Sidebar({
         </button>
       </div>
 
-      {/* Nav */}
-      <nav className="p-3 flex-1 overflow-y-auto">
+      <nav
+        className={`p-3 flex-1 ${
+          isSidebarOpen ? "overflow-y-auto" : "overflow-visible"
+        }`}
+      >
         <ul className="space-y-2">
           {tabs.map((tab, index) => {
             if (tab.type === "group") {
@@ -60,8 +66,7 @@ export default function Sidebar({
               const isGroupOpen = openGroups[tab.name] ?? isChildActive;
 
               return (
-                <li key={index}>
-                  {/* Header group */}
+                <li key={index} className="group relative">
                   <button
                     type="button"
                     onClick={() => toggleGroup(tab.name)}
@@ -77,11 +82,10 @@ export default function Sidebar({
                           isChildActive ? "text-blue-600" : "text-gray-700"
                         }
                       >
-                        {/* icon group to hơn 1 xíu */}
                         {tab.icon}
                       </span>
                       {isSidebarOpen && (
-                        <span className="ml-3">{tab.name}</span>
+                        <span className="ml-3 truncate">{tab.name}</span>
                       )}
                     </div>
 
@@ -96,53 +100,82 @@ export default function Sidebar({
                     )}
                   </button>
 
-                  {/* Children – luôn render nhưng ẩn bằng max-h để có animation */}
-                  <ul
-                    className={`
-            ml-4 space-y-1 overflow-hidden
-            transition-all duration-300 ease-in-out
-            ${
-              isSidebarOpen && isGroupOpen
-                ? "max-h-40 opacity-100 mt-1"
-                : "max-h-0 opacity-0"
-            }
-          `}
-                  >
-                    {tab.children.map((child, childIndex) => {
-                      const isActive = pathname === child.path;
-                      return (
-                        <li key={childIndex}>
-                          <Link
-                            href={child.path}
-                            className={`flex items-center px-3 py-2.5 rounded-lg text-[14px] ${
-                              isActive
-                                ? "text-blue-600 font-semibold bg-blue-50"
-                                : "text-gray-700 hover:bg-gray-100"
-                            } transition-colors duration-200`}
-                          >
-                            <span
-                              className={
-                                isActive ? "text-blue-600" : "text-gray-700"
-                              }
+                  {isSidebarOpen && (
+                    <ul
+                      className={`
+                        ml-4 space-y-1 overflow-hidden
+                        transition-all duration-300 ease-in-out
+                        ${
+                          isGroupOpen
+                            ? "max-h-40 opacity-100 mt-1"
+                            : "max-h-0 opacity-0"
+                        }
+                      `}
+                    >
+                      {tab.children.map((child, childIndex) => {
+                        const isActive = pathname === child.path;
+                        return (
+                          <li key={childIndex}>
+                            <Link
+                              href={child.path}
+                              className={`flex items-center px-3 py-2.5 rounded-lg text-[14px] ${
+                                isActive
+                                  ? "text-blue-600 font-semibold bg-blue-50"
+                                  : "text-gray-700 hover:bg-gray-100"
+                              } transition-colors duration-200`}
                             >
-                              {/* icon child cũng hơi to hơn */}
-                              {child.icon}
-                            </span>
-                            <span className="ml-2">{child.name}</span>
-                          </Link>
-                        </li>
-                      );
-                    })}
-                  </ul>
+                              <span
+                                className={
+                                  isActive ? "text-blue-600" : "text-gray-700"
+                                }
+                              >
+                                {child.icon}
+                              </span>
+                              <span className="ml-2 truncate">
+                                {child.name}
+                              </span>
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+
+                  {!isSidebarOpen && (
+                    <div className="absolute left-full top-0 ml-2 w-48 bg-white border border-gray-200 shadow-xl rounded-lg p-2 invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-all z-50">
+                      <div className="px-3 py-2 text-sm font-bold text-gray-500 border-b mb-1">
+                        {tab.name}
+                      </div>
+                      <ul className="space-y-1">
+                        {tab.children.map((child, childIndex) => {
+                          const isActive = pathname === child.path;
+                          return (
+                            <li key={childIndex}>
+                              <Link
+                                href={child.path}
+                                className={`flex items-center px-3 py-2 rounded-md text-[14px] ${
+                                  isActive
+                                    ? "text-blue-600 bg-blue-50 font-medium"
+                                    : "text-gray-700 hover:bg-gray-100"
+                                }`}
+                              >
+                                {child.icon}
+                                <span className="ml-2">{child.name}</span>
+                              </Link>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  )}
                 </li>
               );
             }
 
-            // --- TAB THƯỜNG ---
             const isActive = pathname === tab.path;
 
             return (
-              <li key={index}>
+              <li key={index} className="group relative">
                 <Link
                   href={tab.path}
                   className={`flex items-center p-3 rounded-lg ${
@@ -156,8 +189,16 @@ export default function Sidebar({
                   >
                     {tab.icon}
                   </span>
-                  {isSidebarOpen && <span className="ml-3">{tab.name}</span>}
+                  {isSidebarOpen && (
+                    <span className="ml-3 truncate">{tab.name}</span>
+                  )}
                 </Link>
+
+                {!isSidebarOpen && (
+                  <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-3 py-1.5 bg-gray-800 text-white text-xs rounded-md whitespace-nowrap invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-all z-50 pointer-events-none">
+                    {tab.name}
+                  </div>
+                )}
               </li>
             );
           })}
