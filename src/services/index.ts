@@ -1,4 +1,3 @@
-import { reviewService } from "./review.service";
 // Export all services
 export { authService } from "./auth.service";
 export { cinemaService } from "./cinema.service";
@@ -11,6 +10,7 @@ export { foodDrinkService } from "./food.service";
 export { paymentService } from "./payment.service";
 export { bookingService } from "./booking.service";
 export { reviewService } from "./review.service";
+export { dashboardService } from "./dashboard.service";
 
 // Export types
 export type { LoginResponse, RegisterRequest } from "./auth.service";
@@ -66,3 +66,12 @@ export type {
   UserDetail,
   GetReviewsParams,
 } from "./review.service";
+
+export type {
+  DateRangeParams,
+  RevenueByPeriod,
+  MovieRevenueItem,
+  CinemaRevenueItem,
+  MovieRevenueResponse,
+  CinemaRevenueResponse,
+} from "./dashboard.service";

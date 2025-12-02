@@ -1,12 +1,23 @@
 "use client";
 
 import React from "react";
+import { useMemo } from "react";
 import Table, { Column } from "@/components/Table";
 import type { Booking } from "@/services";
 import { useBookingLogic } from "@/hooks/useBookingLogic";
 import BookingDetailModal from "@/components/modal/BookingDetailModal";
 import { FiEye } from "react-icons/fi";
-import { Button } from "@/components/ui/button";
+import {
+  SearchableCombobox,
+  type SelectOption,
+} from "@/components/SearchableCombobox";
+import {
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+} from "@/components/ui/select";
 
 const BookingsListPage = () => {
   const {
@@ -16,16 +27,26 @@ const BookingsListPage = () => {
     movieMap,
     roomMap,
     cinemaMap,
+
     loading,
     page,
     setPage,
     totalPages,
     totalItems,
     pagination,
+
     detailOpen,
     setDetailOpen,
     selectedBooking,
     handleViewDetail,
+
+    // filters
+    showtimeFilter,
+    setShowtimeFilter,
+    typeFilter,
+    setTypeFilter,
+    clearFilters,
+    canClearFilters,
   } = useBookingLogic();
 
   const formatCurrency = (val: number) =>
@@ -33,6 +54,29 @@ const BookingsListPage = () => {
       style: "currency",
       currency: "VND",
     }).format(val);
+
+  const showtimeOptions: SelectOption[] = useMemo(() => {
+    const ids = Array.from(new Set(bookings.map((b) => b.showtimeId)));
+
+    return ids
+      .map((id) => showTimeMap[id])
+      .filter(Boolean)
+      .map((st) => {
+        const movie = movieMap[st.movieId];
+        const timeLabel = new Date(st.startTime).toLocaleString("vi-VN", {
+          day: "2-digit",
+          month: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+
+        return {
+          value: st.id,
+          label: movie ? movie.title : "Phim ?",
+          meta: timeLabel,
+        };
+      });
+  }, [bookings, showTimeMap, movieMap]);
 
   const columns: Column<Booking>[] = [
     {
@@ -121,6 +165,10 @@ const BookingsListPage = () => {
       },
     },
     {
+      header: "Hình thức",
+      key: "type",
+    },
+    {
       header: "Tổng tiền",
       key: "totalPrice",
       render: (v) => (
@@ -160,17 +208,55 @@ const BookingsListPage = () => {
     <div className="p-6">
       <h2 className="text-2xl font-bold mb-4">Quản lý Đặt vé</h2>
 
-      {/* Bọc Table và Pagination trong cùng 1 div có shadow và rounded giống bên User */}
+      <div className="flex items-center justify-between mb-4 gap-4">
+        <div className="flex flex-wrap items-center gap-4">
+          <SearchableCombobox
+            value={showtimeFilter}
+            onChange={setShowtimeFilter}
+            options={showtimeOptions}
+            placeholder="Tất cả suất chiếu"
+            searchPlaceholder="Tìm theo phim / thời gian..."
+          />
+          <Select
+            value={typeFilter}
+            onValueChange={(val) =>
+              setTypeFilter(val as "__ALL__" | "online" | "offline")
+            }
+          >
+            <SelectTrigger className="h-10 w-[200px] rounded-lg border border-gray-300 bg-gray-50">
+              <SelectValue placeholder="Tất cả loại đặt vé" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__ALL__">Tất cả loại đặt vé</SelectItem>
+              <SelectItem value="online">Đặt online</SelectItem>
+              <SelectItem value="offline">Đặt tại quầy</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <button
+            className={
+              "px-4 h-10 rounded-lg text-sm font-medium transition-colors " +
+              (canClearFilters
+                ? "bg-red-100 text-red-700 hover:bg-red-200"
+                : "bg-gray-100 text-gray-400 cursor-not-allowed")
+            }
+            onClick={clearFilters}
+            disabled={!canClearFilters}
+          >
+            Xóa lọc
+          </button>
+        </div>
+      </div>
+
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-        {/* Table */}
         <div className="overflow-x-auto">
           <Table columns={columns} data={bookings} getRowKey={(r) => r.id} />
         </div>
 
-        {/* Pagination Style chuẩn User */}
         {totalItems > 0 && (
           <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-t">
-            {/* Nút Trước */}
             <button
               onClick={() =>
                 pagination?.hasPrevPage && setPage((p) => Math.max(1, p - 1))
@@ -181,12 +267,10 @@ const BookingsListPage = () => {
               Trước
             </button>
 
-            {/* Thông tin trang */}
             <div className="text-sm text-gray-600 font-medium">
               Trang {pagination?.currentPage ?? page} / {totalPages}
             </div>
 
-            {/* Nút Tiếp */}
             <button
               onClick={() => pagination?.hasNextPage && setPage((p) => p + 1)}
               disabled={!pagination?.hasNextPage || loading}
@@ -198,7 +282,6 @@ const BookingsListPage = () => {
         )}
       </div>
 
-      {/* Modal giữ nguyên */}
       <BookingDetailModal
         isOpen={detailOpen}
         onClose={() => setDetailOpen(false)}

@@ -49,6 +49,8 @@ export type Paginated<T> = { pagination: PaginationMeta; data: T[] };
 export type MyBookingParams = {
   page?: number;
   limit?: number;
+  showtimeId?: string;
+  type?: string;
 };
 
 type ApiErrorBody = { message?: string };
@@ -58,6 +60,21 @@ const getMsg = (e: unknown, fb: string) =>
     : fb;
 
 class BookingService {
+  async getAllBookings(params?: MyBookingParams): Promise<Paginated<Booking>> {
+    try {
+      const { data } = await api.get<Paginated<Booking>>(
+        "/bookings/dashboard/get-all",
+        {
+          params,
+        }
+      );
+      return data; // { pagination, data }
+    } catch (e: unknown) {
+      const msg = getMsg(e, "Không thể lấy danh sách đơn đặt vé.");
+      console.error("Get bookings error:", e);
+      throw new Error(msg);
+    }
+  }
   /**
    * GET /bookings?page&limit
    * Lấy danh sách booking của user đang login (phân trang)
