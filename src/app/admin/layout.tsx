@@ -6,6 +6,7 @@ import Sidebar from "@/components/Sidebar";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { adminTabs } from "@/constants/constants";
+import { toast } from "sonner";
 
 export default function AdminLayout({
   children,
@@ -17,7 +18,15 @@ export default function AdminLayout({
   const router = useRouter();
 
   useEffect(() => {
-    if (!isLoading && !user) {
+    if (isLoading) return;
+
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+
+    if (user.role !== "ADMIN") {
+      toast.error("Bạn không có quyền truy cập trang quản trị!");
       router.push("/login");
     }
   }, [isLoading, user, router]);

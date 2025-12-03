@@ -1,21 +1,4 @@
-// import axios from "axios";
-
-// const api = axios.create({
-//   baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/v1",
-//   withCredentials: true,
-// });
-
-// api.interceptors.request.use((config) => {
-//   const token =
-//     typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-//   if (token) {
-//     config.headers.Authorization = `Bearer ${token}`;
-//   }
-//   return config;
-// });
-
-// export default api;
-
+// config/api.ts
 import axios, {
   AxiosError,
   AxiosInstance,
@@ -23,11 +6,16 @@ import axios, {
   AxiosResponse,
 } from "axios";
 import { ACCESS_TOKEN_KEY } from "@/constants/auth";
+import {
+  refreshAccessTokenAction,
+  deleteRefreshTokenCookie,
+} from "@/app/action/auth";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/v1";
 
 const api: AxiosInstance = axios.create({
   baseURL: BASE,
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
@@ -47,41 +35,36 @@ const processQueue = (error: unknown, token: string | null = null) => {
   failedQueue = [];
 };
 
-//  Intercept request: gắn accessToken vào header
+// Request Interceptor (Giữ nguyên)
 api.interceptors.request.use((config) => {
   const token =
     typeof window !== "undefined"
       ? localStorage.getItem(ACCESS_TOKEN_KEY)
       : null;
-  if (token && config.headers) {
+  if (token && config.headers && !config.url?.includes("/auth/refresh-token")) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
 
-//  Intercept response: tự refresh khi 401
+// Response Interceptor (Cập nhật logic refresh)
 api.interceptors.response.use(
   (response: AxiosResponse) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config as AxiosRequestConfig & {
       _retry?: boolean;
     };
-    if (!originalRequest || originalRequest._retry) throw error;
+    if (!originalRequest) throw error;
 
-    // Nếu token hết hạn (401)
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (
         originalRequest.url?.includes("/auth/refresh-token") ||
         originalRequest.url?.includes("/auth/login")
       ) {
-        // Capitalize error message if present
-        console.log(error.response);
-
         return Promise.reject(error);
       }
 
       if (isRefreshing) {
-        //  Đợi refresh token hiện tại xong rồi retry
         return new Promise((resolve, reject) => {
           failedQueue.push({
             resolve: (token) => {
@@ -95,27 +78,17 @@ api.interceptors.response.use(
       }
 
       originalRequest._retry = true;
-
       isRefreshing = true;
 
       try {
-        const refreshResponse = await api.post(`${BASE}/auth/refresh-token`, {
-          refreshToken: getRefreshCookieFromFE(),
-        });
+        // --- THAY ĐỔI LỚN TẠI ĐÂY ---
+        // Thay vì dùng axios.post gọi API refresh (vì Client ko có cookie),
+        // ta gọi Server Action. Server Action nằm ở server nên đọc được cookie.
+        const newAccessToken = await refreshAccessTokenAction();
 
-        const newAccessToken = refreshResponse.data?.accessToken as
-          | string
-          | undefined;
-        if (!newAccessToken)
-          throw new Error("No accessToken in refresh response");
-
-        const newRefreshToken = refreshResponse.data?.refreshToken;
-
+        // Lưu Access Token mới vào LocalStorage
         localStorage.setItem(ACCESS_TOKEN_KEY, newAccessToken);
-
-        if (newRefreshToken) {
-          document.cookie = `refreshToken=${newRefreshToken}; Path=/; Max-Age=604800; SameSite=Lax; `;
-        }
+        api.defaults.headers.common.Authorization = `Bearer ${newAccessToken}`;
 
         processQueue(null, newAccessToken);
 
@@ -126,24 +99,27 @@ api.interceptors.response.use(
       } catch (refreshError) {
         processQueue(refreshError, null);
 
+        // Cleanup local
         localStorage.removeItem(ACCESS_TOKEN_KEY);
-        if (typeof window !== "undefined") {
+        localStorage.removeItem("user");
+
+        // Cleanup Cookie (Gọi action)
+        await deleteRefreshTokenCookie();
+
+        if (
+          typeof window !== "undefined" &&
+          !window.location.pathname.includes("/login")
+        ) {
           window.location.href = "/login";
         }
-        throw refreshError;
+        return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
       }
     }
 
-    throw error;
+    return Promise.reject(error);
   }
 );
-
-function getRefreshCookieFromFE() {
-  if (typeof document === "undefined") return null;
-  const match = document.cookie.match(/(^| )refreshToken=([^;]+)/);
-  return match ? match[2] : null;
-}
 
 export default api;

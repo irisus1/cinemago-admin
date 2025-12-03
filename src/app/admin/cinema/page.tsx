@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import Table, { Column } from "@/components/Table";
+import Table, { type Column } from "@/components/Table";
 import { FiEdit2, FiTrash2, FiEye } from "react-icons/fi";
 import { Button } from "@/components/ui/button";
 import { BiRefresh } from "react-icons/bi";
@@ -18,15 +18,14 @@ import { VIETNAM_PROVINCES } from "@/constants/vnProvinces";
 
 const CinemasListPage: React.FC = () => {
   const {
-    mode,
     displayRows,
     loading,
     page,
     setPage,
     pagination,
-    clientTotalPages,
     temp,
     setTemp,
+
     setCityKw,
     canClearFilters,
     clearFilters,
@@ -49,10 +48,12 @@ const CinemasListPage: React.FC = () => {
     onConfirm,
   } = useCinemaLogic();
 
+  // dùng riêng cho combobox (value = id tỉnh)
+  const [cityId, setCityId] = useState("");
+
   // ===== STATE XEM CHI TIẾT =====
   const [viewOpen, setViewOpen] = useState(false);
   const [viewCinema, setViewCinema] = useState<Cinema | null>(null);
-  const [cityId, setCityId] = useState("");
 
   const columns: Column<Cinema>[] = [
     { header: "Tên rạp phim", key: "name" },
@@ -124,6 +125,7 @@ const CinemasListPage: React.FC = () => {
 
         <div className="flex items-center justify-between gap-4 w-full">
           <div className="flex items-center gap-3 flex-1 flex-wrap">
+            {/* Search tên rạp */}
             <div className="basis-[240px]">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -137,6 +139,7 @@ const CinemasListPage: React.FC = () => {
               </div>
             </div>
 
+            {/* Combobox thành phố */}
             <div className="min-w-0">
               <SearchableCombobox
                 options={VIETNAM_PROVINCES}
@@ -146,6 +149,7 @@ const CinemasListPage: React.FC = () => {
                   const province = VIETNAM_PROVINCES.find(
                     (p) => p.value === id
                   );
+                  // Gửi label (tên tỉnh / thành phố) sang hook để gọi API với param city
                   setCityKw(province?.label ?? "");
                 }}
                 placeholder="Chọn thành phố"
@@ -187,7 +191,8 @@ const CinemasListPage: React.FC = () => {
           getRowKey={(r) => r.id}
         />
 
-        {mode === "server" && pagination && (
+        {/* Chỉ còn pagination server-side */}
+        {pagination && (
           <div className="flex items-center justify-between px-6 py-4 bg-gray-50">
             <button
               onClick={() =>
@@ -210,31 +215,9 @@ const CinemasListPage: React.FC = () => {
             </button>
           </div>
         )}
-
-        {mode === "client" && (
-          <div className="flex items-center justify-between px-4 py-2 bg-gray-50">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1 || loading}
-              className="px-4 py-2 text-sm text-gray-600 bg-white rounded-lg shadow-sm disabled:opacity-50"
-            >
-              Trước
-            </button>
-            <span className="text-sm text-gray-600">
-              Trang {page} / {clientTotalPages}
-            </span>
-            <button
-              onClick={() => setPage((p) => Math.min(clientTotalPages, p + 1))}
-              disabled={page === clientTotalPages || loading}
-              className="px-4 py-2 text-sm text-gray-600 bg-white rounded-lg shadow-sm disabled:opacity-50"
-            >
-              Tiếp
-            </button>
-          </div>
-        )}
       </div>
 
-      {/* Confirm / success / error Modals cũ */}
+      {/* Dialogs */}
       <Modal
         isOpen={isConfirmDialogOpen}
         onClose={() => setIsConfirmDialogOpen(false)}

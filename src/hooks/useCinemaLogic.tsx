@@ -1,3 +1,4 @@
+// src/hooks/useCinemaLogic.ts
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
@@ -5,32 +6,27 @@ import { useRouter } from "next/navigation";
 import {
   cinemaService,
   type Cinema,
-  PaginationMeta,
-  CreateCinemaRequest,
+  type PaginationMeta,
+  type CreateCinemaRequest,
 } from "@/services";
-
-type Mode = "server" | "client";
 
 export function useCinemaLogic() {
   const router = useRouter();
 
   // --- STATE ---
-  const [cinemas, setCinemas] = useState<Cinema[]>([]); // Data for Server mode
-  const [allRows, setAllRows] = useState<Cinema[]>([]); // Data for Client mode
-
-  // Pagination
+  const [cinemas, setCinemas] = useState<Cinema[]>([]);
   const [pagination, setPagination] = useState<PaginationMeta | null>(null);
+
   const [page, setPage] = useState(1);
   const [limit] = useState(5);
 
-  // Filters & Mode
-  const [mode, setMode] = useState<Mode>("server");
-  const [temp, setTemp] = useState(""); // Input search name (cần debounce)
-  const [nameKw, setNameKw] = useState(""); // Search keyword đã debounce
-  const [cityKw, setCityKw] = useState("");
-  const [addrKw, setAddrKw] = useState("");
+  // search theo tên
+  const [temp, setTemp] = useState(""); // input thô
+  const [nameKw, setNameKw] = useState(""); // sau debounce
 
-  const hasClientFilter = cityKw.trim() !== "" || addrKw.trim() !== "";
+  // filter theo city (gửi lên BE)
+  const [cityKw, setCityKw] = useState("");
+
   const [loading, setLoading] = useState(false);
 
   // Modal State
@@ -47,7 +43,7 @@ export function useCinemaLogic() {
 
   // --- DATA FETCHING ---
 
-  // 1. Fetch theo trang (Server Mode)
+  // Fetch theo trang (server-side) với search + city
   const fetchPage = useCallback(
     async (toPage = page) => {
       setLoading(true);
@@ -56,6 +52,8 @@ export function useCinemaLogic() {
           page: toPage,
           limit,
           search: nameKw.trim() || undefined,
+          // BE mới có param city: gửi cityKw (tên tỉnh/thành phố)
+          city: cityKw.trim() || undefined,
         });
 
         setCinemas(res?.data ?? []);
@@ -75,116 +73,45 @@ export function useCinemaLogic() {
         setLoading(false);
       }
     },
-    [limit, nameKw, page]
-  );
-
-  // 2. Fetch toàn bộ (Client Mode)
-  const fetchAllForClient = useCallback(
-    async (opts?: { search?: string; pageSize?: number }) => {
-      setLoading(true);
-      try {
-        const result: Cinema[] = [];
-        let nextPage = 1;
-        let pageSizeLocal = opts?.pageSize ?? limit;
-
-        while (true) {
-          const res = await cinemaService.getAllCinemas({
-            page: nextPage,
-            limit: pageSizeLocal,
-            search: opts?.search?.trim() || undefined,
-          });
-          const { data, pagination } = res;
-          result.push(...(data ?? []));
-
-          if (pagination?.pageSize && pagination.pageSize !== pageSizeLocal) {
-            pageSizeLocal = pagination.pageSize;
-          }
-
-          if (!pagination?.hasNextPage) break;
-          nextPage = (pagination?.currentPage ?? nextPage) + 1;
-
-          if (pagination?.totalPages && nextPage > pagination.totalPages) break;
-        }
-
-        setAllRows(result);
-      } catch (err) {
-        console.error("Error fetching all pages:", err);
-        setAllRows([]);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [limit]
+    [limit, nameKw, cityKw, page]
   );
 
   // --- EFFECTS ---
 
-  // Debounce search input
+  // Debounce search input theo tên rạp
   useEffect(() => {
     const t = setTimeout(() => setNameKw(temp), 400);
     return () => clearTimeout(t);
   }, [temp]);
 
-  // Tự động chuyển mode dựa trên filter
+  // Reset về trang 1 khi filter (name / city) đổi
   useEffect(() => {
-    const nextMode: Mode = hasClientFilter ? "client" : "server";
-    setMode(nextMode);
     setPage(1);
-  }, [hasClientFilter]);
+  }, [nameKw, cityKw]);
 
-  // Trigger fetch khi điều kiện thay đổi
+  // Gọi API khi page / nameKw / cityKw thay đổi
   useEffect(() => {
-    if (mode === "server") fetchPage();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, page, limit, nameKw]);
+    void fetchPage(page);
+  }, [page, nameKw, cityKw, fetchPage]);
 
-  useEffect(() => {
-    if (mode === "client")
-      fetchAllForClient({ search: nameKw, pageSize: limit });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, nameKw, limit]);
-
-  useEffect(() => {
-    if (mode === "client") setPage(1);
-  }, [cityKw, addrKw, mode]);
-
-  // --- FILTERING LOGIC ---
-  const source = mode === "client" ? allRows : cinemas;
-
-  const filtered = useMemo(() => {
-    if (mode !== "client") return source;
-    const c = cityKw.trim().toLowerCase();
-    const a = addrKw.trim().toLowerCase();
-    return source.filter((x) => {
-      const okCity = c ? x.city?.toLowerCase().includes(c) : true;
-      const okAddr = a ? x.address?.toLowerCase().includes(a) : true;
-      return okCity && okAddr;
-    });
-  }, [mode, source, cityKw, addrKw]);
-
-  const clientTotalPages = Math.max(1, Math.ceil(filtered.length / limit));
-
-  const displayRows =
-    mode === "client"
-      ? filtered.slice((page - 1) * limit, (page - 1) * limit + limit)
-      : source;
+  // --- FILTERING LOGIC (giờ không filter client nữa) ---
+  const displayRows = useMemo(() => cinemas, [cinemas]);
 
   // --- HANDLERS ---
   const handleRefresh = async () => {
-    if (mode === "server") await fetchPage();
-    else await fetchAllForClient({ search: nameKw, pageSize: limit });
+    await fetchPage(page);
   };
 
   const clearFilters = () => {
     setTemp("");
     setNameKw("");
     setCityKw("");
-    setAddrKw("");
+    setPage(1);
   };
 
   const canClearFilters = useMemo(
-    () => temp.trim() !== "" || cityKw.trim() !== "" || addrKw.trim() !== "",
-    [temp, cityKw, addrKw]
+    () => temp.trim() !== "" || cityKw.trim() !== "",
+    [temp, cityKw]
   );
 
   const handleAddOpen = () => {
@@ -219,16 +146,15 @@ export function useCinemaLogic() {
         setIsConfirmDialogOpen(false);
         try {
           await cinemaService.deleteCinema(g.id);
-          if (mode === "server") {
-            await fetchPage();
-          } else {
-            await fetchAllForClient({ search: nameKw, pageSize: limit });
-          }
+          await fetchPage(1);
           setDialogTitle("Thành công");
           setDialogMessage("Đã ẩn (soft-delete) rạp phim.");
           setIsSuccessDialogOpen(true);
         } catch (err) {
-          alert("Thao tác thất bại: " + err);
+          setDialogTitle("Thất bại");
+          setDialogMessage("Không thể xóa rạp phim, vui lòng thử lại.");
+          setIsErrorDialogOpen(true);
+          console.error("Delete cinema error:", err);
         }
       }
     );
@@ -242,16 +168,15 @@ export function useCinemaLogic() {
         setIsConfirmDialogOpen(false);
         try {
           await cinemaService.restoreCinema(g.id);
-          if (mode === "server") {
-            await fetchPage();
-          } else {
-            await fetchAllForClient({ search: nameKw, pageSize: limit });
-          }
+          await fetchPage(page);
           setDialogTitle("Thành công");
           setDialogMessage("Khôi phục rạp phim thành công");
           setIsSuccessDialogOpen(true);
         } catch (err) {
-          alert("Thao tác thất bại: " + err);
+          setDialogTitle("Thất bại");
+          setDialogMessage("Không thể khôi phục rạp phim, vui lòng thử lại.");
+          setIsErrorDialogOpen(true);
+          console.error("Restore cinema error:", err);
         }
       }
     );
@@ -294,11 +219,7 @@ export function useCinemaLogic() {
           setIsSuccessDialogOpen(true);
 
           setEditCinema(null);
-          if (mode === "server") {
-            await fetchPage();
-          } else {
-            await fetchAllForClient({ search: nameKw, pageSize: limit });
-          }
+          await fetchPage(1);
         } catch (e) {
           setDialogTitle("Thất bại");
           setDialogMessage("Không thể lưu rạp, vui lòng thử lại.");
@@ -313,7 +234,6 @@ export function useCinemaLogic() {
 
   return {
     // Data & Logic
-    mode,
     displayRows,
     loading,
 
@@ -321,15 +241,12 @@ export function useCinemaLogic() {
     page,
     setPage,
     pagination,
-    clientTotalPages,
 
     // Filters
     temp,
     setTemp,
     cityKw,
     setCityKw,
-    addrKw,
-    setAddrKw,
     clearFilters,
     canClearFilters,
 
