@@ -10,11 +10,11 @@ export async function setRefreshTokenCookie(token: string) {
   const cookieStore = await cookies();
 
   cookieStore.set("refreshToken", token, {
-    httpOnly: true, // Quan trọng: JS client không đọc được
+    httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-    maxAge: 7 * 24 * 60 * 60, // 7 ngày
+    maxAge: 7 * 24 * 60 * 60,
   });
 }
 
@@ -24,15 +24,13 @@ export async function deleteRefreshTokenCookie() {
   cookieStore.delete("refreshToken");
 }
 
-// 3. Lấy Refresh Token (Chỉ dùng được trong Server Component/Action khác)
+// 3. Lấy Refresh Token
 export async function getRefreshTokenServer() {
   const cookieStore = await cookies();
   return cookieStore.get("refreshToken")?.value;
 }
 
 // 4. Gọi API Refresh Token từ phía Server Next.js
-// Lý do: Vì cookie là HttpOnly, Client (api.ts) không đọc được để gửi trong body.
-// Nên ta phải nhờ Server Action đọc cookie -> gọi Backend -> trả về AccessToken mới cho Client.
 export async function refreshAccessTokenAction() {
   const cookieStore = await cookies();
   const refreshToken = cookieStore.get("refreshToken")?.value;
@@ -40,7 +38,6 @@ export async function refreshAccessTokenAction() {
   if (!refreshToken) throw new Error("No refresh token in cookie");
 
   try {
-    // Gọi sang Backend (Spring/Nest/Node...)
     const { data } = await axios.post(`${BASE}/auth/refresh-token`, {
       refreshToken,
     });
@@ -48,14 +45,12 @@ export async function refreshAccessTokenAction() {
     const newAccessToken = data?.accessToken;
     const newRefreshToken = data?.refreshToken;
 
-    // Nếu Backend trả về refresh token mới, cập nhật luôn cookie
     if (newRefreshToken) {
       await setRefreshTokenCookie(newRefreshToken);
     }
 
     return newAccessToken as string;
   } catch (error) {
-    // Nếu lỗi -> Xóa cookie luôn
     await deleteRefreshTokenCookie();
     throw error;
   }

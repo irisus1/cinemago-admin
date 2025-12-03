@@ -42,6 +42,7 @@ export type {
   SeatType,
   SeatCell,
   SeatModal,
+  HeldSeatResponse,
 } from "./room.service";
 
 export type {

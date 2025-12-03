@@ -35,7 +35,7 @@ const processQueue = (error: unknown, token: string | null = null) => {
   failedQueue = [];
 };
 
-// Request Interceptor (Giữ nguyên)
+// Request Interceptor
 api.interceptors.request.use((config) => {
   const token =
     typeof window !== "undefined"
@@ -47,7 +47,7 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Response Interceptor (Cập nhật logic refresh)
+// Response Interceptor
 api.interceptors.response.use(
   (response: AxiosResponse) => response,
   async (error: AxiosError) => {
@@ -81,9 +81,6 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        // --- THAY ĐỔI LỚN TẠI ĐÂY ---
-        // Thay vì dùng axios.post gọi API refresh (vì Client ko có cookie),
-        // ta gọi Server Action. Server Action nằm ở server nên đọc được cookie.
         const newAccessToken = await refreshAccessTokenAction();
 
         // Lưu Access Token mới vào LocalStorage
@@ -96,22 +93,27 @@ api.interceptors.response.use(
           originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
 
         return api(originalRequest);
-      } catch (refreshError) {
+      } catch (refreshError: unknown) {
         processQueue(refreshError, null);
 
-        // Cleanup local
-        localStorage.removeItem(ACCESS_TOKEN_KEY);
-        localStorage.removeItem("user");
+        if (axios.isAxiosError(refreshError)) {
+          if (
+            refreshError?.response?.status === 401 ||
+            refreshError?.response?.status === 403
+          ) {
+            localStorage.removeItem(ACCESS_TOKEN_KEY);
+            localStorage.removeItem("user");
+            await deleteRefreshTokenCookie();
 
-        // Cleanup Cookie (Gọi action)
-        await deleteRefreshTokenCookie();
-
-        if (
-          typeof window !== "undefined" &&
-          !window.location.pathname.includes("/login")
-        ) {
-          window.location.href = "/login";
+            if (
+              typeof window !== "undefined" &&
+              !window.location.pathname.includes("/login")
+            ) {
+              window.location.href = "/login";
+            }
+          }
         }
+
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

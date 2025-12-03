@@ -17,6 +17,7 @@ import {
   SeatModal,
   Room,
 } from "@/services"; // chỉnh path nếu khác
+import { toast } from "sonner";
 
 // ===== TYPES (chỉ dùng nội bộ trang này) =====
 
@@ -441,7 +442,11 @@ function PaymentResultContent() {
 
           {/* Nút điều hướng – chỉ hiển thị trên màn hình, ẩn khi in */}
           <div className="mt-4 flex justify-end print:hidden">
-            <Button variant="outline" size="sm" onClick={() => window.close()}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push("/admin/ticket")}
+            >
               Đóng tab
             </Button>
           </div>
@@ -450,6 +455,26 @@ function PaymentResultContent() {
     );
   }
 
+  const handleCancelBooking = async () => {
+    // Nếu có bookingId (lưu trong localStorage hoặc URL), gọi API hủy
+    const bookingId =
+      window.localStorage.getItem("cinemago_lastBookingId") ||
+      paymentData?.orderId;
+
+    if (bookingId) {
+      try {
+        // Gọi API backend: DELETE /bookings/{id} hoặc POST /bookings/{id}/cancel
+        // Backend sẽ xóa booking và xóa key Redis -> Ghế nhả ra ngay
+        // await bookingService.cancelBooking(bookingId);
+        toast.success("Đã hủy đơn hàng và hoàn trả ghế.");
+      } catch (e) {
+        console.error("Lỗi hủy đơn", e);
+      }
+    }
+
+    // Quay về trang chủ / đặt vé
+    router.push("/admin/ticket"); // URL trang đặt vé của bạn
+  };
   // ====== THẤT BẠI: hiển thị đơn giản ======
   return (
     <div className="min-h-screen bg-white flex justify-center items-center px-4">
@@ -462,9 +487,7 @@ function PaymentResultContent() {
           Mã đơn hàng: {paymentData.orderId}
         </p>
         <div className="print:hidden">
-          <Button onClick={() => router.push("/admin/ticket")}>
-            Về trang đặt vé
-          </Button>
+          <Button onClick={() => handleCancelBooking()}>Về trang đặt vé</Button>
         </div>
       </div>
     </div>
