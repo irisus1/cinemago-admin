@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import {
   genreService,
   movieService,
+  reviewService,
   type Movie,
   type Genre,
   PaginationMeta,
@@ -48,18 +49,26 @@ export function useMovieLogic() {
   const [q, setQ] = useState("");
   const [qDebounced, setQDebounced] = useState("");
   const [genreIds, setGenreIds] = useState<string[]>([]);
-  const [ratingFrom, setRatingFrom] = useState<number | "">("");
-  const [status, setStatus] = useState<string>("");
+  const [ratingFrom, setRatingFrom] = useState<number | null>(null);
+  const [status, setStatus] = useState<
+    "__ALL__" | "COMING_SOON" | "NOW_SHOWING" | "ENDED"
+  >("__ALL__");
   const [reloadTick, setReloadTick] = useState(0);
 
   // Derived State
   const hasAnyFilter =
     qDebounced.length > 0 ||
     genreIds.length > 0 ||
-    ratingFrom !== "" ||
-    !!status;
+    ratingFrom !== null ||
+    status !== "__ALL__";
 
   const isSearchMode = hasAnyFilter;
+
+  const canClearFilters =
+    q.trim().length > 0 ||
+    genreIds.length > 0 ||
+    ratingFrom !== null ||
+    status !== "__ALL__";
 
   // ------------ Cache Refs ------------
   const pageCache = useRef(new Map<number, Movie[]>());
@@ -77,8 +86,23 @@ export function useMovieLogic() {
 
   const fetchPage = useCallback(async (p: number) => {
     const res = await movieService.getAllMovies({ page: p, limit: LIMIT });
-    const { data, pagination } = res;
-    return { data: data ?? [], pagination };
+    const movies = res.data ?? [];
+    const moviesWithRating = await Promise.all(
+      movies.map(async (m) => {
+        try {
+          const overview = await reviewService.getReviewOverview(m.id);
+          return {
+            ...m,
+            rating: overview.averageRating ?? 0,
+          };
+        } catch (err) {
+          console.error("Failed to fetch review overview for movie", m.id, err);
+          return m;
+        }
+      })
+    );
+
+    return { data: moviesWithRating, pagination: res.pagination };
   }, []);
 
   const fetchPageCached = useCallback(
@@ -192,9 +216,9 @@ export function useMovieLogic() {
             const ok = m.genres?.some((g) => genreIds.includes(String(g.id)));
             if (!ok) return false;
           }
-          if (ratingFrom !== "" && (m.rating ?? 0) < Number(ratingFrom))
-            return false;
-          if (status && m.status !== status) return false;
+          if (ratingFrom !== null && (m.rating ?? 0) < ratingFrom) return false;
+
+          if (status !== "__ALL__" && m.status !== status) return false;
           return true;
         });
 
@@ -266,8 +290,8 @@ export function useMovieLogic() {
   const clearFilters = () => {
     setQ("");
     setGenreIds([]);
-    setRatingFrom("");
-    setStatus("");
+    setRatingFrom(null);
+    setStatus("__ALL__");
     setSearchPage(1);
   };
 
@@ -416,6 +440,7 @@ export function useMovieLogic() {
     loadingSearch,
     globalLoading,
     isSearchMode,
+    canClearFilters,
 
     // Paging
     page,

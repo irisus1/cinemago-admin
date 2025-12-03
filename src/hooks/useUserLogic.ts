@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   userService,
   type User,
@@ -214,6 +214,11 @@ export function useUsersLogic() {
     setStatus("__ALL__");
   };
 
+  const canClearFilters = useMemo(
+    () => search.trim() !== "" || role !== "__ALL__" || status !== "__ALL__",
+    [search, role, status]
+  );
+
   return {
     users,
     searchInput,
@@ -223,11 +228,14 @@ export function useUsersLogic() {
     status,
     setStatus,
     loading,
+    canClearFilters,
+
     page,
     setPage,
     totalPages,
     totalItems,
     pagination,
+
     open,
     setOpen,
     editUser,
@@ -240,6 +248,7 @@ export function useUsersLogic() {
     setIsErrorDialogOpen,
     dialogTitle,
     dialogMessage,
+
     onConfirm,
     handleAddOpen,
     handleEditOpen,

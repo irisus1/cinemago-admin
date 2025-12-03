@@ -173,32 +173,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const initAuth = async () => {
       try {
-        // Nếu access token đã hết hạn → clear local
-        if (authService.isTokenExpired()) {
-          console.warn("Token expired on init, clearing auth data");
-          authService.clearLocalAuth();
-          setUser(null);
-          setIsLoading(false);
-          return;
-        }
+        // 1. Kiểm tra xem có Access Token trong LocalStorage không
+        const token = authService.getToken();
 
-        if (authService.isAuthenticated()) {
-          // Lấy user từ localStorage (nếu có)
-          const storedUser = authService.getStoredUser();
-          if (storedUser) setUser(storedUser);
-
-          // Gọi API lấy user mới nhất
-          try {
-            const res = await api.get<{ data: User }>("/users/profile");
-            const currentUser = res.data.data;
-            setUser(currentUser);
-            localStorage.setItem("user", JSON.stringify(currentUser));
-          } catch (e) {
-            console.warn("Failed to fetch profile:", e);
+        // 2. Logic kiểm tra và khôi phục
+        if (token) {
+          // Trường hợp A: Token còn hạn -> Lấy user profile
+          if (!authService.isTokenExpired()) {
+            await fetchProfile();
           }
+          // Trường hợp B: Token hết hạn -> Thử Refresh bằng cookie
+          else {
+            console.log("Token expired on init, attempting refresh...");
+            await tryRefreshAndFetchProfile();
+          }
+        } else {
+          // Trường hợp C: Không có Access Token -> Vẫn thử Refresh (phòng trường hợp localStorage bị xóa nhưng cookie còn)
+          console.log("No token found, checking refresh cookie...");
+          await tryRefreshAndFetchProfile();
         }
       } catch (error) {
-        console.error("Auth init error:", error);
+        console.error("Auth init failed:", error);
+        // Chỉ logout nếu thực sự không thể khôi phục phiên
+        authService.clearLocalAuth();
         setUser(null);
       } finally {
         setIsLoading(false);
@@ -208,8 +205,40 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     initAuth();
   }, []);
 
+  const fetchProfile = async () => {
+    // Lấy tạm user từ localStorage để hiển thị ngay cho đỡ giật
+    const storedUser = authService.getStoredUser();
+    if (storedUser) setUser(storedUser);
+
+    try {
+      const res = await api.get<{ data: User }>("/users/profile");
+      setUser(res.data.data);
+      localStorage.setItem("user", JSON.stringify(res.data.data));
+    } catch (e) {
+      console.warn(
+        "Fetch profile failed (server might be down or token invalid)",
+        e
+      );
+      throw e; // Ném lỗi để catch bên trên xử lý
+    }
+  };
+
+  // Hàm phụ: Refresh token + Lấy user
+  const tryRefreshAndFetchProfile = async () => {
+    try {
+      // Gọi service refresh (nó sẽ tự lấy cookie refreshToken để gửi đi)
+      await authService.refreshAccessToken();
+      // Nếu refresh thành công, gọi api lấy profile
+      await fetchProfile();
+    } catch (e) {
+      console.warn("Refresh failed on init. Session really expired.");
+      throw e;
+    }
+  };
+
   // ===== AUTO REFRESH TOKEN =====
   useEffect(() => {
+    if (isLoading) return;
     const checkAndRefresh = async () => {
       console.log("đã qua 60s");
 
@@ -238,10 +267,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     };
 
-    checkAndRefresh();
+    // checkAndRefresh();
     const interval = setInterval(checkAndRefresh, 60000); // check mỗi phút
     return () => clearInterval(interval);
-  }, []);
+  }, [isLoading]);
 
   // ===== LOGIN =====
   const login = async (email: string, password: string) => {

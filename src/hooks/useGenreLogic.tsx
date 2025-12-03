@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { genreService, type Genre, PaginationMeta } from "@/services";
 
 type GenreFormPayload = {
@@ -12,7 +12,7 @@ export function useGenreLogic() {
   // --- STATE ---
   const [genres, setGenres] = useState<Genre[]>([]);
   const [queryName, setQueryName] = useState("");
-  const [time, setTime] = useState(""); // State cho input (debounce)
+  const [genre, setGenre] = useState("");
 
   const [loading, setLoading] = useState(false);
 
@@ -77,9 +77,9 @@ export function useGenreLogic() {
 
   // Debounce search input
   useEffect(() => {
-    const t = setTimeout(() => setQueryName(time), 300);
+    const t = setTimeout(() => setQueryName(genre), 300);
     return () => clearTimeout(t);
-  }, [time]);
+  }, [genre]);
 
   // --- HANDLERS ---
   const handleRefresh = async () => {
@@ -89,9 +89,11 @@ export function useGenreLogic() {
   };
 
   const clearFilters = () => {
-    setTime("");
+    setGenre("");
     setQueryName("");
   };
+
+  const canClearFilters = useMemo(() => genre.trim() !== "", [genre]);
 
   const handleAddOpen = () => {
     setEditGenre(null);
@@ -232,8 +234,9 @@ export function useGenreLogic() {
     pagination,
     totalPages,
     totalItems,
-    time,
-    setTime, // Để bind vào input
+    genre,
+    setGenre, // Để bind vào input
+    canClearFilters,
 
     // Modal states
     open,

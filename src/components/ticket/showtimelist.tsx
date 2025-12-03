@@ -97,7 +97,7 @@ export default function ShowtimeList({
                   {times.map((st) => {
                     const isActive =
                       String(selectedShowtimeId) === String(st.id);
-                    console.log(st.startTime);
+                    // console.log(st.startTime);
 
                     return (
                       <Button

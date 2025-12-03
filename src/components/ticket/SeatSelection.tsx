@@ -48,7 +48,7 @@ export default function SeatSelectionStep({
   const prices = {
     standard: basePrice,
     vip: basePrice + vipSurcharge,
-    couple: basePrice + coupleSurcharge,
+    couple: basePrice * 2 + coupleSurcharge * 2,
   };
 
   const currentCounts = useMemo(
@@ -171,7 +171,7 @@ const TicketCounter = ({
       <div className="text-primary font-bold text-lg">{formatVND(price)}</div>
       {type !== "standard" && price > basePrice && (
         <div className="text-[12px] text-gray-400 mt-1">
-          (phụ thu + {formatVND(price - basePrice)})
+          (phụ thu + {formatVND(price - basePrice * 2)})
         </div>
       )}
     </div>

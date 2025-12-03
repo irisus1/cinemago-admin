@@ -82,7 +82,6 @@ export default function SeatLayoutBuilder(props: Props) {
     onSeatMouseEnter,
   } = useSeatLayoutLogic(props);
 
-  // Memoize colHeaders for UI
   const colHeaders = useMemo(
     () => Array.from({ length: cols }, (_, i) => i + 1),
     [cols]

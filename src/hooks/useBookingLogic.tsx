@@ -27,15 +27,12 @@ export function useBookingLogic() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // --- STATE HIỂN THỊ (Lấy từ Cache ra để render) ---
   const [userMap, setUserMap] = useState<UserMap>({});
   const [showTimeMap, setShowTimeMap] = useState<ShowTimeMap>({});
   const [movieMap, setMovieMap] = useState<MovieMap>({});
   const [roomMap, setRoomMap] = useState<RoomMap>({});
   const [cinemaMap, setCinemaMap] = useState<CinemaMap>({});
 
-  // --- CACHE (Lưu trữ dữ liệu vĩnh viễn trong vòng đời component) ---
-  // Dùng useRef để thay đổi không gây re-render, chỉ update khi cần thiết
   const cache = useRef({
     users: {} as UserMap,
     showTimes: {} as ShowTimeMap,
@@ -54,37 +51,44 @@ export function useBookingLogic() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
 
+  //filter
+  const [showtimeFilter, setShowtimeFilter] = useState<"__ALL__" | string>(
+    "__ALL__"
+  );
+  const [typeFilter, setTypeFilter] = useState<
+    "__ALL__" | "online" | "offline"
+  >("__ALL__");
+
+  const canClearFilters =
+    showtimeFilter !== "__ALL__" || typeFilter !== "__ALL__";
+
   const fetchBookings = useCallback(async () => {
     try {
       setLoading(true);
 
-      // 1. Lấy danh sách Booking (Luôn luôn lấy mới)
-      // Dùng getAllBookings cho trang Admin
-      const res = await bookingService.getMyBookings({ page, limit });
+      const res = await bookingService.getAllBookings({
+        page,
+        limit,
+        showtimeId: showtimeFilter === "__ALL__" ? undefined : showtimeFilter,
+        type: typeFilter === "__ALL__" ? undefined : typeFilter,
+      });
+
       const bookingList = res.data;
 
       setBookings(bookingList);
       setTotalPages(res.pagination.totalPages);
       setTotalItems(res.pagination.totalItems);
 
-      // ============================================================
-      // LOGIC CACHING: CHỈ GỌI API CHO NHỮNG GÌ CHƯA CÓ TRONG CACHE
-      // ============================================================
-
-      // --- BƯỚC 1: XỬ LÝ USER ---
-      // Lọc ra list User ID có trong trang này
+      // ==== Caching users & showtimes ====
       const allUserIdsInPage = Array.from(
         new Set(
           bookingList.map((b) => b.userId).filter((id): id is string => !!id)
         )
       );
-
-      // Chỉ lấy những ID chưa có trong cache
       const missingUserIds = allUserIdsInPage.filter(
         (id) => !cache.current.users[id]
       );
 
-      // --- BƯỚC 2: XỬ LÝ SHOWTIME ---
       const allShowTimeIdsInPage = Array.from(
         new Set(bookingList.map((b) => b.showtimeId))
       );
@@ -92,7 +96,6 @@ export function useBookingLogic() {
         (id) => !cache.current.showTimes[id]
       );
 
-      // --- GỌI API (Chỉ gọi cái thiếu) ---
       const [newUsers, newShowTimes] = await Promise.all([
         Promise.all(
           missingUserIds.map((id) =>
@@ -106,7 +109,6 @@ export function useBookingLogic() {
         ),
       ]);
 
-      // --- CẬP NHẬT CACHE (USER & SHOWTIME) ---
       newUsers.forEach((u) => {
         if (u) cache.current.users[u.id] = u;
       });
@@ -114,17 +116,10 @@ export function useBookingLogic() {
         if (st) cache.current.showTimes[st.id] = st;
       });
 
-      // ------------------------------------------------------------
-      // SAU KHI CÓ SHOWTIME MỚI -> KIỂM TRA MOVIE, ROOM, CINEMA
-      // ------------------------------------------------------------
-
-      // Gom tất cả ID cần thiết từ ShowTime (cả cũ trong cache và mới vừa lấy)
-      // Lý do: ShowTime cũ có thể tham chiếu đến Movie mà ta chưa từng lấy (nếu logic trước đó bị sót)
-      // Nhưng để tối ưu, ta chỉ quét các showTime liên quan đến booking hiện tại
-
+      // ==== From showtimes -> movies / rooms / cinemas ====
       const relatedShowTimes = allShowTimeIdsInPage
         .map((id) => cache.current.showTimes[id])
-        .filter(Boolean);
+        .filter(Boolean) as ShowTime[];
 
       const neededMovieIds = new Set<string>();
       const neededRoomIds = new Set<string>();
@@ -139,7 +134,6 @@ export function useBookingLogic() {
           neededCinemaIds.add(st.cinemaId);
       });
 
-      // Gọi API lấy thông tin Movie/Room/Cinema còn thiếu
       const [newMovies, newRooms, newCinemas] = await Promise.all([
         Promise.all(
           Array.from(neededMovieIds).map((id) =>
@@ -158,7 +152,6 @@ export function useBookingLogic() {
         ),
       ]);
 
-      // --- CẬP NHẬT CACHE (MOVIE, ROOM, CINEMA) ---
       newMovies.forEach((m) => {
         if (m) cache.current.movies[m.id] = m;
       });
@@ -171,10 +164,6 @@ export function useBookingLogic() {
         if (cinema?.id) cache.current.cinemas[cinema.id] = cinema;
       });
 
-      // ============================================================
-      // CẬP NHẬT STATE ĐỂ RENDER UI
-      // ============================================================
-      // Lưu ý: Phải set state bằng object mới (shallow copy) thì React mới re-render
       setUserMap({ ...cache.current.users });
       setShowTimeMap({ ...cache.current.showTimes });
       setMovieMap({ ...cache.current.movies });
@@ -185,7 +174,11 @@ export function useBookingLogic() {
     } finally {
       setLoading(false);
     }
-  }, [page, limit]);
+  }, [page, limit, showtimeFilter, typeFilter]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [showtimeFilter, typeFilter]);
 
   useEffect(() => {
     fetchBookings();
@@ -201,6 +194,11 @@ export function useBookingLogic() {
     hasPrevPage: page > 1,
   };
 
+  const clearFilters = () => {
+    setShowtimeFilter("__ALL__");
+    setTypeFilter("__ALL__");
+  };
+
   return {
     bookings,
     userMap,
@@ -208,12 +206,22 @@ export function useBookingLogic() {
     movieMap,
     roomMap,
     cinemaMap,
+
     loading,
     pagination,
     page,
     setPage,
     totalPages,
     totalItems,
+
+    // filters
+    showtimeFilter,
+    setShowtimeFilter,
+    typeFilter,
+    setTypeFilter,
+    clearFilters,
+    canClearFilters,
+
     detailOpen,
     setDetailOpen,
     selectedBooking,

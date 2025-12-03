@@ -54,6 +54,8 @@ export default function BookingSheet({
     handleToggleSeat,
     processingSeats,
     heldSeats,
+    timeLeft,
+    formattedTime,
 
     // Modal & Payment Handlers
     handleOpenPaymentModal,
@@ -147,6 +149,14 @@ export default function BookingSheet({
         {selectedShowtime && (
           <>
             <div className="fixed bottom-0 right-0 w-full sm:max-w-[90vw] border-t bg-white shadow-[0_-4px_10px_-1px_rgba(0,0,0,0.1)] p-4 px-6 z-50">
+              {timeLeft > 0 && (
+                <div className="mb-2 flex items-center justify-center bg-orange-50 text-orange-700 py-1 px-3 rounded text-sm font-medium border border-orange-100">
+                  <span>Thời gian giữ ghế còn lại: </span>
+                  <span className="ml-2 font-bold text-lg">
+                    {formattedTime}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between items-end mb-4">
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center gap-2">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,116 +31,172 @@ import {
 } from "recharts";
 
 import {
-  getMovieCount,
-  getCinemaCount,
-  getUserCount,
-  getRevenueByPeriod,
-  getRevenueByPeriodAndMovie,
-  getRevenueByPeriodAndCinema,
-} from "@/services/DashboardService";
+  dashboardService,
+  type MovieRevenueResponse,
+  CinemaRevenueResponse,
+  MovieRevenueItem,
+  CinemaRevenueItem,
+} from "@/services";
+
+type ChartItem = { name: string; revenue: number };
+const PIE_COLORS: string[] = ["#4f46e5", "#22c55e"];
 
 export default function Dashboard() {
-  // ===== Default range: today -> +7 days
+  // ===== Khoảng thời gian mặc định: hôm nay -> +7 ngày
   const todayISO = new Date().toISOString().slice(0, 10);
   const sevenDaysAfterISO = new Date(Date.now() + 7 * 86400000)
     .toISOString()
     .slice(0, 10);
 
-  const [startDate, setStartDate] = useState(todayISO);
-  const [endDate, setEndDate] = useState(sevenDaysAfterISO);
+  const [startDate, setStartDate] = useState<string>(todayISO);
+  const [endDate, setEndDate] = useState<string>(sevenDaysAfterISO);
 
-  // ===== Data state
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  // ===== State dữ liệu
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string>("");
 
-  const [counts, setCounts] = useState({ users: 0, cinemas: 0, movies: 0 });
-  const [revenue, setRevenue] = useState({ total: 0, fnb: 0, ticket: 0 });
-  const [byMovie, setByMovie] = useState([]);
-  const [byCinema, setByCinema] = useState([]);
+  const [counts, setCounts] = useState<{
+    users: number;
+    cinemas: number;
+    movies: number;
+  }>({ users: 0, cinemas: 0, movies: 0 });
 
-  // ===== Helpers
-  const fmtNumber = (n) => new Intl.NumberFormat().format(n);
-  const fmtVND = (n) =>
+  const [revenue, setRevenue] = useState<{
+    total: number;
+    fnb: number;
+    ticket: number;
+  }>({ total: 0, fnb: 0, ticket: 0 });
+
+  const [byMovie, setByMovie] = useState<ChartItem[]>([]);
+  const [byCinema, setByCinema] = useState<ChartItem[]>([]);
+
+  // ===== Hàm tiện ích format
+  const fmtNumber = (n: number | string): string =>
+    new Intl.NumberFormat().format(Number(n) || 0);
+
+  const fmtVND = (n: number | string): string =>
     new Intl.NumberFormat("vi-VN", {
       style: "currency",
       currency: "VND",
       maximumFractionDigits: 0,
     }).format(Math.max(0, Math.round(Number(n) || 0)));
 
-  const refresh = useCallback(() => {
+  // ===== Map dữ liệu doanh thu theo phim
+  const mapMovieRevenue = (
+    rbm: MovieRevenueResponse | MovieRevenueItem[] | null | undefined
+  ): ChartItem[] => {
+    if (!rbm) return [];
+
+    // Trường hợp BE trả [] khi không có booking
+    if (Array.isArray(rbm)) {
+      return [];
+    }
+
+    // Tới đây thì chắc chắn là MovieRevenueResponse
+    const source =
+      rbm.sortedMovies.length > 0 ? rbm.sortedMovies : rbm.moviesRevenue;
+
+    const mapped: ChartItem[] = source.map((item) => {
+      const name = item.movie?.name ?? item.movie?.title ?? "(Không xác định)";
+
+      return {
+        name,
+        revenue: Number(item.totalRevenue ?? 0),
+      };
+    });
+
+    return mapped.sort((a, b) => b.revenue - a.revenue).slice(0, 12);
+  };
+
+  // ===== Map dữ liệu doanh thu theo rạp
+  const mapCinemaRevenue = (
+    rbc: CinemaRevenueResponse | CinemaRevenueItem[] | null | undefined
+  ): ChartItem[] => {
+    if (!rbc) return [];
+
+    // Trường hợp BE trả [] khi không có booking
+    if (Array.isArray(rbc)) {
+      return [];
+    }
+
+    const source =
+      rbc.sortedCinemas.length > 0 ? rbc.sortedCinemas : rbc.cinemasRevenue;
+
+    const mapped: ChartItem[] = source.map((item) => {
+      const name = item.cinema?.name ?? "(Không xác định)";
+      return {
+        name,
+        revenue: Number(item.totalRevenue ?? 0),
+      };
+    });
+
+    return mapped.sort((a, b) => b.revenue - a.revenue);
+  };
+
+  const refresh = useCallback(async () => {
     setLoading(true);
     setError("");
 
-    Promise.all([
-      getUserCount(),
-      getCinemaCount(),
-      getMovieCount(),
-      getRevenueByPeriod({ start: startDate, end: endDate }),
-      getRevenueByPeriodAndMovie({ start: startDate, end: endDate }),
-      getRevenueByPeriodAndCinema({ start: startDate, end: endDate }),
-    ])
-      .then(([u, c, m, rev, rbm, rbc]) => {
-        // ---- Counts
-        setCounts({
-          users: u?.data.data.totalUsers ?? 0,
-          cinemas: c?.data.data.totalCinemas ?? 0,
-          movies: m?.data.data.totalMovies ?? 0,
+    try {
+      // 1) Call các API "core" trước: user/cinema/movie count + tổng doanh thu
+      const [usersCount, cinemasCount, moviesCount, rev] = await Promise.all([
+        dashboardService.getUserCount(),
+        dashboardService.getCinemaCount(),
+        dashboardService.getMovieCount(),
+        dashboardService.getRevenueByPeriod({ startDate, endDate }),
+      ]);
+
+      // ---- Counts
+      setCounts({
+        users: usersCount,
+        cinemas: cinemasCount,
+        movies: moviesCount,
+      });
+
+      // ---- Revenue period
+      const total = Number(rev.totalRevenue ?? 0);
+      const fnb = Number(rev.totalRevenueFromFoodDrink ?? 0);
+      const ticket = Math.max(0, total - fnb);
+      setRevenue({ total, fnb, ticket });
+
+      // 2) Gọi API doanh thu theo phim – nếu lỗi thì chỉ log và để chart rỗng
+      try {
+        const rbm = await dashboardService.getRevenueByPeriodAndMovie({
+          startDate,
+          endDate,
         });
+        setByMovie(mapMovieRevenue(rbm));
+      } catch (e: unknown) {
+        console.error("Lỗi getRevenueByPeriodAndMovie:", e);
+        setByMovie([]); // tránh giữ data cũ
+      }
 
-        // ---- Revenue period
-        const total = Number(rev?.totalRevenue ?? 0);
-        const fnb = Number(rev?.totalRevenueFromFoodDrink ?? 0);
-        const ticket = Math.max(0, total - fnb);
-        setRevenue({ total, fnb, ticket });
-
-        // ---- Revenue by movie
-        if (Array.isArray(rbm)) {
-          const mapped = rbm.map((i) => ({
-            name: i.movieName ?? i.name ?? i.title ?? "(unknown)",
-            revenue: Number(i.revenue ?? i.totalRevenue ?? 0),
-          }));
-          mapped.sort((a, b) => b.revenue - a.revenue);
-          setByMovie(mapped.slice(0, 12));
-        } else if (
-          rbm &&
-          Array.isArray(rbm.sortedMovies) &&
-          Array.isArray(rbm.moviesRevenue)
-        ) {
-          const mapped = rbm.sortedMovies.map((name, idx) => ({
-            name: name ?? "(unknown)",
-            revenue: Number(rbm.moviesRevenue[idx] ?? 0),
-          }));
-          mapped.sort((a, b) => b.revenue - a.revenue);
-          setByMovie(mapped.slice(0, 12));
-        }
-
-        // ---- Revenue by cinema
-        if (Array.isArray(rbc)) {
-          const mapped = rbc.map((i) => ({
-            name: i.cinemaName ?? i.name ?? i.branch ?? "(unknown)",
-            revenue: Number(i.revenue ?? i.totalRevenue ?? 0),
-          }));
-          mapped.sort((a, b) => b.revenue - a.revenue);
-          setByCinema(mapped);
-        } else if (
-          rbc &&
-          Array.isArray(rbc.sortedCinemas) &&
-          Array.isArray(rbc.cinemasRevenue)
-        ) {
-          const mapped = rbc.sortedCinemas.map((name, idx) => ({
-            name: name ?? "(unknown)",
-            revenue: Number(rbc.cinemasRevenue[idx] ?? 0),
-          }));
-          mapped.sort((a, b) => b.revenue - a.revenue);
-          setByCinema(mapped);
-        }
-      })
-      .catch((e) => setError(e?.message || "Fetch error"))
-      .finally(() => setLoading(false));
+      // 3) Gọi API doanh thu theo rạp – nếu lỗi thì chỉ log và để chart rỗng
+      try {
+        const rbc = await dashboardService.getRevenueByPeriodAndCinema({
+          startDate,
+          endDate,
+        });
+        setByCinema(mapCinemaRevenue(rbc));
+      } catch (e: unknown) {
+        console.error("Lỗi getRevenueByPeriodAndCinema:", e);
+        setByCinema([]);
+      }
+    } catch (e: unknown) {
+      // Chỉ khi các API "core" lỗi mới show lỗi lớn trên dashboard
+      const msg =
+        e instanceof Error ? e.message : "Có lỗi xảy ra khi tải dữ liệu.";
+      setError(msg);
+      // Nếu muốn, có thể reset luôn chart:
+      setByMovie([]);
+      setByCinema([]);
+    } finally {
+      setLoading(false);
+    }
   }, [startDate, endDate]);
 
   useEffect(() => {
-    refresh();
+    void refresh();
   }, [refresh]);
 
   // ===== UI
@@ -150,7 +206,7 @@ export default function Dashboard() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">
-            Cinema Admin Dashboard
+            Bảng điều khiển quản trị rạp phim
           </h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -171,58 +227,52 @@ export default function Dashboard() {
           </div>
           <Button onClick={refresh} className="gap-2">
             <RefreshCw className="h-4 w-4" />
-            Refresh
+            Làm mới
           </Button>
         </div>
       </div>
 
-      {error ? (
-        <div className="rounded-xl border border-rose-300 bg-rose-50 p-3 text-rose-700 text-sm">
-          {error}
-        </div>
-      ) : null}
-
-      {/* KPI Cards */}
+      {/* Thẻ KPI */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
         <MetricCard
-          title="Total Revenue"
+          title="Tổng doanh thu"
           value={fmtVND(revenue.total)}
           icon={<DollarSign className="h-5 w-5" />}
           loading={loading}
         />
         <MetricCard
-          title="Food & Drink"
+          title="Doanh thu đồ ăn & thức uống"
           value={fmtVND(revenue.fnb)}
           icon={<Utensils className="h-5 w-5" />}
           loading={loading}
         />
         <MetricCard
-          title="Ticket Revenue"
+          title="Doanh thu vé"
           value={fmtVND(revenue.ticket)}
           icon={<PieChartIcon className="h-5 w-5" />}
           loading={loading}
         />
         <MetricCard
-          title="Users"
+          title="Số người dùng"
           value={fmtNumber(counts.users)}
           icon={<Users className="h-5 w-5" />}
           loading={loading}
         />
         <MetricCard
-          title="Movies / Cinemas"
+          title="Số phim / rạp"
           value={`${fmtNumber(counts.movies)} / ${fmtNumber(counts.cinemas)}`}
           icon={<Building2 className="h-5 w-5" />}
           loading={loading}
         />
       </div>
 
-      {/* Charts Row 1 */}
+      {/* Hàng biểu đồ 1 */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <Card className="h-[380px]">
           <CardHeader className="flex flex-row items-center justify-between">
             <div className="flex items-center gap-2">
               <PieChartIcon className="h-5 w-5" />
-              <CardTitle>Revenue Composition</CardTitle>
+              <CardTitle>Cơ cấu doanh thu</CardTitle>
             </div>
             <Badge variant="secondary" className="gap-1">
               <CalendarDays className="h-3.5 w-3.5" /> {startDate} → {endDate}
@@ -237,17 +287,19 @@ export default function Dashboard() {
                   <Pie
                     dataKey="value"
                     data={[
-                      { name: "Ticket", value: revenue.ticket },
-                      { name: "Food & Drink", value: revenue.fnb },
+                      { name: "Vé", value: revenue.ticket },
+                      { name: "Đồ ăn & thức uống", value: revenue.fnb },
                     ]}
                     innerRadius={60}
                     outerRadius={100}
                   >
-                    {["#", "#"].map((_, i) => (
-                      <Cell key={i} />
+                    {["ticket", "fnb"].map((key, index) => (
+                      <Cell key={key} fill={PIE_COLORS[index]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(v) => fmtVND(v)} />
+                  <Tooltip
+                    formatter={(value: number | string) => fmtVND(value)}
+                  />
                   <Legend />
                 </PieChart>
               </ResponsiveContainer>
@@ -259,7 +311,7 @@ export default function Dashboard() {
           <CardHeader className="flex items-center justify-between flex-row">
             <div className="flex items-center gap-2">
               <BarChart3 className="h-5 w-5" />
-              <CardTitle>Revenue by Cinema</CardTitle>
+              <CardTitle>Doanh thu theo rạp chiếu</CardTitle>
             </div>
           </CardHeader>
           <CardContent className="h-[300px]">
@@ -271,9 +323,11 @@ export default function Dashboard() {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="name" />
                   <YAxis tickFormatter={fmtNumber} />
-                  <Tooltip formatter={(v) => fmtVND(v)} />
+                  <Tooltip
+                    formatter={(value: number | string) => fmtVND(value)}
+                  />
                   <Legend />
-                  <Bar dataKey="revenue" name="Revenue" />
+                  <Bar dataKey="revenue" name="Doanh thu" />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -281,13 +335,13 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Charts Row 2 */}
+      {/* Hàng biểu đồ 2 */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <Card className="h-[420px] xl:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between">
             <div className="flex items-center gap-2">
               <BarChart3 className="h-5 w-5" />
-              <CardTitle>Top Movies by Revenue</CardTitle>
+              <CardTitle>Top phim theo doanh thu</CardTitle>
             </div>
           </CardHeader>
           <CardContent className="h-[340px]">
@@ -305,9 +359,11 @@ export default function Dashboard() {
                     height={60}
                   />
                   <YAxis tickFormatter={fmtNumber} />
-                  <Tooltip formatter={(v) => fmtVND(v)} />
+                  <Tooltip
+                    formatter={(value: number | string) => fmtVND(value)}
+                  />
                   <Legend />
-                  <Bar dataKey="revenue" name="Revenue" />
+                  <Bar dataKey="revenue" name="Doanh thu" />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -318,7 +374,15 @@ export default function Dashboard() {
   );
 }
 
-function MetricCard({ title, value, icon, loading, delta }) {
+type MetricCardProps = {
+  title: string;
+  value: string | number;
+  icon: React.ReactNode;
+  loading: boolean;
+  delta?: number;
+};
+
+function MetricCard({ title, value, icon, loading, delta }: MetricCardProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -331,7 +395,7 @@ function MetricCard({ title, value, icon, loading, delta }) {
             {icon}
             {title}
           </CardTitle>
-          {typeof delta === "number" ? (
+          {typeof delta === "number" && (
             <span
               className={`inline-flex items-center text-xs font-medium ${
                 delta >= 0 ? "text-emerald-600" : "text-rose-600"
@@ -340,7 +404,7 @@ function MetricCard({ title, value, icon, loading, delta }) {
               {delta >= 0 ? "+" : ""}
               {Math.abs(delta)}%
             </span>
-          ) : null}
+          )}
         </CardHeader>
         <CardContent>
           {loading ? (

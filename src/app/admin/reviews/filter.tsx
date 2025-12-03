@@ -2,7 +2,7 @@
 "use client";
 
 import React from "react";
-import { BiRefresh } from "react-icons/bi";
+
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -11,7 +11,7 @@ import {
   SelectItem,
   SelectValue,
 } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
+
 import type { Movie, GetReviewsParams } from "@/services";
 
 interface ReviewFiltersProps {
@@ -19,8 +19,8 @@ interface ReviewFiltersProps {
   onChange: (next: GetReviewsParams) => void;
   movies: Movie[];
   loading: boolean;
-  onRefresh: () => void;
   onClear: () => void;
+  canClearFilters: boolean;
 }
 
 const ReviewFilters: React.FC<ReviewFiltersProps> = ({
@@ -28,7 +28,7 @@ const ReviewFilters: React.FC<ReviewFiltersProps> = ({
   onChange,
   movies,
   loading,
-  onRefresh,
+  canClearFilters,
   onClear,
 }) => {
   const handleChange = (patch: Partial<GetReviewsParams>) => {
@@ -38,26 +38,8 @@ const ReviewFilters: React.FC<ReviewFiltersProps> = ({
   return (
     <div className="mb-6">
       <div className="flex items-center justify-between w-full gap-4">
-        {/* Left: Refresh + filters chính */}
         <div className="flex flex-wrap items-center gap-4">
-          <button
-            onClick={onRefresh}
-            className="p-3 rounded-full hover:bg-gray-100 transition-all duration-300 disabled:opacity-60"
-            disabled={loading}
-            title="Làm mới"
-          >
-            <BiRefresh
-              className={`text-3xl ${
-                loading
-                  ? "animate-spin"
-                  : "hover:rotate-180 transition-transform duration-300"
-              }`}
-            />
-          </button>
-
-          {/* Movie filter */}
           <div className="flex flex-col gap-1 min-w-[220px]">
-            <Label className="text-sm text-gray-700">Phim</Label>
             <Select
               value={filters.movieId}
               onValueChange={(value) =>
@@ -67,7 +49,7 @@ const ReviewFilters: React.FC<ReviewFiltersProps> = ({
                 })
               }
             >
-              <SelectTrigger className="w-[220px]">
+              <SelectTrigger className="w-[220px] border border-gray-400">
                 <SelectValue placeholder="Chọn phim" />
               </SelectTrigger>
               <SelectContent>
@@ -80,9 +62,7 @@ const ReviewFilters: React.FC<ReviewFiltersProps> = ({
             </Select>
           </div>
 
-          {/* Rating filter */}
           <div className="flex flex-col gap-1 min-w-[140px]">
-            <Label className="text-sm text-gray-700">Số sao</Label>
             <Select
               value={filters.rating ? String(filters.rating) : "all"}
               onValueChange={(value) =>
@@ -91,11 +71,11 @@ const ReviewFilters: React.FC<ReviewFiltersProps> = ({
                 })
               }
             >
-              <SelectTrigger className="w-[140px]">
+              <SelectTrigger className="w-[140px] border border-gray-400">
                 <SelectValue placeholder="Tất cả" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tất cả</SelectItem>
+                <SelectItem value="all">Tất cả số sao</SelectItem>
                 <SelectItem value="5">5 sao</SelectItem>
                 <SelectItem value="4">4 sao</SelectItem>
                 <SelectItem value="3">3 sao</SelectItem>
@@ -105,9 +85,7 @@ const ReviewFilters: React.FC<ReviewFiltersProps> = ({
             </Select>
           </div>
 
-          {/* isActive filter */}
           <div className="flex flex-col gap-1 min-w-[160px]">
-            <Label className="text-sm text-gray-700">Trạng thái hiển thị</Label>
             <Select
               value={
                 filters.isActive === undefined
@@ -124,20 +102,18 @@ const ReviewFilters: React.FC<ReviewFiltersProps> = ({
                   return handleChange({ isActive: false });
               }}
             >
-              <SelectTrigger className="w-[170px]">
+              <SelectTrigger className="w-[170px] border border-gray-400">
                 <SelectValue placeholder="Tất cả" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tất cả</SelectItem>
+                <SelectItem value="all">Tất cả trạng thái</SelectItem>
                 <SelectItem value="active">Đang hiển thị</SelectItem>
                 <SelectItem value="inactive">Đã ẩn</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          {/* Type (sentiment) filter */}
           <div className="flex flex-col gap-1 min-w-[160px]">
-            <Label className="text-sm text-gray-700">Loại cảm xúc</Label>
             <Select
               value={filters.type ?? "all"}
               onValueChange={(value) =>
@@ -146,11 +122,11 @@ const ReviewFilters: React.FC<ReviewFiltersProps> = ({
                 })
               }
             >
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-[180px] border border-gray-400">
                 <SelectValue placeholder="Tất cả" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tất cả</SelectItem>
+                <SelectItem value="all">Tất cả cảm xúc</SelectItem>
                 <SelectItem value="Tích cực">Tích cực</SelectItem>
                 <SelectItem value="Tiêu cực">Tiêu cực</SelectItem>
                 <SelectItem value="Trung lập">Trung lập</SelectItem>
@@ -159,9 +135,7 @@ const ReviewFilters: React.FC<ReviewFiltersProps> = ({
             </Select>
           </div>
 
-          {/* Status filter (nếu BE có) */}
           <div className="flex flex-col gap-1 min-w-[160px]">
-            <Label className="text-sm text-gray-700">Tình trạng</Label>
             <Select
               value={filters.status ?? "all"}
               onValueChange={(value) =>
@@ -170,25 +144,27 @@ const ReviewFilters: React.FC<ReviewFiltersProps> = ({
                 })
               }
             >
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-[180px] border border-gray-400">
                 <SelectValue placeholder="Tất cả" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tất cả</SelectItem>
+                <SelectItem value="all">Tất cả tình trạng</SelectItem>
                 <SelectItem value="Đã trả lời">Đã trả lời</SelectItem>
-                {/* Nếu BE có status "Chưa trả lời" thì thêm:
                 <SelectItem value="Chưa trả lời">Chưa trả lời</SelectItem>
-                */}
               </SelectContent>
             </Select>
           </div>
         </div>
 
-        {/* Right: Clear filter */}
         <div className="flex items-center gap-3">
           <Button
-            variant="outline"
-            className="bg-gray-100 text-gray-700 hover:bg-gray-200"
+            disabled={!canClearFilters}
+            className={
+              "px-4 h-10 rounded-lg text-sm font-medium transition-colors " +
+              (canClearFilters
+                ? "bg-red-100 text-red-700 hover:bg-red-200"
+                : "bg-gray-100 text-gray-400 cursor-not-allowed")
+            }
             onClick={onClear}
           >
             Xóa lọc
