@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import { foodDrinkService, type FoodDrink, PaginationMeta } from "@/services";
+import { set } from "date-fns";
 
 const limit = 7;
 
@@ -18,6 +19,7 @@ export function useFoodDrinkLogic() {
   const [loading, setLoading] = useState(false);
 
   const [q, setQ] = useState("");
+  const [search, setSearch] = useState("");
   const [type, setType] = useState<string>("");
   const [isAvailable, setIsAvailable] = useState<string>("");
 
@@ -52,7 +54,7 @@ export function useFoodDrinkLogic() {
       const res = await foodDrinkService.getFoodDrinks({
         page: p,
         limit,
-        search: q || undefined,
+        search: search || undefined,
         isAvailable:
           isAvailable === ""
             ? undefined
@@ -64,7 +66,7 @@ export function useFoodDrinkLogic() {
       pageCache.current.set(p, res);
       return res;
     },
-    [q, isAvailable]
+    [search, isAvailable]
   );
 
   const ensureAllDataLoaded = useCallback(async () => {
@@ -89,8 +91,8 @@ export function useFoodDrinkLogic() {
 
       let filtered = allData;
       if (type) filtered = filtered.filter((item) => item.type === type);
-      if (q) {
-        const keyword = q.toLowerCase().trim();
+      if (search) {
+        const keyword = search.toLowerCase().trim();
         filtered = filtered.filter(
           (item) =>
             item.name.toLowerCase().includes(keyword) ||
@@ -116,17 +118,21 @@ export function useFoodDrinkLogic() {
     } finally {
       setLoading(false);
     }
-  }, [ensureAllDataLoaded, q, type, isAvailable, page]);
+  }, [ensureAllDataLoaded, search, type, isAvailable, page]);
 
   // Effects
   useEffect(() => {
+    const t = setTimeout(() => setSearch(q), 400);
+    return () => clearTimeout(t);
+  }, [q]);
+
+  useEffect(() => {
     loadPage();
-  }, [page, q, type, isAvailable, loadPage]);
+  }, [page, search, type, isAvailable, loadPage]);
 
   useEffect(() => {
     setPage(1);
-  }, [q, type, isAvailable]);
-
+  }, [search, type, isAvailable]);
   // --- HELPERS ---
   const updateCacheItem = (id: string, patch: Partial<FoodDrink>) => {
     if (allCache.current) {
@@ -342,6 +348,20 @@ export function useFoodDrinkLogic() {
     );
   };
 
+  // --- FILTERS CONTROL ---
+  const clearFilters = () => {
+    setQ("");
+    setSearch("");
+    setType("");
+    setIsAvailable("");
+    setPage(1);
+  };
+
+  const canClearFilters = useMemo(
+    () => q.trim() !== "" || type.trim() !== "" || isAvailable.trim() !== "",
+    [q, type, isAvailable]
+  );
+
   return {
     // Data
     rows,
@@ -359,6 +379,8 @@ export function useFoodDrinkLogic() {
     setType,
     isAvailable,
     setIsAvailable,
+    clearFilters,
+    canClearFilters,
 
     // Selection
     selectedIds,

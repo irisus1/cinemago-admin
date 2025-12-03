@@ -3,10 +3,15 @@ import api from "@/config/api";
 import { jwtDecode } from "jwt-decode";
 import type { User } from "./user.service";
 import { ACCESS_TOKEN_KEY } from "@/constants/auth";
+import {
+  setRefreshTokenCookie,
+  deleteRefreshTokenCookie,
+  refreshAccessTokenAction,
+} from "@/app/action/auth";
 
 export interface LoginResponse {
   accessToken: string;
-  refreshToken: string; // BE vẫn trả về trong body
+  refreshToken: string;
   user?: User;
 }
 
@@ -39,7 +44,11 @@ class AuthService {
         localStorage.setItem(ACCESS_TOKEN_KEY, data.accessToken);
         api.defaults.headers.common.Authorization = `Bearer ${data.accessToken}`;
       }
-      if (data.refreshToken) this.setRefreshCookie(data.refreshToken); //  lưu refresh vào cookie
+
+      if (data.refreshToken) {
+        await setRefreshTokenCookie(data.refreshToken);
+      }
+
       if (data.user) localStorage.setItem("user", JSON.stringify(data.user));
 
       return data;
@@ -66,13 +75,12 @@ class AuthService {
   // === LOGOUT ===
   async logout(): Promise<void> {
     try {
-      const refreshToken = this.getRefreshCookie();
-      await api.post("/auth/logout", { refreshToken });
+      await api.post("/auth/logout");
     } catch (e) {
       console.warn("Logout error:", e);
     } finally {
       this.clearLocalAuth();
-      this.deleteRefreshCookie();
+      await deleteRefreshTokenCookie();
     }
   }
 
@@ -97,30 +105,19 @@ class AuthService {
   // === REFRESH TOKEN ===
   async refreshAccessToken(): Promise<{ accessToken: string }> {
     try {
-      const refreshToken = this.getRefreshCookie();
-      if (!refreshToken) throw new Error("No refresh token");
+      const newAccessToken = await refreshAccessTokenAction();
 
-      const { data } = await api.post<{
-        accessToken: string;
-        refreshToken?: string;
-      }>("/auth/refresh-token", { refreshToken });
-
-      console.log("Token refreshed proactively: ", data);
-
-      if (data.accessToken)
-        localStorage.setItem(ACCESS_TOKEN_KEY, data.accessToken);
-      if (data.refreshToken) {
-        this.setRefreshCookie(data.refreshToken);
-
-        await new Promise((resolve) => setTimeout(resolve, 300));
+      if (newAccessToken) {
+        localStorage.setItem(ACCESS_TOKEN_KEY, newAccessToken);
+        api.defaults.headers.common.Authorization = `Bearer ${newAccessToken}`;
       }
 
-      console.log("cookie sau refresh = ", document.cookie);
-      return { accessToken: data.accessToken };
+      console.log("Token refreshed via Server Action");
+      return { accessToken: newAccessToken };
     } catch (e) {
       this.clearLocalAuth();
-      this.deleteRefreshCookie();
-      throw new Error(getMsg(e, "Không thể làm mới phiên đăng nhập."));
+      // await deleteRefreshTokenCookie(); // Action đã tự xóa nếu lỗi
+      throw new Error("Phiên đăng nhập hết hạn.");
     }
   }
 
@@ -147,24 +144,6 @@ class AuthService {
   isAuthenticated(): boolean {
     const token = this.getToken();
     return !!token && !this.isTokenExpired();
-  }
-  // === Cookie helpers ===
-  setRefreshCookie(token: string) {
-    const exp = 7 * 24 * 60 * 60; // 7 ngày
-    const isProd = process.env.NODE_ENV === "production";
-
-    document.cookie = `refreshToken=${token}; Path=/; Max-Age=${exp}; SameSite=Lax; ${
-      isProd ? "Secure" : ""
-    }`;
-  }
-
-  getRefreshCookie(): string | null {
-    const match = document.cookie.match(/(^| )refreshToken=([^;]+)/);
-    return match ? match[2] : null;
-  }
-
-  deleteRefreshCookie() {
-    document.cookie = "refreshToken=; Max-Age=0; Path=/; SameSite=Lax;";
   }
 
   // === Token expiration ===

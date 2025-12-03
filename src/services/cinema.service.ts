@@ -23,6 +23,7 @@ export type PageParams = {
   limit?: number;
   search?: string;
   isActive?: boolean; // BE có hỗ trợ -> thêm vào params
+  city?: string;
 };
 
 export type PaginationMeta = {

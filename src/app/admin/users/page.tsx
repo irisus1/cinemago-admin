@@ -2,6 +2,8 @@
 
 import React from "react";
 import Table, { Column } from "@/components/Table";
+import { Search, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { FiEdit2, FiTrash2 } from "react-icons/fi";
 import { BiRefresh } from "react-icons/bi";
 import { Modal } from "@/components/Modal";
@@ -10,6 +12,18 @@ import UserModal from "@/components/modal/UserModal";
 import { Badge } from "@/components/ui/badge";
 import type { User } from "@/services";
 import { useUsersLogic } from "@/hooks/useUserLogic";
+import {
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+} from "@/components/ui/select";
+
+const VI_ROLE: Record<string, string> = {
+  ADMIN: "Quản trị viên",
+  USER: "Người dùng",
+};
 
 const UsersListPage: React.FC = () => {
   const {
@@ -21,14 +35,18 @@ const UsersListPage: React.FC = () => {
     status,
     setStatus,
     loading,
+    canClearFilters,
+
     page,
     setPage,
     totalPages,
     totalItems,
     pagination,
+
     open,
     setOpen,
     editUser,
+
     isConfirmDialogOpen,
     setIsConfirmDialogOpen,
     isSuccessDialogOpen,
@@ -37,10 +55,10 @@ const UsersListPage: React.FC = () => {
     setIsErrorDialogOpen,
     dialogTitle,
     dialogMessage,
+
     onConfirm,
     handleAddOpen,
     handleEditOpen,
-    handleRefresh,
     handleDelete,
     handleRestore,
     handleSubmitUser,
@@ -80,7 +98,9 @@ const UsersListPage: React.FC = () => {
       header: "Vai trò",
       key: "role",
       render: (v) => (
-        <Badge variant="secondary">{String(v).toUpperCase()}</Badge>
+        <Badge variant="secondary">
+          {VI_ROLE[String(v).toUpperCase()] ?? String(v)}
+        </Badge>
       ),
     },
     {
@@ -109,8 +129,9 @@ const UsersListPage: React.FC = () => {
     {
       header: "Hành động",
       key: "actions",
+      headerClassName: "text-center",
       render: (_: unknown, row: User) => (
-        <div className="flex space-x-3">
+        <div className="flex w-full items-center justify-center space-x-3">
           {row.isActive ? (
             <div className="flex space-x-3">
               <button
@@ -151,71 +172,72 @@ const UsersListPage: React.FC = () => {
 
         <div className="flex items-center justify-between w-full">
           <div className="flex items-center gap-4">
-            <button
-              onClick={handleRefresh}
-              className="p-3 rounded-full hover:bg-gray-100 transition-all duration-300"
-              disabled={loading}
-              title="Làm mới"
-            >
-              <BiRefresh
-                className={`text-3xl ${
-                  loading
-                    ? "animate-spin"
-                    : "hover:rotate-180 transition-transform duration-300"
-                }`}
-              />
-            </button>
-
-            <div className="w-[280px]">
+            <div className="relative w-[280px]">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
                 type="text"
                 placeholder="Tìm theo tên hoặc email…"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                className="w-full px-4 py-2 rounded-lg focus:outline-none border"
+                className="h-10 w-full pl-8 pr-3 border-gray-400 rounded-lg border text-sm"
               />
             </div>
 
-            <select
-              value={role}
-              onChange={(e) =>
-                setRole(e.target.value as "__ALL__" | "ADMIN" | "USER")
-              }
-              className="px-3 py-2 rounded-lg border"
-              title="Lọc vai trò"
-            >
-              <option value="__ALL__">Tất cả vai trò</option>
-              <option value="ADMIN">ADMIN</option>
-              <option value="USER">Người dùng</option>
-            </select>
+            <div className="h-10">
+              <Select
+                value={role}
+                onValueChange={(val) =>
+                  setRole(val as "__ALL__" | "ADMIN" | "USER")
+                }
+              >
+                <SelectTrigger className="h-full w-[200px] rounded-lg border border-gray-300 bg-gray-50">
+                  <SelectValue placeholder="Tất cả vai trò" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__ALL__">Tất cả vai trò</SelectItem>
+                  <SelectItem value="ADMIN">Quản trị viên</SelectItem>
+                  <SelectItem value="USER">Người dùng</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-            <select
-              value={status}
-              onChange={(e) =>
-                setStatus(e.target.value as "__ALL__" | "ACTIVE" | "INACTIVE")
-              }
-              className="px-3 py-2 rounded-lg border"
-              title="Lọc trạng thái"
-            >
-              <option value="__ALL__">Tất cả trạng thái</option>
-              <option value="ACTIVE">Hoạt động</option>
-              <option value="INACTIVE">Đã khóa</option>
-            </select>
+            <div className="h-10">
+              <Select
+                value={status}
+                onValueChange={(val) =>
+                  setStatus(val as "__ALL__" | "ACTIVE" | "INACTIVE")
+                }
+              >
+                <SelectTrigger className="h-10 w-[200px] rounded-lg border border-gray-300 bg-gray-50">
+                  <SelectValue placeholder="Tất cả trạng thái" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__ALL__">Tất cả trạng thái</SelectItem>
+                  <SelectItem value="ACTIVE">Hoạt động</SelectItem>
+                  <SelectItem value="INACTIVE">Đã khóa</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="flex items-center gap-3">
             <button
-              className="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300"
+              className={
+                "px-4 h-10 rounded-lg text-sm font-medium transition-colors " +
+                (canClearFilters
+                  ? "bg-red-100 text-red-700 hover:bg-red-200"
+                  : "bg-gray-100 text-gray-400 cursor-not-allowed")
+              }
               onClick={clearFilters}
+              disabled={!canClearFilters}
             >
               Xóa lọc
             </button>
-            <button
-              className="px-4 py-2 bg-black text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
-              onClick={handleAddOpen}
-            >
-              Thêm người dùng +
-            </button>
+
+            <Button className="h-10 px-4" onClick={handleAddOpen}>
+              <Plus className="w-4 h-4 mr-1" />
+              Thêm người dùng
+            </Button>
           </div>
         </div>
       </div>

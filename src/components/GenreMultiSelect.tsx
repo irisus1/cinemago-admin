@@ -4,7 +4,7 @@ import * as React from "react";
 import { Check, ChevronsUpDown, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+
 import {
   Popover,
   PopoverTrigger,
@@ -71,7 +71,7 @@ export default function GenreMultiSelect({
             role="combobox"
             disabled={disabled}
             aria-expanded={open}
-            className="w-[320px] min-h-10 justify-start pr-8 overflow-hidden"
+            className="w-[320px] min-h-10 justify-start pr-8 overflow-hidden bg-gray-100 border border-gray-400 "
           >
             {labels.length === 0 ? (
               <span className="text-muted-foreground">{placeholder}</span>
@@ -80,13 +80,13 @@ export default function GenreMultiSelect({
                 {shown.map((name, idx) => (
                   <span
                     key={name + idx}
-                    className="inline-flex items-center max-w-[120px] rounded-full bg-muted px-2 py-0.5 text-xs"
+                    className="inline-flex items-center max-w-[120px] rounded-full bg-gray-300 px-2 py-0.5 text-xs "
                     title={name}
                   >
-                    <span className="truncate">{name}</span>
+                    <span className="truncate ">{name}</span>
                     {/* Chặn mở popover khi bấm ✕ */}
-                    <button
-                      className="ml-1"
+                    {/* <button
+                      className="ml-1 "
                       onClick={(e) => {
                         e.stopPropagation();
                         e.preventDefault();
@@ -98,7 +98,23 @@ export default function GenreMultiSelect({
                       title="Bỏ"
                     >
                       <X className="h-3 w-3 opacity-70 hover:opacity-100" />
-                    </button>
+                    </button> */}
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      className="ml-1 cursor-pointer  rounded-sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        const id = value.find(
+                          (v) => options.find((o) => o.id === v)?.name === name
+                        );
+                        if (id) remove(id);
+                      }}
+                      title="Bỏ"
+                    >
+                      <X className="h-3 w-3 opacity-70 hover:opacity-100" />
+                    </div>
                   </span>
                 ))}
                 {extra > 0 && (

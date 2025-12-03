@@ -26,7 +26,7 @@ import {
 } from "./helper";
 
 type MovieOpt = { id: string; title: string };
-type CinemaOpt = { id: string; name: string };
+type CinemaOpt = { id: string; name: string; city?: string };
 
 export function useShowtimeLogic() {
   const [showtimes, setShowtimes] = useState<ShowTime[]>([]);
@@ -117,6 +117,7 @@ export function useShowtimeLogic() {
         const cOpts: CinemaOpt[] = cinemas.map((c: Cinema) => ({
           id: String(c.id),
           name: c.name,
+          city: c.city,
         }));
 
         setMovieOptions(mOpts);

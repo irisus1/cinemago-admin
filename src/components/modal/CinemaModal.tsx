@@ -9,6 +9,11 @@ import {
   TransitionChild,
 } from "@headlessui/react";
 import type { Cinema } from "@/services";
+import { VIETNAM_PROVINCES } from "@/constants/vnProvinces";
+import {
+  SearchableCombobox,
+  type SelectOption,
+} from "@/components/SearchableCombobox";
 
 type CinemaFormPayload = {
   name: string;
@@ -41,6 +46,7 @@ export default function CinemaModal({
 }: CinemaModalProps) {
   const [name, setName] = useState(cinema?.name ?? "");
   const [city, setCity] = useState(cinema?.city ?? "");
+  const [cityId, setCityId] = useState<string>(""); // id tỉnh/thành được chọn
   const [address, setAddress] = useState(cinema?.address ?? "");
   const [longitude, setLongitude] = useState<string>(
     cinema?.longitude != null ? String(cinema.longitude) : ""
@@ -65,9 +71,18 @@ export default function CinemaModal({
       setLongitude(cinema.longitude != null ? String(cinema.longitude) : "");
       setLatitude(cinema.latitude != null ? String(cinema.latitude) : "");
       setIsActive(cinema.isActive ?? true);
+
+      // map city hiện tại -> option trong VIETNAM_PROVINCES
+      const found = VIETNAM_PROVINCES.find(
+        (p) =>
+          p.label.trim().toLowerCase() ===
+          (cinema.city ?? "").trim().toLowerCase()
+      );
+      setCityId(found?.value ?? "");
     } else {
       setName("");
       setCity("");
+      setCityId("");
       setAddress("");
       setLongitude("");
       setLatitude("");
@@ -87,7 +102,7 @@ export default function CinemaModal({
 
     const payload: CinemaFormPayload = {
       name: name.trim(),
-      city: city.trim(),
+      city: city.trim(), // lưu label (tên tỉnh/thành)
       address: address.trim(),
       longitude: toNumOrNull(longitude),
       latitude: toNumOrNull(latitude),
@@ -96,6 +111,9 @@ export default function CinemaModal({
 
     await onSubmit(payload, mode, cinema);
   }
+
+  const disableLongitude = mode === "edit" && cinema?.longitude != null;
+  const disableLatitude = mode === "edit" && cinema?.latitude != null;
 
   return (
     <Transition show={open} as={Fragment}>
@@ -142,15 +160,24 @@ export default function CinemaModal({
                   />
                 </div>
 
+                {/* Thành phố: dùng combobox */}
                 <div>
                   <label className="block text-sm font-medium mb-1">
                     Thành phố <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-lg"
-                    placeholder="VD: Bình Dương"
+                  <SearchableCombobox
+                    options={VIETNAM_PROVINCES}
+                    value={cityId}
+                    onChange={(id) => {
+                      setCityId(id);
+                      const province = VIETNAM_PROVINCES.find(
+                        (p) => p.value === id
+                      );
+                      setCity(province?.label ?? "");
+                    }}
+                    placeholder="Chọn tỉnh / thành phố"
+                    searchPlaceholder="Tìm theo tên tỉnh / thành phố..."
+                    widthClass="w-full"
                   />
                 </div>
 
@@ -175,7 +202,7 @@ export default function CinemaModal({
                       type="number"
                       step="any"
                       value={longitude}
-                      disabled={mode === "edit"}
+                      disabled={disableLongitude}
                       onChange={(e) => setLongitude(e.target.value)}
                       className="w-full px-3 py-2 border rounded-lg
                         disabled:bg-gray-50 disabled:text-gray-500
@@ -191,7 +218,7 @@ export default function CinemaModal({
                     <input
                       type="number"
                       step="any"
-                      disabled={mode === "edit"}
+                      disabled={disableLatitude}
                       value={latitude}
                       onChange={(e) => setLatitude(e.target.value)}
                       className="w-full px-3 py-2 border rounded-lg

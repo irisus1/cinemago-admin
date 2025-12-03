@@ -1,220 +1,46 @@
-// app/(admin)/admin/reviews/page.tsx
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React from "react";
 import Table, { Column } from "@/components/Table";
-import { BiRefresh } from "react-icons/bi";
 import { Modal } from "@/components/Modal";
 import RefreshLoader from "@/components/Loading";
 import ReviewFilters from "./filter";
-import {
-  reviewService,
-  type Review,
-  type PaginationMeta,
-  movieService,
-  type Movie,
-  type GetReviewsParams,
-} from "@/services";
+import ReviewDetailModal from "@/components/modal/ReviewDetailModal";
+import type { Review } from "@/services";
+import { useReviewLogic } from "@/hooks/useReviewLogic";
+import { FiEye, FiEyeOff } from "react-icons/fi";
+import { BiRefresh } from "react-icons/bi";
 
 const ReviewsListPage: React.FC = () => {
-  const [reviews, setReviews] = useState<Review[]>([]);
-  const [movies, setMovies] = useState<Movie[]>([]);
+  const {
+    reviews,
+    movies,
+    filters,
+    setFilters,
+    loading,
 
-  const [filters, setFilters] = useState<GetReviewsParams>({
-    movieId: "",
-    rating: undefined,
-    status: undefined,
-    type: undefined,
-    isActive: undefined,
-  });
-
-  const [loading, setLoading] = useState(false);
-
-  const [page, setPage] = useState(1);
-  const [pageSize] = useState(10);
-  const [pagination, setPagination] = useState<PaginationMeta | null>(null);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
-
-  // Confirm/Success dialogs
-  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
-  const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
-  const [dialogTitle, setDialogTitle] = useState("");
-  const [dialogMessage, setDialogMessage] = useState<React.ReactNode>("");
-  const [onConfirm, setOnConfirm] = useState<() => void>(() => () => {});
-
-  // ===== Fetch movies for filter =====
-  const fetchMovies = useCallback(async () => {
-    try {
-      // Giả sử movieService có getAllMovies kiểu giống genreService
-      const res = await movieService.getAllMovies({
-        page: 1,
-        limit: 1000,
-      });
-      const list = res.data ?? [];
-      setMovies(list);
-      if (list.length > 0 && !filters.movieId) {
-        setFilters((prev) => ({
-          ...prev,
-          movieId: list[0].id,
-        }));
-      }
-    } catch (e) {
-      console.error("Failed to load movies for review filter", e);
-      setMovies([]);
-    }
-  }, []);
-
-  // ===== Fetch reviews =====
-  const fetchReviews = useCallback(
-    async (toPage: number) => {
-      if (!filters.movieId) {
-        setReviews([]);
-        setPagination(null);
-        setTotalPages(1);
-        setTotalItems(0);
-        return;
-      }
-
-      try {
-        setLoading(true);
-
-        const { data, pagination } = await reviewService.getReviews({
-          page: toPage,
-          limit: pageSize,
-          movieId: filters.movieId,
-          rating: filters.rating,
-          status: filters.status,
-          type: filters.type,
-          isActive: filters.isActive,
-        });
-
-        setReviews(data ?? []);
-        setPagination(pagination ?? null);
-        setTotalPages(pagination?.totalPages ?? 1);
-        setTotalItems(pagination?.totalItems ?? 0);
-
-        if (pagination?.currentPage && pagination.currentPage !== page) {
-          setPage(pagination.currentPage);
-        }
-      } catch (e) {
-        console.error(e);
-        setReviews([]);
-        setPagination(null);
-        setTotalPages(1);
-        setTotalItems(0);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [
-      page,
-      pageSize,
-      filters.movieId,
-      filters.rating,
-      filters.status,
-      filters.type,
-      filters.isActive,
-    ]
-  );
-
-  // Initial load
-  useEffect(() => {
-    fetchMovies();
-  }, [fetchMovies]);
-
-  useEffect(() => {
-    fetchReviews(page);
-  }, [
     page,
-    filters.movieId,
-    filters.rating,
-    filters.status,
-    filters.type,
-    filters.isActive,
-    fetchReviews,
-  ]);
+    setPage,
+    pagination,
+    totalPages,
+    totalItems,
 
-  // Reset page về 1 khi filter đổi
-  useEffect(() => {
-    setPage(1);
-  }, [
-    filters.movieId,
-    filters.rating,
-    filters.status,
-    filters.type,
-    filters.isActive,
-  ]);
+    handleHide,
+    handleUnhide,
+    viewingReview,
+    handleView,
+    setViewingReview,
+    clearFilters,
+    canClearFilters,
 
-  const handleRefresh = async () => {
-    setLoading(true);
-    await fetchReviews(page);
-    setLoading(false);
-  };
-
-  const clearFilters = () => {
-    setFilters((prev) => ({
-      movieId: prev.movieId,
-      rating: undefined,
-      status: undefined,
-      type: undefined,
-      isActive: undefined,
-    }));
-  };
-
-  // ===== Confirm dialog helpers =====
-  const openConfirm = (
-    title: string,
-    message: React.ReactNode,
-    action: () => void
-  ) => {
-    setDialogTitle(title);
-    setDialogMessage(message);
-    setOnConfirm(() => action);
-    setIsConfirmDialogOpen(true);
-  };
-
-  const handleHide = (r: Review) => {
-    openConfirm(
-      "Xác nhận ẩn đánh giá",
-      <>Bạn có chắc muốn ẩn đánh giá này không?</>,
-      async () => {
-        setIsConfirmDialogOpen(false);
-        try {
-          await reviewService.hideReview(r.id);
-          setReviews((prev) =>
-            prev.map((it) => (it.id === r.id ? { ...it, isActive: false } : it))
-          );
-          setDialogTitle("Thành công");
-          setDialogMessage("Đã ẩn đánh giá.");
-          setIsSuccessDialogOpen(true);
-        } catch (err) {
-          alert("Thao tác thất bại: " + err);
-        }
-      }
-    );
-  };
-
-  const handleUnhide = (r: Review) => {
-    openConfirm(
-      "Xác nhận hiển thị lại",
-      <>Hiển thị lại đánh giá này?</>,
-      async () => {
-        setIsConfirmDialogOpen(false);
-        try {
-          await reviewService.unhideReview(r.id);
-          setReviews((prev) =>
-            prev.map((it) => (it.id === r.id ? { ...it, isActive: true } : it))
-          );
-          setDialogTitle("Thành công");
-          setDialogMessage("Đã hiển thị lại đánh giá.");
-          setIsSuccessDialogOpen(true);
-        } catch (err) {
-          alert("Thao tác thất bại: " + err);
-        }
-      }
-    );
-  };
+    isConfirmDialogOpen,
+    setIsConfirmDialogOpen,
+    isSuccessDialogOpen,
+    setIsSuccessDialogOpen,
+    dialogTitle,
+    dialogMessage,
+    onConfirm,
+  } = useReviewLogic();
 
   // ===== Table columns =====
   const columns: Column<Review>[] = [
@@ -274,22 +100,33 @@ const ReviewsListPage: React.FC = () => {
     {
       header: "Hành động",
       key: "actions",
-      className: "w-[150px] text-right",
+      headerClassName: "text-center",
       render: (_: unknown, row: Review) => (
-        <div className="flex gap-2 justify-end">
+        <div className="flex gap-2 justify-center items-center">
           {row.isActive ? (
-            <button
-              className="px-3 py-1 text-xs rounded-md bg-red-100 text-red-700 hover:bg-red-200"
-              onClick={() => handleHide(row)}
-            >
-              Ẩn
-            </button>
+            <>
+              <button
+                className="text-green-600 hover:text-green-800"
+                onClick={() => handleView(row)}
+                title="Xem chi tiết"
+              >
+                <FiEye className="w-4 h-4" />
+              </button>
+              <button
+                className="text-red-600 hover:text-red-800"
+                onClick={() => handleHide(row)}
+                title="Ẩn đánh giá"
+              >
+                <FiEyeOff className="w-4 h-4" />
+              </button>
+            </>
           ) : (
             <button
-              className="px-3 py-1 text-xs rounded-md bg-green-100 text-green-700 hover:bg-green-200"
+              className="text-green-600 hover:text-green-800"
               onClick={() => handleUnhide(row)}
+              title="Hiển thị lại"
             >
-              Hiển thị lại
+              <BiRefresh className="w-4 h-4" />
             </button>
           )}
         </div>
@@ -309,8 +146,8 @@ const ReviewsListPage: React.FC = () => {
           onChange={setFilters}
           movies={movies}
           loading={loading}
-          onRefresh={handleRefresh}
           onClear={clearFilters}
+          canClearFilters={canClearFilters}
         />
       </div>
 
@@ -349,7 +186,13 @@ const ReviewsListPage: React.FC = () => {
         )}
       </div>
 
-      {/* Confirm & Success */}
+      <ReviewDetailModal
+        open={!!viewingReview}
+        review={viewingReview}
+        movies={movies}
+        onClose={() => setViewingReview(null)}
+      />
+
       <Modal
         isOpen={isConfirmDialogOpen}
         onClose={() => setIsConfirmDialogOpen(false)}
