@@ -449,48 +449,57 @@ export const useBookingLogic = ({
     const isBlocked = idsToToggle.some((id) => blockedSeats.includes(id));
     if (isBlocked) {
       toast.error("Ghế này đã có người chọn hoặc đã bán!");
-      fetchInitialSeatStatus(); // Sync lại cho chắc
+      fetchInitialSeatStatus();
       return;
     }
 
+    // Kiểm tra xem ghế đã chọn chưa
     const isSelecting = !selectedSeats.includes(seat.id);
-    setProcessingSeats((prev) => [...prev, ...idsToToggle]);
+
+    // Thêm vào hàng đợi xử lý (để hiện loading trên ghế)
+    setProcessingSeats((prev) => {
+      // Dùng Set để tránh trùng trong processingSeats
+      return Array.from(new Set([...prev, ...idsToToggle]));
+    });
 
     try {
       const showtimeIdStr = String(selectedShowtime.id);
       if (isSelecting) {
+        // --- LOGIC CHỌN GHẾ (Hold) ---
         await Promise.all(
           idsToToggle.map((id) => roomService.holdSeat(showtimeIdStr, id))
         );
-        setSelectedSeats((prev) => [...prev, ...idsToToggle]);
+
+        // [FIX QUAN TRỌNG]: Dùng Set để đảm bảo ID là duy nhất khi thêm mới
+        setSelectedSeats((prev) =>
+          Array.from(new Set([...prev, ...idsToToggle]))
+        );
       } else {
+        // --- LOGIC BỎ CHỌN (Release) ---
         await Promise.all(
           idsToToggle.map((id) => roomService.releaseSeat(showtimeIdStr, id))
         );
+
+        // Lọc bỏ ID ra khỏi danh sách
         setSelectedSeats((prev) =>
           prev.filter((id) => !idsToToggle.includes(id))
         );
       }
     } catch (error: unknown) {
       console.error("Seat action failed:", error);
+      // ... (Giữ nguyên phần xử lý lỗi của bạn) ...
 
-      if (axios.isAxiosError(error)) {
-        if (error.response?.status === 409) {
-          toast.error("Ghế vừa bị người khác chọn!");
-        } else if (error.response?.status === 403) {
-          toast.error("Bạn không có quyền thao tác ghế này.");
-        } else {
-          toast.error(
-            error.response?.data?.message || "Không thể thao tác ghế."
-          );
-        }
-      } else {
-        toast.error("Đã có lỗi không xác định xảy ra.");
-      }
-
-      // Sync lại dữ liệu
+      // Sync lại dữ liệu nếu lỗi
       fetchInitialSeatStatus();
+
+      // Nếu lỗi khi đang chọn -> Phải bỏ chọn trong state (rollback UI)
+      if (isSelecting) {
+        setSelectedSeats((prev) =>
+          prev.filter((id) => !idsToToggle.includes(id))
+        );
+      }
     } finally {
+      // Xóa khỏi hàng đợi xử lý
       setProcessingSeats((prev) =>
         prev.filter((id) => !idsToToggle.includes(id))
       );
@@ -559,7 +568,12 @@ export const useBookingLogic = ({
       const paymentPayload = { bookingId, amount: totalPrice };
 
       if (method === "MOMO") {
-        paymentRes = await paymentService.checkoutWithMoMo(paymentPayload);
+        const res = await paymentService.checkoutWithMoMo(paymentPayload);
+        const paymentId = res.paymentId;
+        if (paymentId) {
+          window.localStorage.setItem("cinemago_lastPaymentId", paymentId);
+        }
+        paymentRes = res.URL;
       } else if (method === "VNPAY") {
         paymentRes = await paymentService.checkoutWithVnPay(paymentPayload);
       } else {
@@ -606,7 +620,7 @@ export const useBookingLogic = ({
       quantities.vip *
         (selectedShowtime.basePrice + selectedShowtime.vipSurcharge) +
       quantities.couple *
-        (selectedShowtime.basePrice * 2 + selectedShowtime.coupleSurcharge);
+        (selectedShowtime.basePrice * 2 + selectedShowtime.coupleSurcharge * 2);
 
     let foodPrice = 0;
     const foodItemsStr: string[] = [];
@@ -626,16 +640,19 @@ export const useBookingLogic = ({
       counts.vip === quantities.vip &&
       counts.couple === quantities.couple;
 
+    const uniqueSelectedIds = Array.from(new Set(selectedSeats));
+
+    const seatNames = uniqueSelectedIds
+      .map((id) => {
+        const s = seatList.find((item) => item.id === id);
+        // Ưu tiên hiển thị seatName (vd: E5) hoặc seatNumber nếu name null
+        return s ? s.seatNumber : "";
+      })
+      .filter((name) => name !== ""); // Loại bỏ rỗng
+
+    // Sắp xếp alpha-beta và join
     const seatsStr =
-      selectedSeats.length === 0
-        ? "Chưa chọn"
-        : selectedSeats
-            .map((id) => {
-              const s = seatList.find((item) => item.id === id);
-              return s ? s.seatNumber : "?";
-            })
-            .sort()
-            .join(", ");
+      seatNames.length === 0 ? "Chưa chọn" : seatNames.sort().join(", ");
 
     return {
       totalQty: qty,

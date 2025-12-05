@@ -171,6 +171,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // ===== INIT AUTH STATE =====
   useEffect(() => {
+    if (
+      typeof window !== "undefined" &&
+      window.location.pathname === "/login"
+    ) {
+      setIsLoading(false);
+      return;
+    }
+
     const initAuth = async () => {
       try {
         // 1. Kiểm tra xem có Access Token trong LocalStorage không
