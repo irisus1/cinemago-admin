@@ -78,15 +78,28 @@ export default function SeatSelectionStep({
       idsToToggle.push(nextSeat.id);
     }
 
-    let newSelected = [...selectedSeats];
-    const isSelected = newSelected.includes(seat.id);
+    // Kiểm tra xem TRONG CÁC ID CẦN TOGGLE, có cái nào đã được chọn chưa?
+    // Nếu chỉ cần 1 cái đã chọn -> Coi như hành động là BỎ CHỌN (Unselect) tất cả nhóm đó
+    const isAnySelected = idsToToggle.some((id) => selectedSeats.includes(id));
 
-    if (isSelected) {
-      newSelected = newSelected.filter((id) => !idsToToggle.includes(id));
+    let newSelected;
+
+    if (isAnySelected) {
+      // === LOGIC BỎ CHỌN ===
+      // Loại bỏ tất cả idsToToggle ra khỏi danh sách hiện tại
+      newSelected = selectedSeats.filter((id) => !idsToToggle.includes(id));
     } else {
-      newSelected = [...newSelected, ...idsToToggle];
+      // === LOGIC CHỌN MỚI ===
+      // [QUAN TRỌNG] Dùng Set để đảm bảo Unique, tránh trường hợp add trùng
+      const uniqueSet = new Set([...selectedSeats, ...idsToToggle]);
+      newSelected = Array.from(uniqueSet);
     }
+
     onSeatsChange(newSelected);
+
+    if (onToggleSeat) {
+      onToggleSeat(seat, nextSeat);
+    }
   };
 
   return (
@@ -141,7 +154,7 @@ export default function SeatSelectionStep({
           isSeatDisabled={checkSeatDisabled}
           // onSeatClick={handleSeatClick}
           processingSeats={processingSeats}
-          onSeatClick={onToggleSeat}
+          onSeatClick={handleSeatClick}
           // [NEW]
           heldSeats={heldSeats}
         />

@@ -16,6 +16,11 @@ export interface CreatePaymentRequest {
   bookingId: string;
 }
 
+interface PaymentResponse {
+  URL: string;
+  paymentId?: string;
+}
+
 export const paymentService = {
   /**
    * Lấy danh sách payment theo userId (BE tự lấy token -> user)
@@ -38,16 +43,20 @@ export const paymentService = {
    * Tạo thanh toán bằng MoMo
    */
   async checkoutWithMoMo(payload: CreatePaymentRequest) {
-    const res = await api.post("/payments/momo/checkout", payload);
-    return res.data.URL as string; // payUrl
+    const { data } = await api.post<PaymentResponse>(
+      "/payments/momo/checkout",
+      payload
+    );
+
+    return data;
   },
 
   /**
    * Check trạng thái giao dịch MoMo
    */
   async checkStatusMoMo(paymentId: string) {
-    const res = await api.get(`/public/payments/momo/status/${paymentId}`);
-    return res.data.data;
+    const res = await api.get(`/payments/public/momo/status/${paymentId}`);
+    return res.data;
   },
 
   async checkoutWithVnPay(payload: CreatePaymentRequest) {
@@ -56,7 +65,7 @@ export const paymentService = {
   },
 
   async checkStatusVnPay(paymentId: string) {
-    const res = await api.get(`/public/payments/vnpay/status/${paymentId}`);
+    const res = await api.get(`/payments/public/vnpay/status/${paymentId}`);
     return res.data.data;
   },
 
@@ -66,7 +75,7 @@ export const paymentService = {
   },
 
   async checkStatusZaloPay(appTransId: string) {
-    const res = await api.get(`/public/payments/zalopay/status/${appTransId}`);
+    const res = await api.get(`/payments/public/zalopay/status/${appTransId}`);
     return res.data.data;
   },
 };

@@ -6,6 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { LabelList } from "recharts";
 import {
   DollarSign,
   Users,
@@ -40,6 +41,10 @@ import {
 
 type ChartItem = { name: string; revenue: number };
 const PIE_COLORS: string[] = ["#4f46e5", "#22c55e"];
+
+const truncateText = (text: string, maxLength: number = 15) => {
+  return text.length > maxLength ? `${text.substring(0, maxLength)}...` : text;
+};
 
 export default function Dashboard() {
   // ===== Khoảng thời gian mặc định: hôm nay -> +7 ngày
@@ -267,8 +272,8 @@ export default function Dashboard() {
       </div>
 
       {/* Hàng biểu đồ 1 */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <Card className="h-[380px]">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+        <Card className="h-[380px] xl:col-span-1">
           <CardHeader className="flex flex-row items-center justify-between">
             <div className="flex items-center gap-2">
               <PieChartIcon className="h-5 w-5" />
@@ -307,27 +312,84 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card className="h-[380px]">
-          <CardHeader className="flex items-center justify-between flex-row">
+        <Card className="h-[380px] xl:col-span-2">
+          <CardHeader className="flex items-center justify-between flex-row pb-2">
             <div className="flex items-center gap-2">
               <BarChart3 className="h-5 w-5" />
               <CardTitle>Doanh thu theo rạp chiếu</CardTitle>
             </div>
           </CardHeader>
-          <CardContent className="h-[300px]">
+
+          <CardContent className="h-[300px] pt-0">
             {loading ? (
               <div className="h-full w-full animate-pulse rounded-xl bg-muted/40" />
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={byCinema}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis tickFormatter={fmtNumber} />
+                <BarChart
+                  data={byCinema}
+                  margin={{ top: 12, right: 12, left: 4, bottom: 0 }}
+                >
+                  <defs>
+                    <linearGradient
+                      id="revenueGradient"
+                      x1="0"
+                      y1="0"
+                      x2="0"
+                      y2="1"
+                    >
+                      <stop
+                        offset="0%"
+                        stopColor="hsl(var(--primary))"
+                        stopOpacity={0.9}
+                      />
+                      <stop
+                        offset="100%"
+                        stopColor="hsl(var(--primary))"
+                        stopOpacity={0.4}
+                      />
+                    </linearGradient>
+                  </defs>
+
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    vertical={false}
+                    stroke="hsl(var(--border))"
+                  />
+                  <XAxis
+                    dataKey="name"
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{
+                      fontSize: 15,
+                      fill: "hsl(var(--muted-foreground))",
+                    }}
+                  />
+                  <YAxis
+                    tickFormatter={fmtNumber}
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{
+                      fontSize: 13,
+                      fill: "hsl(var(--muted-foreground))",
+                    }}
+                  />
                   <Tooltip
                     formatter={(value: number | string) => fmtVND(value)}
+                    cursor={{ fill: "rgba(148, 163, 184, 0.18)" }}
                   />
-                  <Legend />
-                  <Bar dataKey="revenue" name="Doanh thu" />
+                  <Legend
+                    verticalAlign="top"
+                    align="right"
+                    iconType="circle"
+                    wrapperStyle={{ fontSize: 12 }}
+                  />
+                  <Bar
+                    dataKey="revenue"
+                    name="Doanh thu"
+                    fill="url(#revenueGradient)"
+                    radius={[8, 8, 0, 0]}
+                    maxBarSize={48}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -349,21 +411,76 @@ export default function Dashboard() {
               <div className="h-full w-full animate-pulse rounded-xl bg-muted/40" />
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={byMovie}>
-                  <CartesianGrid strokeDasharray="3 3" />
+                <BarChart
+                  data={byMovie}
+                  margin={{ top: 12, right: 12, left: 4, bottom: 0 }}
+                >
+                  <defs>
+                    <linearGradient
+                      id="revenueGradient"
+                      x1="0"
+                      y1="0"
+                      x2="0"
+                      y2="1"
+                    >
+                      <stop
+                        offset="0%"
+                        stopColor="hsl(var(--primary))"
+                        stopOpacity={0.9}
+                      />
+                      <stop
+                        offset="100%"
+                        stopColor="hsl(var(--primary))"
+                        stopOpacity={0.4}
+                      />
+                    </linearGradient>
+                  </defs>
+
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    vertical={false}
+                    stroke="hsl(var(--border))"
+                  />
                   <XAxis
                     dataKey="name"
                     interval={0}
-                    angle={-15}
+                    angle={-20}
                     textAnchor="end"
-                    height={60}
+                    height={80}
+                    tickFormatter={(value) => truncateText(value)}
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{
+                      fontSize: 15,
+                      fill: "hsl(var(--muted-foreground))",
+                    }}
                   />
-                  <YAxis tickFormatter={fmtNumber} />
+                  <YAxis
+                    tickFormatter={fmtNumber}
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{
+                      fontSize: 12,
+                      fill: "hsl(var(--muted-foreground))",
+                    }}
+                  />
                   <Tooltip
                     formatter={(value: number | string) => fmtVND(value)}
+                    cursor={{ fill: "rgba(148, 163, 184, 0.18)" }}
                   />
-                  <Legend />
-                  <Bar dataKey="revenue" name="Doanh thu" />
+                  <Legend
+                    verticalAlign="top"
+                    align="right"
+                    iconType="circle"
+                    wrapperStyle={{ fontSize: 12 }}
+                  />
+                  <Bar
+                    dataKey="revenue"
+                    name="Doanh thu"
+                    fill="url(#revenueGradient)"
+                    radius={[8, 8, 0, 0]}
+                    maxBarSize={48}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             )}
