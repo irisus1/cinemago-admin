@@ -22,6 +22,7 @@ export default function ProfilePage() {
     setGenderVN,
     avatarPreview,
     onPickAvatar,
+
     curPw,
     setCurPw,
     newPw,
@@ -36,13 +37,17 @@ export default function ProfilePage() {
     setShowCfPw,
     pwTooLong,
     setPwTooLong,
+
     isSuccessDialogOpen,
     setIsSuccessDialogOpen,
     isConfirmDialogOpen,
     setIsConfirmDialogOpen,
+    isErrorDialogOpen,
+    setIsErrorDialogOpen,
     dialogTitle,
     dialogMessage,
     onConfirm,
+
     onClickSave,
     onClickChangePassword,
   } = useProfileLogic();
@@ -297,6 +302,15 @@ export default function ProfilePage() {
         isOpen={isSuccessDialogOpen}
         onClose={() => setIsSuccessDialogOpen(false)}
         type="success"
+        title={dialogTitle}
+        message={dialogMessage}
+        confirmText="Đóng"
+      />
+
+      <Modal
+        isOpen={isErrorDialogOpen}
+        onClose={() => setIsErrorDialogOpen(false)}
+        type="error"
         title={dialogTitle}
         message={dialogMessage}
         confirmText="Đóng"
