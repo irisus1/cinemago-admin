@@ -73,6 +73,7 @@ export function useProfileLogic() {
   // --- Dialog State ---
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
+  const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
   const [dialogTitle, setDialogTitle] = useState("");
   const [dialogMessage, setDialogMessage] = useState<React.ReactNode>("");
   const [onConfirm, setOnConfirm] = useState<() => void>(() => () => {});
@@ -193,7 +194,7 @@ export function useProfileLogic() {
           </small>
         </>
       );
-      setIsSuccessDialogOpen(true);
+      setIsErrorDialogOpen(true);
     } finally {
       setLoading(false);
     }
@@ -302,6 +303,9 @@ export function useProfileLogic() {
     setIsSuccessDialogOpen,
     isConfirmDialogOpen,
     setIsConfirmDialogOpen,
+    isErrorDialogOpen,
+    setIsErrorDialogOpen,
+
     dialogTitle,
     dialogMessage,
     onConfirm,

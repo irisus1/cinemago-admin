@@ -1,26 +1,3 @@
-// // src/app/page.tsx
-// "use client";
-
-// import { useEffect } from "react";
-// import { useRouter } from "next/navigation";
-// import { useAuth } from "@/context/AuthContext";
-
-// export default function Root() {
-//   const router = useRouter();
-//   const { isAuthenticated, isLoading } = useAuth();
-
-//   useEffect(() => {
-//     if (isLoading) return; // chờ AuthProvider init + refresh xong
-
-//     if (isAuthenticated) {
-//       router.replace("/admin/dashboard");
-//     } else {
-//       router.replace("/login");
-//     }
-//   }, [isAuthenticated, isLoading, router]);
-
-//   return null; // không cần render gì
-// }
 // app/page.tsx
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";

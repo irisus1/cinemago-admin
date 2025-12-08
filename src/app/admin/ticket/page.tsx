@@ -24,12 +24,6 @@ const todayLocalISODate = () => {
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
-/**
- * Nhận vào ngày local (YYYY-MM-DD, user chọn theo giờ VN)
- * → Trả về khoảng [startTime, endTime] là ISO UTC (có Z)
- *    tương ứng với 00:00:00 - 23:59:59 của NGÀY ĐÓ THEO LOCAL.
- */
-// Trả về khoảng UTC cho 1 ngày local (giờ VN)
 const toUtcDayRangeFromLocalISO = (dateStr: string) => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
     const today = todayLocalISODate();
