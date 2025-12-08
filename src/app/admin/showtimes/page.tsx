@@ -1,7 +1,7 @@
 // app/admin/showtimes/page.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Table, { Column } from "@/components/Table";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -97,7 +97,6 @@ export default function ShowtimesListPage() {
 
   const movieTitle = movieOptions.find((m) => m.id === movieId)?.title ?? "—";
 
-  // ===== COLUMNS =====
   const columns: Column<ShowTime>[] = [
     // { header: "Phim", key: "movieTitle" },
     { header: "Rạp", key: "cinemaName" },
@@ -204,16 +203,39 @@ export default function ShowtimesListPage() {
 
   const canPrev = page > 1;
   const canNext = page < totalPages;
-  const movieSelectOptions: SelectOption[] = movieOptions.map((m) => ({
-    value: m.id,
-    label: m.title,
-  }));
+
+  const movieSelectOptions: SelectOption[] = [
+    { value: "__ALL__", label: "Tất cả phim" },
+    ...movieOptions.map((m) => ({
+      value: m.id,
+      label: m.title,
+    })),
+  ];
 
   const filteredCinemaOptions: SelectOption[] = cinemaOptions.map((c) => ({
     value: String(c.id),
     label: c.name,
     meta: c.city ?? undefined,
   }));
+
+  const groupedShowtimes = useMemo(() => {
+    const groups: Record<string, Record<string, ShowTime[]>> = {};
+
+    showtimes.forEach((item) => {
+      const movieKey =
+        movieOptions.find((m) => m.id === item.movieId)?.title ||
+        "Unknown Movie";
+
+      const roomKey = `${item.roomName} - ${item.cinemaName}`;
+
+      if (!groups[movieKey]) groups[movieKey] = {};
+      if (!groups[movieKey][roomKey]) groups[movieKey][roomKey] = [];
+
+      groups[movieKey][roomKey].push(item);
+    });
+
+    return groups;
+  }, [showtimes, movieOptions]);
 
   return (
     <div>
@@ -317,11 +339,179 @@ export default function ShowtimesListPage() {
       </div>
 
       <div className="bg-white rounded-lg shadow-sm overflow-x-auto">
-        <Table<ShowTime>
+        {/* <Table<ShowTime>
           columns={columns}
           data={showtimes}
           getRowKey={(r) => r.id}
-        />
+        /> */}
+        <table className="w-full text-sm text-left">
+          <thead className="text-xs text-gray-700 uppercase bg-gray-50 border-b">
+            <tr>
+              <th className="px-6 py-3 font-medium">Phim</th>
+              <th className="px-6 py-3 font-medium">Phòng / Rạp</th>
+              <th className="px-6 py-3 font-medium">Thời gian</th>
+              <th className="px-6 py-3 font-medium">Giá vé</th>
+              <th className="px-6 py-3 font-medium">Ngôn ngữ</th>
+              <th className="px-6 py-3 font-medium">Định dạng</th>
+              <th className="px-6 py-3 font-medium">Trạng thái</th>
+              <th className="px-6 py-3 font-medium text-center">Hành động</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {Object.keys(groupedShowtimes).length === 0 ? (
+              <tr>
+                <td colSpan={8} className="px-6 py-4 text-center text-gray-500">
+                  Không có dữ liệu
+                </td>
+              </tr>
+            ) : (
+              Object.entries(groupedShowtimes).map(([movieName, rooms]) => {
+                // Tính tổng số dòng của phim này để set rowSpan cho cột Phim
+                const totalRowsForMovie = Object.values(rooms).reduce(
+                  (acc, curr) => acc + curr.length,
+                  0
+                );
+
+                return Object.entries(rooms).map(
+                  ([roomName, items], roomIndex) => {
+                    // items là danh sách suất chiếu trong 1 phòng
+                    return items.map((showtime, itemIndex) => {
+                      const isFirstRowOfMovie =
+                        roomIndex === 0 && itemIndex === 0;
+                      const isFirstRowOfRoom = itemIndex === 0;
+
+                      return (
+                        <tr
+                          key={showtime.id}
+                          className="hover:bg-gray-50 bg-white"
+                        >
+                          {/* Cột 1: Tên Phim (Chỉ hiện ở dòng đầu tiên của nhóm Phim) */}
+                          {isFirstRowOfMovie && (
+                            <td
+                              rowSpan={totalRowsForMovie}
+                              className="px-6 py-4 font-medium text-gray-900 border-r align-top bg-white"
+                            >
+                              {movieName}
+                            </td>
+                          )}
+
+                          {/* Cột 2: Phòng (Chỉ hiện ở dòng đầu tiên của nhóm Phòng) */}
+                          {isFirstRowOfRoom && (
+                            <td
+                              rowSpan={items.length}
+                              className="px-6 py-4 border-r align-top"
+                            >
+                              <div className="font-medium text-gray-900">
+                                {showtime.roomName}
+                              </div>
+                              <div className="text-gray-500 text-xs mt-1">
+                                {showtime.cinemaName}
+                              </div>
+                            </td>
+                          )}
+
+                          {/* Các cột thông tin chi tiết (Render từng dòng) */}
+                          <td className="px-6 py-4">
+                            <div className="font-medium">
+                              {formatDateTime(showtime.startTime).split(" ")[0]}
+                            </div>
+                            <div className="text-gray-500 text-xs">
+                              {formatDateTime(showtime.startTime).split(" ")[1]}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 font-medium text-gray-900">
+                            {new Intl.NumberFormat("vi-VN").format(
+                              Number(showtime.price)
+                            )}{" "}
+                            đ
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex flex-col gap-1">
+                              <span>
+                                {LANGUAGE_LABEL_MAP[showtime.language] ??
+                                  showtime.language}
+                              </span>
+                              {showtime.subtitle && (
+                                <Badge
+                                  variant="secondary"
+                                  className="w-fit text-[10px] px-1 h-5"
+                                >
+                                  Phụ đề
+                                </Badge>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <Badge variant="outline">{showtime.format}</Badge>
+                          </td>
+                          <td className="px-6 py-4">
+                            <Badge
+                              variant="secondary"
+                              className={
+                                showtime.isActive
+                                  ? "bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border-0" // Style xanh giống ảnh 1
+                                  : "bg-gray-100 text-gray-500 hover:bg-gray-200 border-0" // Style xám cho trạng thái dừng
+                              }
+                            >
+                              {showtime.isActive ? "Đang chiếu" : "Dừng"}
+                            </Badge>
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            {/* Giữ nguyên logic nút Action của bạn */}
+                            <div className="flex items-center justify-center space-x-3">
+                              {showtime.isActive ? (
+                                <>
+                                  {/* Nút Xem Chi Tiết */}
+                                  <button
+                                    className="text-green-600 hover:text-green-800 transition-colors"
+                                    onClick={() => {
+                                      setViewShowtime(showtime);
+                                      setViewOpen(true);
+                                    }}
+                                    title="Xem chi tiết"
+                                  >
+                                    <FiEye size={18} />
+                                  </button>
+
+                                  {/* Nút Sửa */}
+                                  <button
+                                    onClick={() => handleEditOpen(showtime)}
+                                    className="text-blue-600 hover:text-blue-800 transition-colors"
+                                    title="Chỉnh sửa"
+                                  >
+                                    <FiEdit2 size={18} />
+                                  </button>
+
+                                  {/* Nút Xóa */}
+                                  <button
+                                    onClick={() => handleDelete(showtime)}
+                                    className="text-red-600 hover:text-red-800 transition-colors"
+                                    title="Xóa"
+                                  >
+                                    <FiTrash2 size={18} />
+                                  </button>
+                                </>
+                              ) : (
+                                /* Nút Khôi Phục (Restore) - Chỉ hiện khi isActive = false */
+                                <button
+                                  className="text-green-600 hover:text-green-800 transition-colors"
+                                  onClick={() => handleRestore(showtime)}
+                                  title="Khôi phục"
+                                >
+                                  <BiRestore size={20} />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    });
+                  }
+                );
+              })
+            )}
+          </tbody>
+        </table>
 
         {loadingShow && (
           <div className="flex items-center gap-2 px-6 py-3 text-sm text-gray-600">
