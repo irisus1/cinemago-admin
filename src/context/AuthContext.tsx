@@ -143,7 +143,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoggingOut: boolean;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<User | null>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
@@ -284,13 +284,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = async (email: string, password: string) => {
     try {
       const res = await authService.login(email, password);
-      toast.success("Đăng nhập thành công!");
-      if (res.user) {
-        setUser(res.user);
-        localStorage.setItem("user", JSON.stringify(res.user));
-      } else {
-        await refreshUser();
-      }
+
+      console.log(res);
+
+      await refreshUser();
+      return user;
     } catch (error) {
       throw error;
     }
@@ -314,6 +312,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const refreshUser = async () => {
     try {
       const res = await userService.getMe();
+      console.log(res);
+
       setUser(res);
       localStorage.setItem("user", JSON.stringify(res));
     } catch (error) {

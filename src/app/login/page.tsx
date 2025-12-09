@@ -20,7 +20,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const { login } = useAuth();
+  const { login, logout } = useAuth();
   const router = useRouter();
 
   const validateForm = () => {
@@ -38,7 +38,15 @@ export default function LoginPage() {
     try {
       setLoading(true);
       await login(formData.username, formData.password);
+      const stored = localStorage.getItem("user");
+      const user = stored ? JSON.parse(stored) : null;
+      if (user && user.role !== "ADMIN") {
+        toast.error("Bạn không có quyền truy cập trang quản trị!");
 
+        // await logout();
+        return;
+      }
+      toast.success("Đăng nhập thành công!");
       router.replace("/admin/dashboard");
     } catch {
       toast.error("Đăng nhập thất bại!");

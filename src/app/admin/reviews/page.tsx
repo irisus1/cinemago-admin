@@ -198,7 +198,7 @@ const ReviewsListPage: React.FC = () => {
         />
 
         {totalItems > 0 && (
-          <div className="flex items-center justify-between px-6 py-4 bg-gray-50">
+          <div className="flex items-center justify-between px-4 py-2 bg-gray-50">
             <button
               onClick={() =>
                 pagination?.hasPrevPage && setPage((p) => Math.max(1, p - 1))
