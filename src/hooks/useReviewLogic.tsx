@@ -26,6 +26,9 @@ export function useReviewLogic() {
   const [loading, setLoading] = useState(false);
   const [viewingReview, setViewingReview] = useState<Review | null>(null);
 
+  const [replyingReview, setReplyingReview] = useState<Review | null>(null);
+  const [isSubmittingReply, setIsSubmittingReply] = useState(false);
+
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
   const [pagination, setPagination] = useState<PaginationMeta | null>(null);
@@ -35,6 +38,8 @@ export function useReviewLogic() {
   // dialogs
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
+  const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
+
   const [dialogTitle, setDialogTitle] = useState("");
   const [dialogMessage, setDialogMessage] = useState<React.ReactNode>("");
   const [onConfirm, setOnConfirm] = useState<() => void>(() => () => {});
@@ -152,6 +157,16 @@ export function useReviewLogic() {
     setViewingReview(r);
   };
 
+  const handleReplyOpen = (review: Review) => {
+    setReplyingReview(review);
+  };
+
+  // Hàm đóng modal reply
+  const handleReplyClose = () => {
+    setReplyingReview(null);
+    setIsSubmittingReply(false);
+  };
+
   const clearFilters = () => {
     setFilters((prev) => ({
       movieId: prev.movieId, // giữ phim
@@ -222,6 +237,33 @@ export function useReviewLogic() {
     );
   };
 
+  const handleSubmitReply = async (reviewId: string, content: string) => {
+    setIsSubmittingReply(true);
+    try {
+      const updatedReview = await reviewService.replyToReview({
+        reviewId,
+        content,
+      });
+
+      // Cập nhật lại list review local để hiển thị trạng thái mới nếu cần
+      // (Tuỳ vào BE trả về gì, ở đây giả sử cập nhật lại row đó)
+      setReviews((prev) =>
+        prev.map((r) => (r.id === reviewId ? updatedReview : r))
+      );
+
+      setDialogTitle("Thành công");
+      setDialogMessage("Đã gửi phản hồi thành công.");
+      setIsSuccessDialogOpen(true);
+      handleReplyClose(); // Đóng modal sau khi thành công
+    } catch {
+      setDialogTitle("Lỗi");
+      setDialogMessage("Không thể gửi phản hồi.");
+      setIsErrorDialogOpen?.(true); // Nếu bạn có dialog error
+    } finally {
+      setIsSubmittingReply(false);
+    }
+  };
+
   return {
     // data
     reviews,
@@ -231,6 +273,7 @@ export function useReviewLogic() {
     loading,
     viewingReview,
     setViewingReview,
+    replyingReview,
 
     // pagination
     page,
@@ -248,12 +291,19 @@ export function useReviewLogic() {
     handleHide,
     handleUnhide,
     handleView,
+    handleReplyOpen,
+    handleReplyClose,
+    handleSubmitReply,
+    isSubmittingReply,
 
     // dialogs
     isConfirmDialogOpen,
     setIsConfirmDialogOpen,
     isSuccessDialogOpen,
     setIsSuccessDialogOpen,
+    isErrorDialogOpen,
+    setIsErrorDialogOpen,
+
     dialogTitle,
     dialogMessage,
     onConfirm,

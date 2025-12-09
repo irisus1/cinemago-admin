@@ -8,21 +8,12 @@ import {
   Transition,
   TransitionChild,
 } from "@headlessui/react";
-import type { Cinema } from "@/services";
+import type { Cinema, CinemaFormPayload } from "@/services";
 import { VIETNAM_PROVINCES } from "@/constants/vnProvinces";
 import {
   SearchableCombobox,
   type SelectOption,
 } from "@/components/SearchableCombobox";
-
-type CinemaFormPayload = {
-  name: string;
-  city: string;
-  address: string;
-  longitude: number | null;
-  latitude: number | null;
-  isActive: boolean;
-};
 
 type CinemaModalProps = {
   open: boolean;
@@ -37,7 +28,7 @@ type CinemaModalProps = {
   ) => void | Promise<void>;
 };
 
-export default function CinemaModal({
+export default function EditCinemaModal({
   open,
   onClose,
   mode,
@@ -102,11 +93,11 @@ export default function CinemaModal({
 
     const payload: CinemaFormPayload = {
       name: name.trim(),
-      city: city.trim(), // lưu label (tên tỉnh/thành)
+      city: city.trim(),
       address: address.trim(),
       longitude: toNumOrNull(longitude),
       latitude: toNumOrNull(latitude),
-      isActive,
+      rooms: [],
     };
 
     await onSubmit(payload, mode, cinema);

@@ -99,6 +99,7 @@ export default function AdminWalkupBookingPage() {
           startTime: dayRange.startTime,
           endTime: dayRange.endTime,
           cinemaId: selectedCinemaId,
+          isActive: true,
         });
 
         console.log(sts);

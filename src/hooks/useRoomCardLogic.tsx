@@ -5,15 +5,16 @@ import {
   roomService,
   cinemaService,
   type Room,
-  type PaginationMeta,
-  type RoomUpdate,
-  type RoomCreate,
-  type Cinema,
+  PaginationMeta,
+  RoomUpdate,
+  RoomCreate,
+  Cinema,
+  SeatCell,
 } from "@/services";
 
-const makeBaseLayout5x5 = () => {
-  const rows = ["A", "B", "C", "D", "E"];
-  const cols = 5;
+const makeBaseLayout10x10 = () => {
+  const rows = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"];
+  const cols = 10;
   const out: { row: string; col: number; type: "NORMAL" }[] = [];
   for (const r of rows) {
     for (let c = 1; c <= cols; c++) {
@@ -27,6 +28,7 @@ export type RoomFormData = {
   name: string;
   vipPrice: number;
   couplePrice: number;
+  seatLayout?: SeatCell[];
 };
 
 type CinemaOption = {
@@ -318,14 +320,15 @@ export function useRoomLogic(initialCinemaId?: string) {
           const payloadBase = {
             cinemaId,
             name: formData.name,
-            vipPrice: formData.vipPrice,
-            couplePrice: formData.couplePrice,
+            vipPrice: formData.vipPrice || 1,
+            couplePrice: formData.couplePrice || 1,
+            seatLayout: formData.seatLayout,
           };
 
           if (isCreate) {
             const payloadCreate: RoomCreate = {
               ...payloadBase,
-              seatLayout: makeBaseLayout5x5(),
+              seatLayout: formData.seatLayout || makeBaseLayout10x10(),
             };
             await roomService.createRoom(payloadCreate);
             setDialogTitle("Thành công");
@@ -333,7 +336,7 @@ export function useRoomLogic(initialCinemaId?: string) {
           } else if (editRoom) {
             const payloadUpdate: RoomUpdate = {
               ...payloadBase,
-              seatLayout: editRoom.seatLayout,
+              seatLayout: formData.seatLayout || editRoom.seatLayout,
             };
             await roomService.updateRoom(editRoom.id, payloadUpdate);
             setDialogTitle("Thành công");
