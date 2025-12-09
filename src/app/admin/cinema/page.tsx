@@ -8,11 +8,11 @@ import { BiRefresh } from "react-icons/bi";
 import { Search, Plus } from "lucide-react";
 import RefreshLoader from "@/components/Loading";
 import { Modal } from "@/components/Modal";
-import CinemaModal from "@/components/modal/CinemaModal";
+import CinemaModal from "@/components/modal/CreateCinemaModal";
 import { type Cinema } from "@/services";
 import { useCinemaLogic } from "@/hooks/useCinemaLogic";
 import { CinemaDetailModal } from "@/components/modal/CinemaDetailModal";
-
+import EditCinemaModal from "@/components/modal/EditCinemaModal";
 import { SearchableCombobox } from "@/components/SearchableCombobox";
 import { VIETNAM_PROVINCES } from "@/constants/vnProvinces";
 
@@ -34,9 +34,13 @@ const CinemasListPage: React.FC = () => {
     handleDelete,
     handleRestore,
     handleSubmitCinema,
+
     open,
     setOpen,
     editCinema,
+    createCinema,
+    setCreateCinema,
+
     isConfirmDialogOpen,
     setIsConfirmDialogOpen,
     isSuccessDialogOpen,
@@ -252,9 +256,16 @@ const CinemasListPage: React.FC = () => {
       />
 
       <CinemaModal
+        open={createCinema}
+        onClose={() => setCreateCinema(false)}
+        mode={"create"}
+        onSubmit={handleSubmitCinema}
+      />
+
+      <EditCinemaModal
         open={open}
         onClose={() => setOpen(false)}
-        mode={editCinema ? "edit" : "create"}
+        mode={"edit"}
         cinema={editCinema ?? undefined}
         onSubmit={handleSubmitCinema}
       />

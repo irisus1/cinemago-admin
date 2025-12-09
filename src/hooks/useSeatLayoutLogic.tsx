@@ -13,7 +13,7 @@ export type SeatRecord = { row: string; col: number; type: SeatType };
 export type SeatLayoutProp = LayoutGrid | SeatRecord[] | undefined;
 
 /* ====================== Constants ====================== */
-export const LIMIT_MAX = 20; // Tăng lên xíu cho thoải mái
+export const LIMIT_MAX = 15;
 export const defaultRows = 10;
 export const defaultCols = 10;
 
@@ -62,7 +62,7 @@ const normalizeGrid = (grid: LayoutGrid): LayoutGrid => {
   });
 };
 
-const isGrid = (v: any): v is LayoutGrid =>
+const isGrid = (v: SeatLayoutProp): v is LayoutGrid =>
   Array.isArray(v) && (v.length === 0 || Array.isArray(v[0]));
 
 const buildGridFromSeatList = (list: SeatRecord[]) => {
@@ -124,10 +124,8 @@ export function useSeatLayoutLogic({
   open,
   seatLayout,
   room,
-  onChange,
-  onCustomSave, // Lấy prop mới
+  onCustomSave,
   notify,
-  onClose,
 }: UseSeatLayoutProps) {
   // State
   const [cols, setCols] = useState<number>(defaultCols);
@@ -193,8 +191,7 @@ export function useSeatLayoutLogic({
   useEffect(() => {
     if (!open) return; // Chỉ reset khi mở modal
 
-    if (!seatLayout) {
-      // Nếu không có layout đầu vào => Reset về mặc định
+    if (!seatLayout || (Array.isArray(seatLayout) && seatLayout.length === 0)) {
       setLayout(makeEmptyLayout(defaultRows, defaultCols));
       setCols(defaultCols);
       setPendingRows(String(defaultRows));
@@ -432,31 +429,23 @@ export function useSeatLayoutLogic({
   const handleSave = async () => {
     const seatList = gridToSeatList(layout);
 
-    // [QUAN TRỌNG] Logic mới: Nếu có onCustomSave (Local Save) -> Gọi luôn và thoát
     if (onCustomSave) {
       onCustomSave(seatList);
       toast.success("Đã lưu cấu hình ghế (Local)");
-      return; // Dừng tại đây, không gọi API
+      return;
     }
+  };
 
-    // --- Logic Cũ (Edit Room có ID) ---
-    const payload: RoomUpdate = {
-      name: room?.name,
-      cinemaId: room?.cinemaId,
-      vipPrice: vipBonus === "" ? 0 : vipBonus,
-      couplePrice: coupleBonus === "" ? 0 : coupleBonus,
-      seatLayout: seatList,
-    };
-
-    try {
-      if (!room?.id) throw new Error("Room ID is missing");
-      await roomService.updateRoom(room?.id, payload);
-      toast.success("Cập nhật layout ghế thành công");
-      onChange?.(seatList);
-    } catch (e) {
-      console.log(e);
-      toast.error("Cập nhật phòng thất bại");
-    }
+  const countRealSeats = () => {
+    let count = 0;
+    layout.forEach((row) => {
+      row.forEach((cell) => {
+        if (cell.type !== "empty") {
+          count++;
+        }
+      });
+    });
+    return count;
   };
 
   return {
@@ -480,5 +469,6 @@ export function useSeatLayoutLogic({
     handleSave,
     onSeatMouseDown,
     onSeatMouseEnter,
+    countRealSeats,
   };
 }

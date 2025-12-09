@@ -1,5 +1,6 @@
 import api from "@/config/api";
 import axios from "axios";
+import type { RoomCreate } from "./room.service";
 
 export interface Cinema {
   id: string;
@@ -44,6 +45,11 @@ export type CreateCinemaRequest = Omit<
   Cinema,
   "id" | "createdAt" | "isActive" | "updatedAt"
 >;
+
+export type CinemaFormPayload = CreateCinemaRequest & {
+  rooms: RoomCreate[];
+};
+
 export type UpdateCinemaRequest = Partial<
   Omit<Cinema, "id" | "createdAt" | "updatedAt">
 >;

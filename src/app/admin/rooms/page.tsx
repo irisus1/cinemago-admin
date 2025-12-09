@@ -1,8 +1,6 @@
 "use client";
 
-import React from "react";
 import { Search, Plus } from "lucide-react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -12,23 +10,18 @@ import {
   SelectItem,
   SelectValue,
 } from "@/components/ui/select";
-
-import { FiEdit2, FiTrash2, FiEye } from "react-icons/fi";
+import { FiEdit2, FiTrash2 } from "react-icons/fi";
 import { BiRefresh } from "react-icons/bi";
 import Table, { Column } from "@/components/Table";
-import { useState } from "react";
+
 import { Modal } from "@/components/Modal";
 import RoomModal from "@/components/modal/RoomModal";
-import { RoomDetailModal } from "@/components/modal/RoomDetailModal";
-import SeatLayoutBuilder from "./RoomLayout";
-
 import {
   SearchableCombobox,
   type SelectOption,
 } from "@/components/SearchableCombobox";
 import { type Room } from "@/services";
 import { useRoomLogic } from "@/hooks/useRoomCardLogic";
-
 export default function RoomCard() {
   const {
     // Data & State
@@ -48,9 +41,7 @@ export default function RoomCard() {
     canClearFilters,
     open,
     setOpen,
-    openLayout,
-    setOpenLayout,
-    openRoom,
+
     editRoom,
     isConfirmDialogOpen,
     setIsConfirmDialogOpen,
@@ -64,8 +55,7 @@ export default function RoomCard() {
 
     // Actions
     clearFilters,
-    handleRefresh,
-    handleViewLayoutOpen,
+
     handleAddOpen,
     handleEditOpen,
     handleDelete,
@@ -75,9 +65,6 @@ export default function RoomCard() {
     isSubmitting,
     handleSubmitRoom,
   } = useRoomLogic();
-
-  const [viewOpen, setViewOpen] = useState(false);
-  const [viewRoom, setViewRoom] = useState<Room | null>(null);
 
   // ===== columns =====
   const columns: Column<Room>[] = [
@@ -118,18 +105,6 @@ export default function RoomCard() {
         <div className="flex w-full items-center justify-center space-x-3">
           {row.isActive ? (
             <>
-              {/* Xem chi tiết (modal) */}
-              <button
-                className="text-green-600 hover:text-green-800"
-                onClick={() => {
-                  setViewRoom(row);
-                  setViewOpen(true);
-                }}
-                title="Xem chi tiết"
-              >
-                <FiEye className="w-4 h-4" />
-              </button>
-
               {/* Sửa */}
               <button
                 className="text-blue-600 hover:text-blue-800"
@@ -282,33 +257,6 @@ export default function RoomCard() {
           </div>
         )}
       </div>
-
-      <RoomDetailModal
-        open={viewOpen}
-        room={viewRoom}
-        onClose={() => {
-          setViewOpen(false);
-          setViewRoom(null);
-        }}
-        onOpenLayout={(room) => {
-          handleViewLayoutOpen(room);
-
-          setViewOpen(false);
-        }}
-      />
-
-      <SeatLayoutBuilder
-        open={openLayout}
-        onClose={() => setOpenLayout(false)}
-        room={openRoom ?? undefined}
-        seatLayout={openRoom?.seatLayout}
-        notify={(msg) => toast.error(msg)}
-        onChange={async (seatLayout) => {
-          console.log("seatLayout to save:", seatLayout);
-          handleRefresh();
-          setOpenLayout(false);
-        }}
-      />
 
       <RoomModal
         open={open}

@@ -26,6 +26,7 @@ export type {
   Cinema,
   CreateCinemaRequest,
   UpdateCinemaRequest,
+  CinemaFormPayload,
 } from "./cinema.service";
 
 export type { Genre, PaginationMeta } from "./genre.service";
@@ -66,6 +67,7 @@ export type {
   ReviewOverview,
   UserDetail,
   GetReviewsParams,
+  ResponseItem,
 } from "./review.service";
 
 export type {
