@@ -10,6 +10,8 @@ import type { Review } from "@/services";
 import { useReviewLogic } from "@/hooks/useReviewLogic";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import { BiRefresh } from "react-icons/bi";
+import { MessageSquareReply } from "lucide-react";
+import ReplyReviewModal from "@/components/modal/ReplyReviewModal";
 
 const ReviewsListPage: React.FC = () => {
   const {
@@ -29,6 +31,13 @@ const ReviewsListPage: React.FC = () => {
     handleUnhide,
     viewingReview,
     handleView,
+
+    replyingReview,
+    handleReplyOpen, // Đổi tên hàm cũ handleReply -> handleReplyOpen cho rõ nghĩa
+    handleReplyClose,
+    handleSubmitReply,
+    isSubmittingReply,
+
     setViewingReview,
     clearFilters,
     canClearFilters,
@@ -37,6 +46,9 @@ const ReviewsListPage: React.FC = () => {
     setIsConfirmDialogOpen,
     isSuccessDialogOpen,
     setIsSuccessDialogOpen,
+    isErrorDialogOpen,
+    setIsErrorDialogOpen,
+
     dialogTitle,
     dialogMessage,
     onConfirm,
@@ -83,6 +95,26 @@ const ReviewsListPage: React.FC = () => {
     },
     {
       header: "Trạng thái",
+      key: "status",
+      render: (_: unknown, row: Review) => {
+        const isReplied = row.status === "Đã trả lời";
+
+        return (
+          <span
+            className={`inline-flex px-2 py-1 rounded-full text-xs font-medium border ${
+              isReplied
+                ? "bg-blue-50 text-blue-700 border-blue-200"
+                : "bg-orange-50 text-orange-700 border-orange-200"
+            }`}
+          >
+            {row.status}
+          </span>
+        );
+      },
+      className: "w-[130px]",
+    },
+    {
+      header: "Hiển thị",
       key: "isActive",
       render: (_: unknown, row: Review) => (
         <span
@@ -111,6 +143,13 @@ const ReviewsListPage: React.FC = () => {
                 title="Xem chi tiết"
               >
                 <FiEye className="w-4 h-4" />
+              </button>
+              <button
+                className="text-blue-600 hover:text-blue-800"
+                onClick={() => handleReplyOpen(row)}
+                title="Phản hồi"
+              >
+                <MessageSquareReply className="w-4 h-4" />
               </button>
               <button
                 className="text-red-600 hover:text-red-800"
@@ -193,6 +232,14 @@ const ReviewsListPage: React.FC = () => {
         onClose={() => setViewingReview(null)}
       />
 
+      <ReplyReviewModal
+        open={!!replyingReview}
+        review={replyingReview}
+        onClose={handleReplyClose}
+        onSubmit={handleSubmitReply}
+        isSubmitting={isSubmittingReply}
+      />
+
       <Modal
         isOpen={isConfirmDialogOpen}
         onClose={() => setIsConfirmDialogOpen(false)}
@@ -212,6 +259,15 @@ const ReviewsListPage: React.FC = () => {
         isOpen={isSuccessDialogOpen}
         onClose={() => setIsSuccessDialogOpen(false)}
         type="success"
+        title={dialogTitle}
+        message={dialogMessage}
+        confirmText="Đóng"
+      />
+
+      <Modal
+        isOpen={isErrorDialogOpen}
+        onClose={() => setIsErrorDialogOpen(false)}
+        type="error"
         title={dialogTitle}
         message={dialogMessage}
         confirmText="Đóng"

@@ -116,7 +116,6 @@ export function useBookingLogic() {
         if (st) cache.current.showTimes[st.id] = st;
       });
 
-      // ==== From showtimes -> movies / rooms / cinemas ====
       const relatedShowTimes = allShowTimeIdsInPage
         .map((id) => cache.current.showTimes[id])
         .filter(Boolean) as ShowTime[];

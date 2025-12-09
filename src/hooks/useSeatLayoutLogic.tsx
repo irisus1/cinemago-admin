@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { roomService, type Room, RoomUpdate, SeatType } from "@/services";
 
@@ -9,12 +9,13 @@ export type SeatTypeKey = "normal" | "vip" | "couple" | "empty";
 export type SeatCell = { type: SeatTypeKey; pairId?: string | null };
 export type LayoutGrid = SeatCell[][];
 export type SeatRecord = { row: string; col: number; type: SeatType };
-export type SeatLayoutProp = LayoutGrid | SeatRecord[];
+// Cho phép input đầu vào là Grid hoặc mảng danh sách ghế
+export type SeatLayoutProp = LayoutGrid | SeatRecord[] | undefined;
 
 /* ====================== Constants ====================== */
 export const LIMIT_MAX = 15;
-export const defaultRows = 5;
-export const defaultCols = 5;
+export const defaultRows = 10;
+export const defaultCols = 10;
 
 const TYPE_MAP: Record<SeatType, SeatTypeKey> = {
   NORMAL: "normal",
@@ -65,30 +66,43 @@ const isGrid = (v: SeatLayoutProp): v is LayoutGrid =>
   Array.isArray(v) && (v.length === 0 || Array.isArray(v[0]));
 
 const buildGridFromSeatList = (list: SeatRecord[]) => {
+  // [FIX] Thêm fallback xử lý mảng rỗng để tránh lỗi spread ...list.map
+  if (!list || list.length === 0) {
+    return {
+      rows: defaultRows,
+      cols: defaultCols,
+      grid: makeEmptyLayout(defaultRows, defaultCols),
+    };
+  }
+
   const maxC = Math.max(1, ...list.map((x) => Number(x.col) || 0));
   const maxR = Math.max(1, ...list.map((x) => lettersToNumber(x.row)));
+
   const grid = makeEmptyLayout(maxR, maxC);
   for (const s of list) {
     const rIdx = lettersToNumber(s.row) - 1;
     const cIdx = (Number(s.col) || 1) - 1;
-    const t = TYPE_MAP[s.type];
-    if (grid[rIdx] && grid[rIdx][cIdx]) grid[rIdx][cIdx] = { type: t };
+    // Kiểm tra an toàn biên
+    if (rIdx >= 0 && rIdx < maxR && cIdx >= 0 && cIdx < maxC) {
+      const t = TYPE_MAP[s.type] || "normal";
+      grid[rIdx][cIdx] = { type: t };
+    }
   }
   return { rows: maxR, cols: maxC, grid };
 };
 
-// UI Helpers (Exported for UI to use)
+// UI Helpers
 export function isLeftHalf(grid: LayoutGrid, rIdx: number, cIdx: number) {
-  const cell = grid[rIdx][cIdx];
+  const cell = grid[rIdx]?.[cIdx];
   if (!cell?.pairId) return false;
-  const right = cIdx < grid[rIdx].length - 1 ? grid[rIdx][cIdx + 1] : null;
+  const right = grid[rIdx]?.[cIdx + 1];
   return !!(right && right.pairId === cell.pairId);
 }
 
 export function isRightHalf(grid: LayoutGrid, rIdx: number, cIdx: number) {
-  const cell = grid[rIdx][cIdx];
+  const cell = grid[rIdx]?.[cIdx];
   if (!cell?.pairId) return false;
-  const left = cIdx > 0 ? grid[rIdx][cIdx - 1] : null;
+  const left = grid[rIdx]?.[cIdx - 1];
   return !!(left && left.pairId === cell.pairId);
 }
 
@@ -96,8 +110,12 @@ export function isRightHalf(grid: LayoutGrid, rIdx: number, cIdx: number) {
 type UseSeatLayoutProps = {
   open: boolean;
   seatLayout?: SeatLayoutProp;
-  room?: Room;
-  onChange?: (seatLayout: SeatRecord[]) => void;
+  room?: Room; // Có thể undefined khi tạo mới
+  onChange?: (seatLayout: SeatRecord[]) => void; // Callback khi API thành công
+
+  // [MỚI] Callback lưu local (không gọi API)
+  onCustomSave?: (seatLayout: SeatRecord[]) => void;
+
   notify?: (msg: string) => void;
   onClose: () => void;
 };
@@ -106,9 +124,8 @@ export function useSeatLayoutLogic({
   open,
   seatLayout,
   room,
-  onChange,
+  onCustomSave,
   notify,
-  onClose,
 }: UseSeatLayoutProps) {
   // State
   const [cols, setCols] = useState<number>(defaultCols);
@@ -120,10 +137,8 @@ export function useSeatLayoutLogic({
   );
 
   const [loading, setLoadingRoom] = useState(false);
-  const [vipBonus, setVipBonus] = useState<number | "">(room?.VIP ?? 0);
-  const [coupleBonus, setCoupleBonus] = useState<number | "">(
-    room?.COUPLE ?? 0
-  );
+  const [vipBonus, setVipBonus] = useState<number | "">(0);
+  const [coupleBonus, setCoupleBonus] = useState<number | "">(0);
 
   // Drag state
   const [isDragging, setIsDragging] = useState(false);
@@ -138,18 +153,26 @@ export function useSeatLayoutLogic({
       dragNotifiedRef.current = false;
     };
     window.addEventListener("mouseup", stopDrag);
-    window.addEventListener("mouseleave", stopDrag);
-    window.addEventListener("blur", stopDrag);
-    return () => {
-      window.removeEventListener("mouseup", stopDrag);
-      window.removeEventListener("mouseleave", stopDrag);
-      window.removeEventListener("blur", stopDrag);
-    };
+    return () => window.removeEventListener("mouseup", stopDrag);
   }, []);
 
-  // Fetch Room Detail
+  // Fetch Room Detail (Chỉ chạy khi có ID thật, không chạy khi tạo mới)
   useEffect(() => {
-    if (!open || !room?.id) return;
+    // Nếu không có room ID hoặc là ID tạm (ví dụ: temp-123) thì không gọi API
+    if (
+      !open ||
+      !room?.id ||
+      room.id.toString().startsWith("temp") ||
+      String(room.id).length < 5
+    ) {
+      // Nếu tạo mới, có thể reset bonus về 0
+      if (!room?.id) {
+        setVipBonus(0);
+        setCoupleBonus(0);
+      }
+      return;
+    }
+
     (async () => {
       try {
         setLoadingRoom(true);
@@ -164,33 +187,45 @@ export function useSeatLayoutLogic({
     })();
   }, [open, room?.id]);
 
-  // Hydrate Layout from Props
+  // Hydrate Layout from Props (Quan trọng: Xử lý cả Grid và List)
   useEffect(() => {
-    if (!seatLayout) return;
+    if (!open) return; // Chỉ reset khi mở modal
+
+    if (!seatLayout || (Array.isArray(seatLayout) && seatLayout.length === 0)) {
+      setLayout(makeEmptyLayout(defaultRows, defaultCols));
+      setCols(defaultCols);
+      setPendingRows(String(defaultRows));
+      setPendingCols(String(defaultCols));
+      return;
+    }
+
     if (isGrid(seatLayout)) {
       const grid = normalizeGrid(seatLayout);
-      const rr = grid.length,
-        cc = grid.reduce((m, r) => Math.max(m, r.length), 0);
+      const rr = grid.length;
+      const cc = grid.reduce((m, r) => Math.max(m, r.length), 0);
       setLayout(grid);
       setCols(cc);
       setPendingRows(String(rr));
       setPendingCols(String(cc));
     } else {
+      // Input là mảng SeatRecord[]
       const { rows: rr, cols: cc, grid } = buildGridFromSeatList(seatLayout);
       setLayout(grid);
       setCols(cc);
       setPendingRows(String(rr));
       setPendingCols(String(cc));
     }
-  }, [seatLayout]);
+  }, [seatLayout, open]);
 
   // --- Logic Methods ---
-
   const bound = (val: string, max = LIMIT_MAX) => {
     const n = parseInt(val || "0", 10);
     const clamped = Math.min(Math.max(n || 1, 1), max);
     return { n: n || 1, clamped, adjusted: clamped !== (n || 1) };
   };
+
+  // ... (Giữ nguyên hàm cleanupDoublePairs, generateLayout, unpairIfNeeded, tryPaircouple, applySeat)
+  // ... (Phần logic xử lý ma trận ghế này bạn giữ nguyên từ code cũ vì nó chuẩn rồi)
 
   const cleanupDoublePairs = (grid: LayoutGrid) => {
     const R = grid.length;
@@ -243,9 +278,7 @@ export function useSeatLayoutLogic({
     const cB = bound(pendingCols);
 
     if (rB.adjusted || cB.adjusted) {
-      notify?.(
-        `Kích thước vượt giới hạn (1–${LIMIT_MAX}). Đã chỉnh về ${rB.clamped}×${cB.clamped}.`
-      );
+      notify?.(`Kích thước đã chỉnh về ${rB.clamped}×${cB.clamped}.`);
     }
 
     const r = rB.clamped;
@@ -340,7 +373,7 @@ export function useSeatLayoutLogic({
         }
         if (!tryPaircouple(next, rIdx, cIdx)) {
           if (!dragNotifiedRef.current) {
-            toast("Không thể tạo ghế đôi: cần 2 ghế liền kề đang là 'Thường'.");
+            toast("Cần 2 ghế Thường liền kề để tạo ghế Đôi");
             dragNotifiedRef.current = true;
           }
         }
@@ -352,8 +385,6 @@ export function useSeatLayoutLogic({
       return next;
     });
   };
-
-  // --- Handlers ---
 
   const onSeatMouseDown = (r: number, c: number, e: React.MouseEvent) => {
     if (e.button !== 0) return;
@@ -367,6 +398,7 @@ export function useSeatLayoutLogic({
     if (isDragging) applySeat(r, c);
   };
 
+  // --- SAVE ---
   const toExternalType = (t: SeatTypeKey): SeatType => {
     switch (t) {
       case "vip":
@@ -396,29 +428,27 @@ export function useSeatLayoutLogic({
 
   const handleSave = async () => {
     const seatList = gridToSeatList(layout);
-    const payload: RoomUpdate = {
-      name: room?.name,
-      cinemaId: room?.cinemaId,
-      vipPrice: vipBonus === "" ? 0 : vipBonus,
-      couplePrice: coupleBonus === "" ? 0 : coupleBonus,
-      seatLayout: seatList,
-    };
 
-    console.log(payload);
-
-    try {
-      if (!room?.id) throw new Error("Room ID is missing");
-      await roomService.updateRoom(room?.id, payload);
-      toast.success("Cập nhật layout ghế thành công");
-      onChange?.(seatList);
-    } catch (e) {
-      console.log(e);
-      toast.error("Cập nhật phòng thất bại");
+    if (onCustomSave) {
+      onCustomSave(seatList);
+      toast.success("Đã lưu cấu hình ghế (Local)");
+      return;
     }
   };
 
+  const countRealSeats = () => {
+    let count = 0;
+    layout.forEach((row) => {
+      row.forEach((cell) => {
+        if (cell.type !== "empty") {
+          count++;
+        }
+      });
+    });
+    return count;
+  };
+
   return {
-    // State
     cols,
     pendingRows,
     setPendingRows,
@@ -434,12 +464,11 @@ export function useSeatLayoutLogic({
     isDragging,
     setIsDragging,
     dragNotifiedRef,
-
-    // Actions
     generateLayout,
     applySeat,
     handleSave,
     onSeatMouseDown,
     onSeatMouseEnter,
+    countRealSeats,
   };
 }

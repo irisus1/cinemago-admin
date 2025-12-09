@@ -35,7 +35,7 @@ export async function refreshAccessTokenAction() {
   const cookieStore = await cookies();
   const refreshToken = cookieStore.get("refreshToken")?.value;
 
-  if (!refreshToken) throw new Error("No refresh token in cookie");
+  if (!refreshToken) return null;
 
   try {
     const { data } = await axios.post(`${BASE}/auth/refresh-token`, {
@@ -52,6 +52,8 @@ export async function refreshAccessTokenAction() {
     return newAccessToken as string;
   } catch (error) {
     await deleteRefreshTokenCookie();
-    throw error;
+
+    console.error("Refresh Action failed:", error);
+    return null;
   }
 }

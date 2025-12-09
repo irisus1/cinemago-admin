@@ -107,6 +107,10 @@ class AuthService {
     try {
       const newAccessToken = await refreshAccessTokenAction();
 
+      if (!newAccessToken) {
+        throw new Error("Không thể làm mới phiên (No token)");
+      }
+
       if (newAccessToken) {
         localStorage.setItem(ACCESS_TOKEN_KEY, newAccessToken);
         api.defaults.headers.common.Authorization = `Bearer ${newAccessToken}`;
@@ -117,7 +121,7 @@ class AuthService {
     } catch (e) {
       this.clearLocalAuth();
       // await deleteRefreshTokenCookie(); // Action đã tự xóa nếu lỗi
-      throw new Error("Phiên đăng nhập hết hạn.");
+      throw e;
     }
   }
 

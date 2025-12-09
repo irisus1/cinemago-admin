@@ -2,7 +2,18 @@
 
 import React from "react";
 import type { Movie, Review } from "@/services";
-import { X, Info } from "lucide-react";
+import { Info, Star, Calendar, User, Film, Tag } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"; // Đường dẫn tuỳ project của bạn
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 type ReviewDetailModalProps = {
   open: boolean;
@@ -11,12 +22,34 @@ type ReviewDetailModalProps = {
   onClose: () => void;
 };
 
-function formatDateSafe(value?: string) {
-  if (!value) return "Không xác định";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "Không xác định";
-  return d.toLocaleString("vi-VN");
+function formatDateSafe(value?: string | number) {
+  if (!value) return "—";
+
+  let timestamp = Number(value);
+  if (isNaN(timestamp)) return "Không xác định";
+
+  if (timestamp < 100000000000) {
+    timestamp *= 1000;
+  }
+
+  const d = new Date(timestamp);
+
+  return d.toLocaleString("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
 }
+
+// Helper để chọn màu Badge theo số sao (tuỳ chọn)
+const getRatingColor = (rating: number) => {
+  if (rating >= 4) return "bg-green-500 hover:bg-green-600 border-transparent";
+  if (rating >= 2)
+    return "bg-yellow-500 hover:bg-yellow-600 border-transparent";
+  return "bg-red-500 hover:bg-red-600 border-transparent";
+};
 
 export default function ReviewDetailModal({
   open,
@@ -24,90 +57,111 @@ export default function ReviewDetailModal({
   movies,
   onClose,
 }: ReviewDetailModalProps) {
-  if (!open || !review) return null;
+  if (!review && open) return null;
+
+  console.log(review);
 
   const movieTitle =
-    movies.find((m) => m.id === review.movieId)?.title ?? review.movieId;
+    movies.find((m) => m.id === review?.movieId)?.title ?? review?.movieId;
+
+  const handleOpenChange = (isOpen: boolean) => {
+    if (!isOpen) onClose();
+  };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-      role="dialog"
-      aria-modal="true"
-    >
-      <div className="w-full max-w-md rounded-2xl bg-white shadow-xl p-6">
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden gap-0">
         {/* Header */}
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50">
-              <Info className="h-5 w-5 text-blue-500" />
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900">
+        <DialogHeader className="px-6 py-4 bg-muted/50 border-b">
+          <div className="flex items-center gap-2 text-blue-600">
+            <Info className="h-5 w-5" />
+            <DialogTitle className="text-lg text-foreground">
               Chi tiết đánh giá
-            </h3>
+            </DialogTitle>
           </div>
+        </DialogHeader>
 
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
-            aria-label="Đóng"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        {/* Body */}
-        <div className="space-y-2 text-sm text-gray-700">
-          <div>
-            <span className="font-semibold">Phim: </span>
-            {movieTitle}
-          </div>
-
-          <div>
-            <span className="font-semibold">Người dùng: </span>
-            {review.userDetail?.fullname ?? review.userId}
-          </div>
-
-          <div className="flex flex-wrap gap-4">
-            <div>
-              <span className="font-semibold">Số sao: </span>
-              {review.rating.toFixed(1)}
-            </div>
-            <div>
-              <span className="font-semibold">Loại cảm xúc: </span>
-              {review.type}
-            </div>
-            {review.status && (
-              <div>
-                <span className="font-semibold">Tình trạng: </span>
-                {review.status}
+        {review && (
+          <div className="p-6 space-y-6">
+            {/* Thông tin chính: Phim & User */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Film className="h-4 w-4" /> Phim
+                </div>
+                <div
+                  className="font-medium text-base truncate"
+                  title={movieTitle as string}
+                >
+                  {movieTitle}
+                </div>
               </div>
-            )}
-          </div>
 
-          <div>
-            <span className="font-semibold">Thời gian: </span>
-            {formatDateSafe(review.createdAt)}
-          </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <User className="h-4 w-4" /> Người đánh giá
+                </div>
+                <div className="font-medium text-base">
+                  {review.userDetail?.fullname ?? review.userId}
+                </div>
+              </div>
+            </div>
 
-          <div className="pt-2">
-            <div className="font-semibold mb-1">Nội dung:</div>
-            <div className="whitespace-pre-line break-words">
-              {review.content || "(Không có nội dung)"}
+            <Separator />
+
+            {/* Metrics: Sao, Loại, Thời gian */}
+            <div className="flex flex-wrap items-center gap-4">
+              <Badge
+                className={`${getRatingColor(
+                  review.rating
+                )} text-white px-3 py-1`}
+              >
+                <Star className="w-3.5 h-3.5 mr-1 fill-current" />
+                {review.rating.toFixed(1)} / 5
+              </Badge>
+
+              <Badge variant="outline" className="px-3 py-1">
+                <Tag className="w-3.5 h-3.5 mr-1" />
+                {review.type}
+              </Badge>
+
+              {review.status && (
+                <Badge variant="secondary" className="px-3 py-1 capitalize">
+                  {review.status}
+                </Badge>
+              )}
+
+              <div className="ml-auto flex items-center text-xs text-muted-foreground">
+                <Calendar className="w-3.5 h-3.5 mr-1" />
+                {formatDateSafe(review.createdAt)}
+              </div>
+            </div>
+
+            {/* Nội dung đánh giá */}
+            <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
+              <div className="p-3 border-b bg-muted/20 text-sm font-medium">
+                Nội dung đánh giá
+              </div>
+              <ScrollArea className="h-[200px] w-full p-4">
+                <div className="text-sm leading-relaxed whitespace-pre-line text-gray-700">
+                  {review.content || (
+                    <span className="italic text-muted-foreground">
+                      (Không có nội dung chi tiết)
+                    </span>
+                  )}
+                </div>
+              </ScrollArea>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Footer */}
-        <div className="mt-6 flex justify-end">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700"
-          >
+        <DialogFooter className="px-6 py-4 bg-muted/50 border-t">
+          <Button onClick={onClose} variant="default">
             Đóng
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

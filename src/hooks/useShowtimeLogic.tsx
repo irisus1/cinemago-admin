@@ -35,8 +35,7 @@ export function useShowtimeLogic() {
   const [movieOptions, setMovieOptions] = useState<MovieOpt[]>([]);
   const [cinemaOptions, setCinemaOptions] = useState<CinemaOpt[]>([]);
 
-  const [initialMovieId, setInitialMovieId] = useState<string | null>(null);
-  const [movieId, setMovieId] = useState<string>("");
+  const [movieId, setMovieId] = useState<string>("__ALL__");
   const [cinemaId, setCinemaId] = useState<string>("__ALL__");
   const [isActive, setIsActive] = useState<"all" | "active" | "inactive">(
     "all"
@@ -49,7 +48,7 @@ export function useShowtimeLogic() {
   const [reloadTick, setReloadTick] = useState(0);
 
   const [page, setPage] = useState(1);
-  const pageSize = 10;
+  const pageSize = 9;
   const [totalItems, setTotalItems] = useState(0);
 
   const [open, setOpen] = useState(false);
@@ -122,13 +121,6 @@ export function useShowtimeLogic() {
 
         setMovieOptions(mOpts);
         setCinemaOptions(cOpts);
-
-        if (mOpts.length > 0) {
-          setInitialMovieId(mOpts[0].id);
-          if (!movieId) {
-            setMovieId(mOpts[0].id);
-          }
-        }
       } catch (err) {
         console.error("Failed to load movie/cinema options", err);
       }
@@ -138,22 +130,20 @@ export function useShowtimeLogic() {
 
   // === FETCH SHOWTIME THEO FILTER + PAGINATION ===
   useEffect(() => {
-    if (!movieId) {
-      setShowtimes([]);
-      setTotalItems(0);
-      return;
-    }
-
     let cancelled = false;
     (async () => {
       try {
         setLoadingShow(true);
 
         const params: ShowTimeQuery = {
-          movieId,
           page,
           limit: pageSize,
         };
+
+        if (movieId && movieId !== "__ALL__") {
+          params.movieId = movieId;
+        }
+
         if (cinemaId && cinemaId !== "__ALL__") {
           params.cinemaId = cinemaId;
         }
@@ -337,12 +327,7 @@ export function useShowtimeLogic() {
   );
 
   const clearFilters = () => {
-    const firstMovieId =
-      initialMovieId || (movieOptions.length > 0 ? movieOptions[0].id : "");
-
-    if (firstMovieId) {
-      setMovieId(firstMovieId);
-    }
+    setMovieId("__ALL__");
 
     setCinemaId("__ALL__");
     setIsActive("all");
@@ -353,10 +338,8 @@ export function useShowtimeLogic() {
   };
 
   const canClearFilters = useMemo(() => {
-    const firstMovieId =
-      initialMovieId || (movieOptions.length > 0 ? movieOptions[0].id : "");
+    const isDefaultMovie = movieId === "__ALL__" || !movieId;
 
-    const isDefaultMovie = !firstMovieId || movieId === firstMovieId;
     const isDefaultCinema = cinemaId === "__ALL__";
     const isDefaultStatus = isActive === "all";
     const isDefaultStart = !startTime;
@@ -371,16 +354,7 @@ export function useShowtimeLogic() {
       isDefaultEnd &&
       isDefaultLang
     );
-  }, [
-    initialMovieId,
-    movieOptions,
-    movieId,
-    cinemaId,
-    isActive,
-    startTime,
-    endTime,
-    filterLang,
-  ]);
+  }, [movieId, cinemaId, isActive, startTime, endTime, filterLang]);
 
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
 
@@ -425,7 +399,7 @@ export function useShowtimeLogic() {
     handleRestore,
 
     // filter
-    initialMovieId,
+
     canClearFilters,
     clearFilters,
 

@@ -74,10 +74,9 @@ const getMsg = (e: unknown, fb: string) =>
 const toIso = (v?: Date | string) =>
   !v ? undefined : v instanceof Date ? v.toISOString() : v;
 
-// Chỉ gửi đúng các field BE yêu cầu khi tạo/cập nhật
 export type RoomCreate = {
   name: string;
-  cinemaId: string;
+  cinemaId?: string;
   seatLayout?: SeatCell[];
   vipPrice: number;
   couplePrice: number;

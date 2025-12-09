@@ -103,7 +103,7 @@ const BookingDetailModal: React.FC<Props> = ({
           mergedCouples.push({
             displayName: `${current.name}-${next.name}`, // "J10-J11"
             type: "COUPLE",
-            price: current.price, // Cộng dồn giá
+            price: current.price + next.price, // Cộng dồn giá
             isMerged: true,
           });
           visitedIndices.add(nextIndex); // Đánh dấu đã xử lý ghế sau
@@ -283,7 +283,7 @@ const BookingDetailModal: React.FC<Props> = ({
           {/* Block 2: Ghế */}
           <div>
             <h4 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
-              <span>💺 Ghế đã đặt</span>
+              <span>Ghế đã đặt</span>
               <span className="bg-gray-200 text-gray-700 text-xs px-2 py-0.5 rounded-full">
                 {booking.bookingSeats.length} vé
                 {/* nếu muốn đếm theo displaySeats thì đổi thành:

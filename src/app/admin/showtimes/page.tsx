@@ -1,7 +1,7 @@
 // app/admin/showtimes/page.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Table, { Column } from "@/components/Table";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -97,123 +97,48 @@ export default function ShowtimesListPage() {
 
   const movieTitle = movieOptions.find((m) => m.id === movieId)?.title ?? "—";
 
-  // ===== COLUMNS =====
-  const columns: Column<ShowTime>[] = [
-    // { header: "Phim", key: "movieTitle" },
-    { header: "Rạp", key: "cinemaName" },
-    { header: "Phòng", key: "roomName" },
-    {
-      header: "Ngôn ngữ",
-      key: "language",
-      render: (v) => {
-        if (!v) return "—";
-        const raw = String(v);
-        return LANGUAGE_LABEL_MAP[raw] ?? raw;
-      },
-    },
-    { header: "Định dạng", key: "format" },
-    {
-      header: "Bắt đầu",
-      key: "startTime",
-      render: (v) =>
-        v
-          ? Intl.DateTimeFormat("vi-VN", {
-              hour: "2-digit",
-              minute: "2-digit",
-              day: "2-digit",
-              month: "2-digit",
-              year: "numeric",
-            }).format(new Date(v as string))
-          : "—",
-    },
-    {
-      header: "Kết thúc",
-      key: "endTime",
-      render: (v) =>
-        v
-          ? Intl.DateTimeFormat("vi-VN", {
-              hour: "2-digit",
-              minute: "2-digit",
-              day: "2-digit",
-              month: "2-digit",
-              year: "numeric",
-            }).format(new Date(v as string))
-          : "—",
-    },
-    {
-      header: "Giá (VND)",
-      key: "price",
-      render: (v) =>
-        v == null ? "—" : new Intl.NumberFormat("vi-VN").format(Number(v)),
-    },
-    {
-      header: "Phụ đề",
-      key: "subtitle",
-      render: (_, s) => (
-        <Badge variant={s.subtitle ? "default" : "secondary"}>
-          {s.subtitle ? "Có" : "Không"}
-        </Badge>
-      ),
-    },
-    {
-      header: "Hành động",
-      key: "actions",
-      headerClassName: "text-center",
-      render: (_, row) => (
-        <div className="flex w-full items-center justify-center space-x-3">
-          {row.isActive ? (
-            <>
-              <button
-                className="text-green-600 hover:text-green-800"
-                onClick={() => {
-                  setViewShowtime(row);
-                  setViewOpen(true);
-                }}
-                title="Xem chi tiết"
-              >
-                <FiEye className="w-4 h-4" />
-              </button>
-              <button
-                className="text-blue-600 hover:text-blue-800"
-                onClick={() => handleEditOpen(row)}
-                title="Chỉnh sửa"
-              >
-                <FiEdit2 className="w-4 h-4" />
-              </button>
-              <button
-                className="text-red-600 hover:text-red-800"
-                onClick={() => handleDelete(row)}
-                title="Xóa"
-              >
-                <FiTrash2 className="w-4 h-4" />
-              </button>
-            </>
-          ) : (
-            <button
-              className="text-green-600 hover:text-green-800"
-              onClick={() => handleRestore(row)}
-              title="Khôi phục"
-            >
-              <BiRestore className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-      ),
-    },
-  ];
-
   const canPrev = page > 1;
   const canNext = page < totalPages;
-  const movieSelectOptions: SelectOption[] = movieOptions.map((m) => ({
-    value: m.id,
-    label: m.title,
-  }));
+
+  const movieSelectOptions: SelectOption[] = [
+    { value: "__ALL__", label: "Tất cả phim" },
+    ...movieOptions.map((m) => ({
+      value: m.id,
+      label: m.title,
+    })),
+  ];
 
   const filteredCinemaOptions: SelectOption[] = cinemaOptions.map((c) => ({
     value: String(c.id),
     label: c.name,
     meta: c.city ?? undefined,
   }));
+
+  const groupedShowtimes = useMemo(() => {
+    const groups: Record<
+      string,
+      Record<string, Record<string, ShowTime[]>>
+    > = {};
+
+    showtimes.forEach((item) => {
+      const movieKey =
+        movieOptions.find((m) => m.id === item.movieId)?.title ||
+        "Unknown Movie";
+
+      const roomKey = `${item.roomName} - ${item.cinemaName}`;
+
+      const formatKey = item.format || "Khác";
+
+      if (!groups[movieKey]) groups[movieKey] = {};
+      if (!groups[movieKey][roomKey]) groups[movieKey][roomKey] = {};
+      if (!groups[movieKey][roomKey][formatKey])
+        groups[movieKey][roomKey][formatKey] = [];
+
+      groups[movieKey][roomKey][formatKey].push(item);
+    });
+
+    return groups;
+  }, [showtimes, movieOptions]);
 
   return (
     <div>
@@ -273,7 +198,6 @@ export default function ShowtimesListPage() {
               </Select>
             </div>
 
-            {/* Thời gian bắt đầu / kết thúc */}
             <input
               type="datetime-local"
               value={startTime}
@@ -283,16 +207,6 @@ export default function ShowtimesListPage() {
               }}
               className="h-10 px-3 rounded-lg border border-gray-400"
             />
-            {/* <span>đến</span>
-            <input
-              type="datetime-local"
-              value={endTime}
-              onChange={(e) => {
-                setEndTime(e.target.value);
-                setPage(1);
-              }}
-              className="h-10 px-3 rounded-lg border"
-            /> */}
           </div>
 
           <div className="flex items-center gap-3 justify-self-end self-start">
@@ -317,11 +231,214 @@ export default function ShowtimesListPage() {
       </div>
 
       <div className="bg-white rounded-lg shadow-sm overflow-x-auto">
-        <Table<ShowTime>
+        {/* <Table<ShowTime>
           columns={columns}
           data={showtimes}
           getRowKey={(r) => r.id}
-        />
+        /> */}
+        <table className="w-full text-sm text-left">
+          <thead className="text-xs text-gray-700 uppercase bg-gray-50 border-b">
+            <tr>
+              <th className="px-6 py-3 font-medium border-r">Phim</th>
+              <th className="px-6 py-3 font-medium border-r">Phòng / Rạp</th>
+              <th className="px-6 py-3 font-medium border-r">Định dạng</th>
+
+              <th className="px-6 py-3 font-medium">Thời gian</th>
+              <th className="px-6 py-3 font-medium">Giá vé</th>
+              <th className="px-6 py-3 font-medium">Ngôn ngữ</th>
+              <th className="px-6 py-3 font-medium">Trạng thái</th>
+              <th className="px-6 py-3 font-medium text-center">Hành động</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {Object.keys(groupedShowtimes).length === 0 ? (
+              <tr>
+                <td colSpan={8} className="px-6 py-4 text-center text-gray-500">
+                  Không có dữ liệu
+                </td>
+              </tr>
+            ) : (
+              Object.entries(groupedShowtimes).map(([movieName, rooms]) => {
+                // 1. Tính tổng rowSpan cho PHIM (tổng tất cả suất chiếu của phim này)
+                const totalRowsForMovie = Object.values(rooms).reduce(
+                  (accRoom, formats) => {
+                    const rowsInRoom = Object.values(formats).reduce(
+                      (accFormat, items) => accFormat + items.length,
+                      0
+                    );
+                    return accRoom + rowsInRoom;
+                  },
+                  0
+                );
+
+                return Object.entries(rooms).map(
+                  ([roomName, formats], roomIndex) => {
+                    // 2. Tính tổng rowSpan cho PHÒNG (tổng suất chiếu trong phòng này)
+                    const totalRowsForRoom = Object.values(formats).reduce(
+                      (acc, items) => acc + items.length,
+                      0
+                    );
+
+                    return Object.entries(formats).map(
+                      ([formatName, items], formatIndex) => {
+                        // items: danh sách suất chiếu cụ thể
+
+                        return items.map((showtime, itemIndex) => {
+                          // Logic xác định dòng đầu tiên để render rowSpan
+                          const isFirstRowOfMovie =
+                            roomIndex === 0 &&
+                            formatIndex === 0 &&
+                            itemIndex === 0;
+                          const isFirstRowOfRoom =
+                            formatIndex === 0 && itemIndex === 0;
+                          const isFirstRowOfFormat = itemIndex === 0;
+
+                          return (
+                            <tr
+                              key={showtime.id}
+                              className="hover:bg-gray-50 bg-white border-b"
+                            >
+                              {/* CỘT 1: PHIM */}
+                              {isFirstRowOfMovie && (
+                                <td
+                                  rowSpan={totalRowsForMovie}
+                                  className="px-6 py-4 font-medium text-gray-900 border-r align-top bg-white"
+                                >
+                                  {movieName}
+                                </td>
+                              )}
+
+                              {/* CỘT 2: PHÒNG / RẠP */}
+                              {isFirstRowOfRoom && (
+                                <td
+                                  rowSpan={totalRowsForRoom}
+                                  className="px-6 py-4 border-r align-top bg-gray-50/30"
+                                >
+                                  <div className="font-medium text-gray-900">
+                                    {showtime.roomName}
+                                  </div>
+                                  <div className="text-gray-500 text-xs mt-1">
+                                    {showtime.cinemaName}
+                                  </div>
+                                </td>
+                              )}
+
+                              {/* CỘT 3: ĐỊNH DẠNG (Mới thêm) */}
+                              {isFirstRowOfFormat && (
+                                <td
+                                  rowSpan={items.length} // Span theo số lượng item trong format này
+                                  className="px-6 py-4 border-r align-top font-semibold text-gray-700"
+                                >
+                                  <Badge variant="outline">{formatName}</Badge>
+                                </td>
+                              )}
+
+                              {/* CÁC CỘT CHI TIẾT */}
+                              <td className="px-6 py-4">
+                                <div className="font-medium">
+                                  {
+                                    formatDateTime(showtime.startTime).split(
+                                      " "
+                                    )[0]
+                                  }
+                                </div>
+                                <div className="text-gray-500 text-xs">
+                                  {
+                                    formatDateTime(showtime.startTime).split(
+                                      " "
+                                    )[1]
+                                  }
+                                </div>
+                              </td>
+
+                              <td className="px-6 py-4 font-medium text-gray-900">
+                                {new Intl.NumberFormat("vi-VN").format(
+                                  Number(showtime.price)
+                                )}{" "}
+                                đ
+                              </td>
+
+                              <td className="px-6 py-4">
+                                <div className="flex flex-col gap-1">
+                                  <span>
+                                    {LANGUAGE_LABEL_MAP[showtime.language] ??
+                                      showtime.language}
+                                  </span>
+                                  {showtime.subtitle && (
+                                    <Badge
+                                      variant="secondary"
+                                      className="w-fit text-[10px] px-1 h-5"
+                                    >
+                                      Phụ đề
+                                    </Badge>
+                                  )}
+                                </div>
+                              </td>
+
+                              {/* Cột Định dạng cũ đã xóa khỏi đây */}
+
+                              <td className="px-6 py-4">
+                                <Badge
+                                  variant="secondary"
+                                  className={
+                                    showtime.isActive
+                                      ? "bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border-0"
+                                      : "bg-gray-100 text-gray-500 hover:bg-gray-200 border-0"
+                                  }
+                                >
+                                  {showtime.isActive ? "Đang chiếu" : "Dừng"}
+                                </Badge>
+                              </td>
+
+                              <td className="px-6 py-4 text-center">
+                                {/* Actions giữ nguyên */}
+                                <div className="flex items-center justify-center space-x-3">
+                                  {/* ... Code nút bấm của bạn ... */}
+                                  {showtime.isActive ? (
+                                    <>
+                                      <button
+                                        onClick={() => {
+                                          setViewShowtime(showtime);
+                                          setViewOpen(true);
+                                        }}
+                                        className="text-green-600 hover:text-green-800"
+                                      >
+                                        <FiEye size={18} />
+                                      </button>
+                                      <button
+                                        onClick={() => handleEditOpen(showtime)}
+                                        className="text-blue-600 hover:text-blue-800"
+                                      >
+                                        <FiEdit2 size={18} />
+                                      </button>
+                                      <button
+                                        onClick={() => handleDelete(showtime)}
+                                        className="text-red-600 hover:text-red-800"
+                                      >
+                                        <FiTrash2 size={18} />
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <button
+                                      onClick={() => handleRestore(showtime)}
+                                      className="text-green-600 hover:text-green-800"
+                                    >
+                                      <BiRestore size={20} />
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        });
+                      }
+                    );
+                  }
+                );
+              })
+            )}
+          </tbody>
+        </table>
 
         {loadingShow && (
           <div className="flex items-center gap-2 px-6 py-3 text-sm text-gray-600">
@@ -413,7 +530,10 @@ export default function ShowtimesListPage() {
             <div className="space-y-3 text-sm">
               <div>
                 <span className="font-semibold">Phim: </span>
-                <span>{movieTitle}</span>
+                <span>
+                  {movieOptions.find((m) => m.id === viewShowtime.movieId)
+                    ?.title ?? "—"}
+                </span>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
@@ -478,7 +598,7 @@ export default function ShowtimesListPage() {
                       : "bg-slate-100 text-slate-600 border border-slate-200"
                   }
                 >
-                  {viewShowtime.isActive ? "Đang hoạt động" : "Đã xóa"}
+                  {viewShowtime.isActive ? "Đang chiếu" : "Hết suất chiếu"}
                 </Badge>
               </div>
             </div>

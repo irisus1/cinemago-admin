@@ -5,9 +5,12 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   cinemaService,
+  roomService,
   type Cinema,
-  type PaginationMeta,
-  type CreateCinemaRequest,
+  PaginationMeta,
+  CreateCinemaRequest,
+  RoomCreate,
+  CinemaFormPayload,
 } from "@/services";
 
 export function useCinemaLogic() {
@@ -31,6 +34,7 @@ export function useCinemaLogic() {
 
   // Modal State
   const [open, setOpen] = useState(false);
+  const [createCinema, setCreateCinema] = useState(false);
   const [editCinema, setEditCinema] = useState<Cinema | null>(null);
 
   // Dialog States
@@ -115,8 +119,7 @@ export function useCinemaLogic() {
   );
 
   const handleAddOpen = () => {
-    setEditCinema(null);
-    setOpen(true);
+    setCreateCinema(true);
   };
 
   const handleEditOpen = (g: Cinema) => {
@@ -182,17 +185,57 @@ export function useCinemaLogic() {
     );
   };
 
+  const handleCinemaAction = async (
+    payload: CinemaFormPayload,
+    mode: "create" | "edit",
+    original?: Cinema
+  ): Promise<string | undefined> => {
+    // Tách rooms ra, chỉ lấy info của rạp
+    const { rooms, ...cinemaData } = payload;
+
+    if (mode === "create") {
+      const res = await cinemaService.addCinema(cinemaData);
+      // Xử lý các trường hợp response khác nhau để lấy ID
+      return res?.id;
+    } else if (mode === "edit" && original) {
+      await cinemaService.updateCinema(original.id, cinemaData);
+      return original.id;
+    }
+    return undefined;
+  };
+
+  const handleRoomBatchAction = async (
+    cinemaId: string,
+    rooms: RoomCreate[]
+  ) => {
+    if (!rooms || rooms.length === 0) return;
+
+    // Sử dụng Promise.all để tạo song song giúp tốc độ nhanh hơn
+    const promises = rooms.map((room) => {
+      return roomService.createRoom({
+        cinemaId: cinemaId,
+        name: room.name,
+        vipPrice: room.vipPrice,
+        couplePrice: room.couplePrice,
+        seatLayout: room.seatLayout,
+      });
+    });
+
+    await Promise.all(promises);
+  };
+
   const handleSubmitCinema = (
-    data: CreateCinemaRequest,
-    modeForm: "create" | "edit",
+    payload: CinemaFormPayload,
+    mode: "create" | "edit",
     original?: Cinema
   ) => {
-    const isCreate = modeForm === "create";
-    const cinemaName = data.name || original?.name || "";
+    const isCreate = mode === "create";
+    const cinemaName = payload.name || original?.name || "";
 
-    setOpen(false);
+    setOpen(false); // Đóng modal form
     setEditCinema(original ?? null);
 
+    // Mở modal xác nhận
     openConfirm(
       isCreate ? "Xác nhận thêm rạp" : "Xác nhận cập nhật rạp",
       <>
@@ -200,37 +243,95 @@ export function useCinemaLogic() {
         <span className="text-blue-600 font-semibold">{cinemaName}</span> không?
       </>,
       async () => {
+        // --- BẮT ĐẦU XỬ LÝ ---
         setIsConfirmDialogOpen(false);
-        try {
-          setLoading(true);
+        setLoading(true);
 
-          if (isCreate) {
-            await cinemaService.addCinema(data);
-          } else if (original) {
-            await cinemaService.updateCinema(original.id, data);
+        try {
+          // BƯỚC 1: Xử lý Rạp
+          const cinemaId = await handleCinemaAction(payload, mode, original);
+
+          if (!cinemaId) {
+            throw new Error("Không lấy được ID rạp từ hệ thống.");
           }
 
+          if (isCreate && payload.rooms.length > 0) {
+            await handleRoomBatchAction(cinemaId, payload.rooms);
+          }
+
+          // --- THÀNH CÔNG ---
           setDialogTitle("Thành công");
           setDialogMessage(
             isCreate
-              ? "Đã thêm rạp mới thành công."
+              ? `Đã thêm rạp và ${payload.rooms.length} phòng thành công.`
               : "Đã cập nhật thông tin rạp thành công."
           );
           setIsSuccessDialogOpen(true);
 
           setEditCinema(null);
-          await fetchPage(1);
+          await fetchPage(1); // Load lại bảng dữ liệu
         } catch (e) {
-          setDialogTitle("Thất bại");
-          setDialogMessage("Không thể lưu rạp, vui lòng thử lại.");
-          setIsErrorDialogOpen(true);
+          // --- THẤT BẠI ---
           console.error(e);
+          setDialogTitle("Thất bại");
+          setDialogMessage("Đã có lỗi xảy ra trong quá trình xử lý.");
+          setIsErrorDialogOpen(true);
         } finally {
           setLoading(false);
         }
       }
     );
   };
+
+  // const handleSubmitCinema = (
+  //   data: CreateCinemaRequest,
+  //   modeForm: "create" | "edit",
+  //   original?: Cinema
+  // ) => {
+  //   const isCreate = modeForm === "create";
+  //   const cinemaName = data.name || original?.name || "";
+
+  //   setOpen(false);
+  //   setEditCinema(original ?? null);
+
+  //   openConfirm(
+  //     isCreate ? "Xác nhận thêm rạp" : "Xác nhận cập nhật rạp",
+  //     <>
+  //       Bạn có chắc muốn <b>{isCreate ? "thêm mới" : "cập nhật"}</b> rạp{" "}
+  //       <span className="text-blue-600 font-semibold">{cinemaName}</span> không?
+  //     </>,
+  //     async () => {
+  //       setIsConfirmDialogOpen(false);
+  //       try {
+  //         setLoading(true);
+
+  //         if (isCreate) {
+  //           await cinemaService.addCinema(data);
+  //         } else if (original) {
+  //           await cinemaService.updateCinema(original.id, data);
+  //         }
+
+  //         setDialogTitle("Thành công");
+  //         setDialogMessage(
+  //           isCreate
+  //             ? "Đã thêm rạp mới thành công."
+  //             : "Đã cập nhật thông tin rạp thành công."
+  //         );
+  //         setIsSuccessDialogOpen(true);
+
+  //         setEditCinema(null);
+  //         await fetchPage(1);
+  //       } catch (e) {
+  //         setDialogTitle("Thất bại");
+  //         setDialogMessage("Không thể lưu rạp, vui lòng thử lại.");
+  //         setIsErrorDialogOpen(true);
+  //         console.error(e);
+  //       } finally {
+  //         setLoading(false);
+  //       }
+  //     }
+  //   );
+  // };
 
   return {
     // Data & Logic
@@ -262,7 +363,10 @@ export function useCinemaLogic() {
     // Modals & Dialogs
     open,
     setOpen,
+    createCinema,
     editCinema,
+    setCreateCinema,
+
     isConfirmDialogOpen,
     setIsConfirmDialogOpen,
     isSuccessDialogOpen,
