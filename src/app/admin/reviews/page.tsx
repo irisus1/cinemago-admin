@@ -76,12 +76,12 @@ const ReviewsListPage: React.FC = () => {
       render: (_: unknown, row: Review) => row.rating.toFixed(1),
       className: "text-center w-[80px]",
     },
-    {
-      header: "Loại",
-      key: "type",
-      render: (_: unknown, row: Review) => row.type,
-      className: "w-[120px]",
-    },
+    // {
+    //   header: "Loại",
+    //   key: "type",
+    //   render: (_: unknown, row: Review) => row.type,
+    //   className: "w-[120px]",
+    // },
     {
       header: "Nội dung",
       key: "content",
