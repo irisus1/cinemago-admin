@@ -156,7 +156,7 @@ export default function ReplyReviewModal({
             Phản hồi của bạn
           </label>
           <Textarea
-            placeholder="Enter your reply..."
+            placeholder="Nhập phản hồi..."
             className="min-h-[100px] resize-none focus-visible:ring-offset-0 focus-visible:ring-1"
             value={replyContent}
             onChange={(e) => setReplyContent(e.target.value)}
