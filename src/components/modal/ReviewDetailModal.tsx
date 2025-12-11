@@ -120,10 +120,10 @@ export default function ReviewDetailModal({
                 {review.rating.toFixed(1)} / 5
               </Badge>
 
-              <Badge variant="outline" className="px-3 py-1">
+              {/* <Badge variant="outline" className="px-3 py-1">
                 <Tag className="w-3.5 h-3.5 mr-1" />
                 {review.type}
-              </Badge>
+              </Badge> */}
 
               {review.status && (
                 <Badge variant="secondary" className="px-3 py-1 capitalize">

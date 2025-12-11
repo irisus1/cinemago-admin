@@ -65,14 +65,24 @@ export default function AdminWalkupBookingPage() {
         setCinemas(list);
         const savedId = localStorage.getItem("admin_persistent_cinema_id");
 
-        if (savedId) {
-          // Nếu có lịch sử lưu thì dùng lại
-          setSelectedCinemaId(savedId);
+        const hasSaved =
+          savedId && list.some((c) => String(c.id) === String(savedId));
+
+        if (hasSaved) {
+          setSelectedCinemaId(savedId as string);
         } else if (list.length > 0) {
-          // Nếu chưa có, mặc định chọn rạp đầu tiên và LƯU LUÔN
           const defaultId = String(list[0].id);
           setSelectedCinemaId(defaultId);
           localStorage.setItem("admin_persistent_cinema_id", defaultId);
+
+          // option: xoá id cũ cho sạch
+          if (savedId && !hasSaved) {
+            localStorage.removeItem("admin_persistent_cinema_id");
+          }
+        } else {
+          // Không có rạp nào
+          setSelectedCinemaId("");
+          localStorage.removeItem("admin_persistent_cinema_id");
         }
       } catch (error) {
         console.error("Failed to fetch cinemas", error);
