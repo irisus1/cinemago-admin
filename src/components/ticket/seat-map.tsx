@@ -34,6 +34,73 @@ export default function SeatMap({
     return seatList.find((s) => s.seatNumber === seatLabel);
   };
 
+  // const renderRowSeats = (rowLabel: string, seats: SeatCell[]) => {
+  //   const elements = [];
+  //   for (let i = 0; i < seats.length; i++) {
+  //     const cell = seats[i];
+  //     const nextCell = seats[i + 1];
+  //     const seatEntity = findSeatEntity(cell.row, cell.col);
+
+  //     if (!seatEntity || cell.type === "EMPTY") {
+  //       elements.push(
+  //         <div
+  //           key={`${cell.row}-${cell.col}`}
+  //           className={getSeatStyle("EMPTY", false, true, false)}
+  //         ></div>
+  //       );
+  //       continue;
+  //     }
+
+  //     const isSelected = selectedSeats.includes(seatEntity.id);
+  //     const isProcessing = processingSeats.includes(seatEntity.id);
+
+  //     // [NEW] Kiểm tra ghế có bị người khác giữ không
+  //     const isHeld = heldSeats.includes(seatEntity.id);
+
+  //     // Nếu bị giữ thì coi như disable luôn
+  //     const disabled = isSeatDisabled(cell.type, isSelected) || isHeld;
+
+  //     if (cell.type === "COUPLE" && nextCell && nextCell.type === "COUPLE") {
+  //       const nextSeatEntity = findSeatEntity(nextCell.row, nextCell.col);
+  //       if (nextSeatEntity) {
+  //         elements.push(
+  //           <div
+  //             key={seatEntity.id} // Dùng UUID làm key
+  //             className={`${getSeatStyle(
+  //               cell.type,
+  //               isSelected,
+  //               disabled,
+  //               isHeld
+  //             )} relative`}
+  //             onClick={() =>
+  //               !disabled && onSeatClick(seatEntity, nextSeatEntity)
+  //             }
+  //           >
+  //             {cell.col}-{nextCell.col}
+  //           </div>
+  //         );
+  //         i++; // Bỏ qua ghế tiếp theo
+  //       }
+  //     } else {
+  //       elements.push(
+  //         <div
+  //           key={seatEntity.id}
+  //           className={`${getSeatStyle(
+  //             cell.type,
+  //             isSelected,
+  //             disabled,
+  //             isHeld
+  //           )} relative`}
+  //           onClick={() => !disabled && onSeatClick(seatEntity, null)}
+  //         >
+  //           {cell.col}
+  //         </div>
+  //       );
+  //     }
+  //   }
+  //   return elements;
+  // };
+
   const renderRowSeats = (rowLabel: string, seats: SeatCell[]) => {
     const elements = [];
     for (let i = 0; i < seats.length; i++) {
@@ -51,52 +118,81 @@ export default function SeatMap({
         continue;
       }
 
-      const isSelected = selectedSeats.includes(seatEntity.id);
-      const isProcessing = processingSeats.includes(seatEntity.id);
-
-      // [NEW] Kiểm tra ghế có bị người khác giữ không
-      const isHeld = heldSeats.includes(seatEntity.id);
-
-      // Nếu bị giữ thì coi như disable luôn
-      const disabled = isSeatDisabled(cell.type, isSelected) || isHeld;
-
+      // --- XỬ LÝ GHẾ ĐÔI ---
       if (cell.type === "COUPLE" && nextCell && nextCell.type === "COUPLE") {
         const nextSeatEntity = findSeatEntity(nextCell.row, nextCell.col);
+
         if (nextSeatEntity) {
+          // 1. Kiểm tra trạng thái cho CẢ CẶP (Sửa ở đây)
+          const isSelected =
+            selectedSeats.includes(seatEntity.id) ||
+            selectedSeats.includes(nextSeatEntity.id);
+
+          // Logic đúng: Ghế trái HOẶC ghế phải bị giữ -> Cả cặp bị giữ
+          const isHeld =
+            heldSeats.includes(seatEntity.id) ||
+            heldSeats.includes(nextSeatEntity.id);
+
+          // Tương tự cho processing
+          const isProcessing =
+            processingSeats.includes(seatEntity.id) ||
+            processingSeats.includes(nextSeatEntity.id);
+
+          const disabled = isSeatDisabled(cell.type, isSelected) || isHeld;
+
           elements.push(
             <div
-              key={seatEntity.id} // Dùng UUID làm key
+              key={seatEntity.id}
               className={`${getSeatStyle(
                 cell.type,
                 isSelected,
                 disabled,
-                isHeld
+                isHeld // Truyền trạng thái đã tính toán đúng
               )} relative`}
               onClick={() =>
                 !disabled && onSeatClick(seatEntity, nextSeatEntity)
               }
             >
               {cell.col}-{nextCell.col}
+              {/* Hiển thị icon khóa nếu bị giữ */}
+              {(isHeld || isProcessing) && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                  <Lock className="w-3 h-3 text-white/70" />
+                </div>
+              )}
             </div>
           );
           i++; // Bỏ qua ghế tiếp theo
+          continue; // Chuyển sang vòng lặp kế
         }
-      } else {
-        elements.push(
-          <div
-            key={seatEntity.id}
-            className={`${getSeatStyle(
-              cell.type,
-              isSelected,
-              disabled,
-              isHeld
-            )} relative`}
-            onClick={() => !disabled && onSeatClick(seatEntity, null)}
-          >
-            {cell.col}
-          </div>
-        );
       }
+
+      // --- XỬ LÝ GHẾ ĐƠN ---
+      // Logic cũ của bạn cho ghế đơn vẫn đúng
+      const isSelected = selectedSeats.includes(seatEntity.id);
+      const isHeld = heldSeats.includes(seatEntity.id);
+      const isProcessing = processingSeats.includes(seatEntity.id);
+      const disabled = isSeatDisabled(cell.type, isSelected) || isHeld;
+
+      elements.push(
+        <div
+          key={seatEntity.id}
+          className={`${getSeatStyle(
+            cell.type,
+            isSelected,
+            disabled,
+            isHeld
+          )} relative`}
+          onClick={() => !disabled && onSeatClick(seatEntity, null)}
+        >
+          {cell.col}
+          {(isHeld || isProcessing) && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+              <Lock className="w-3 h-3 text-white/70" />
+            </div>
+          )}
+        </div>
+      );
     }
     return elements;
   };
