@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -21,8 +21,9 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { type ShowTime } from "@/services";
+import { type ShowTime, Movie } from "@/services";
 import { useShowtimeFormLogic } from "@/hooks/useShowtimeFormLogic";
+import { SearchableCombobox, type SelectOption } from "../SearchableCombobox";
 
 type Props = {
   open: boolean;
@@ -41,6 +42,11 @@ export default function ShowtimeModal(props: Props) {
     loading,
     cinemas,
     rooms,
+    movies,
+    selectedMovieId,
+    handleMovieChange,
+    handleCinemaChange,
+
     cinemaId,
     setCinemaId,
     roomId,
@@ -65,6 +71,15 @@ export default function ShowtimeModal(props: Props) {
     handleSubmit,
   } = useShowtimeFormLogic(props);
 
+  const movieOptions: SelectOption[] = useMemo(() => {
+    return movies.map((m) => ({
+      value: m.id,
+      label: m.title ?? "Unknown",
+      meta: `${m.duration ?? 0} phút`,
+    }));
+  }, [movies]);
+  console.log(roomId);
+
   return (
     <Dialog
       open={open}
@@ -80,11 +95,31 @@ export default function ShowtimeModal(props: Props) {
         </DialogHeader>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="md:col-span-2 min-w-0 flex flex-col gap-1.5">
+            <Label className="font-semibold">Phim</Label>
+            <SearchableCombobox
+              options={movieOptions}
+              value={selectedMovieId}
+              onChange={handleMovieChange}
+              placeholder="Chọn phim..."
+              searchPlaceholder="Tìm tên phim..."
+              widthClass="w-full"
+            />
+          </div>
+
           <div className="md:col-span-2 min-w-0">
             <Label>Rạp</Label>
-            <Select value={cinemaId} onValueChange={setCinemaId}>
+            <Select
+              value={cinemaId}
+              onValueChange={handleCinemaChange}
+              disabled={!selectedMovieId || movies.length === 0}
+            >
               <SelectTrigger className="mt-1 h-10 w-full">
-                <SelectValue placeholder="Chọn rạp…" />
+                <SelectValue
+                  placeholder={
+                    selectedMovieId ? "Chọn rạp…" : "Vui lòng chọn phim trước"
+                  }
+                />
               </SelectTrigger>
               <SelectContent>
                 {cinemas.map((c) => (

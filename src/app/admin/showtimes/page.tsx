@@ -508,7 +508,7 @@ export default function ShowtimesListPage() {
         onClose={() => setOpen(false)}
         mode={editShowtime ? "edit" : "create"}
         showtime={editShowtime || undefined}
-        movieId={movieId} // vì filter luôn có movieId
+        movieId={movieId}
         onSuccess={async () => {
           handleRefresh();
         }}

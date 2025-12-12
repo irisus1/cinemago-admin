@@ -27,6 +27,7 @@ export type {
   CreateCinemaRequest,
   UpdateCinemaRequest,
   CinemaFormPayload,
+  ServerPaginated,
 } from "./cinema.service";
 
 export type { Genre, PaginationMeta } from "./genre.service";
