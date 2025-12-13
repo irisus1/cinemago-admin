@@ -326,7 +326,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       await api.post("/auth/forgot-password", { email });
       localStorage.setItem("resetEmail", email);
-      toast.success("Mã xác thực đã được gửi đến email của bạn.");
     } catch (error) {
       toast.error("Không thể gửi mã xác thực.");
       throw error;

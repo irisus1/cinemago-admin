@@ -4,6 +4,7 @@ import { useState } from "react";
 import { FaEnvelope } from "react-icons/fa";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 export default function ForgotPasswordPage() {
   const { forgotPassword } = useAuth();
@@ -16,7 +17,7 @@ export default function ForgotPasswordPage() {
     setLoading(true);
     try {
       await forgotPassword(email);
-      alert("Vui lòng kiểm tra email để đặt lại mật khẩu!");
+      toast.success("Mã xác thực đã được gửi đến email của bạn.");
       setEmail("");
       router.push("/verifyOTP");
     } catch (err) {

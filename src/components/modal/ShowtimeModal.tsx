@@ -71,6 +71,14 @@ export default function ShowtimeModal(props: Props) {
     handleSubmit,
   } = useShowtimeFormLogic(props);
 
+  const todayISO = useMemo(() => {
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = String(today.getMonth() + 1).padStart(2, "0");
+    const d = String(today.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }, []);
+
   const movieOptions: SelectOption[] = useMemo(() => {
     return movies.map((m) => ({
       value: m.id,
@@ -174,6 +182,7 @@ export default function ShowtimeModal(props: Props) {
                 valueISO={startDate}
                 onChangeISO={(iso) => setStartDate(iso)}
                 className="relative"
+                minISO={todayISO}
                 widthClass="w-full"
               />
               {mode === "create" && (
