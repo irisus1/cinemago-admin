@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import {
   genreService,
   movieService,
-  reviewService,
   type Movie,
   type Genre,
   PaginationMeta,
@@ -87,22 +86,8 @@ export function useMovieLogic() {
   const fetchPage = useCallback(async (p: number) => {
     const res = await movieService.getAllMovies({ page: p, limit: LIMIT });
     const movies = res.data ?? [];
-    const moviesWithRating = await Promise.all(
-      movies.map(async (m) => {
-        try {
-          const overview = await reviewService.getReviewOverview(m.id);
-          return {
-            ...m,
-            rating: overview.averageRating ?? 0,
-          };
-        } catch (err) {
-          console.error("Failed to fetch review overview for movie", m.id, err);
-          return m;
-        }
-      })
-    );
 
-    return { data: moviesWithRating, pagination: res.pagination };
+    return { data: movies, pagination: res.pagination };
   }, []);
 
   const fetchPageCached = useCallback(

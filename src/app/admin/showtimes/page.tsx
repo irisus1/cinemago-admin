@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import Table, { Column } from "@/components/Table";
+import RefreshLoader from "@/components/Loading";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -31,6 +31,7 @@ import {
   SearchableCombobox,
   type SelectOption,
 } from "@/components/SearchableCombobox";
+import { DateTimePickerVN } from "@/components/modal/DateTimePickerVN";
 
 export default function ShowtimesListPage() {
   const {
@@ -198,14 +199,14 @@ export default function ShowtimesListPage() {
               </Select>
             </div>
 
-            <input
-              type="datetime-local"
-              value={startTime}
-              onChange={(e) => {
-                setStartTime(e.target.value);
+            <DateTimePickerVN
+              valueISO={startTime}
+              onChange={(val) => {
+                setStartTime(val); // val trả về chuỗi "YYYY-MM-DDTHH:mm" chuẩn
                 setPage(1);
               }}
-              className="h-10 px-3 rounded-lg border border-gray-400"
+              className="w-full md:w-[250px]" // Chỉnh width tùy ý
+              placeholder="dd/mm/yyyy --:--"
             />
           </div>
 
@@ -440,13 +441,6 @@ export default function ShowtimesListPage() {
           </tbody>
         </table>
 
-        {loadingShow && (
-          <div className="flex items-center gap-2 px-6 py-3 text-sm text-gray-600">
-            <span className="inline-block h-4 w-4 rounded-full border-2 border-gray-300 border-t-gray-600 animate-spin" />
-            Đang tải suất chiếu...
-          </div>
-        )}
-
         {showtimes.length > 0 && (
           <div className="flex items-center justify-between px-4 py-2 bg-gray-50">
             <button
@@ -508,11 +502,13 @@ export default function ShowtimesListPage() {
         onClose={() => setOpen(false)}
         mode={editShowtime ? "edit" : "create"}
         showtime={editShowtime || undefined}
-        movieId={movieId} // vì filter luôn có movieId
+        movieId={movieId}
         onSuccess={async () => {
           handleRefresh();
         }}
       />
+
+      <RefreshLoader isOpen={loadingShow} />
 
       <Dialog
         open={viewOpen}

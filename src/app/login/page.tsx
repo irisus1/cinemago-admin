@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react"; // Thêm useEffect
 import {
   FaEnvelope,
   FaLock,
@@ -20,8 +20,12 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const { login, logout } = useAuth();
+  const { login } = useAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    router.prefetch("/admin/dashboard");
+  }, [router]);
 
   const validateForm = () => {
     if (!formData.username || !formData.password) {
@@ -35,22 +39,24 @@ export default function LoginPage() {
     e.preventDefault();
     if (!validateForm()) return;
 
+    setLoading(true);
+
     try {
-      setLoading(true);
       await login(formData.username, formData.password);
       const stored = localStorage.getItem("user");
       const user = stored ? JSON.parse(stored) : null;
+
       if (user && user.role !== "ADMIN") {
         toast.error("Bạn không có quyền truy cập trang quản trị!");
-
-        // await logout();
+        setLoading(false);
         return;
       }
+
       toast.success("Đăng nhập thành công!");
+
       router.replace("/admin/dashboard");
-    } catch {
+    } catch (error) {
       toast.error("Đăng nhập thất bại!");
-    } finally {
       setLoading(false);
     }
   };
@@ -59,7 +65,7 @@ export default function LoginPage() {
     <div
       style={{
         backgroundColor: "rgb(245,245,245)",
-        backgroundImage: `url("/loginBG.png")`,
+        backgroundImage: `url("/background.jpg")`,
         backgroundSize: "cover",
       }}
       className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8"
@@ -105,20 +111,29 @@ export default function LoginPage() {
               {showPassword ? <FaEyeSlash size={20} /> : <FaEye size={20} />}
             </button>
           </div>
-          <p className=" text-right">
+
+          <p className="text-right">
             <a href="/forgot-pass" className="text-black hover:underline">
               Quên mật khẩu?
             </a>
           </p>
 
-          {/* Submit */}
+          {/* Submit Button */}
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center justify-center"
+            className={`w-full py-2 text-white rounded-md flex items-center justify-center transition-all ${
+              loading
+                ? "bg-indigo-400 cursor-not-allowed"
+                : "bg-indigo-600 hover:bg-indigo-700"
+            }`}
           >
             {loading ? (
-              <FaSpinner className="animate-spin text-xl" />
+              <>
+                <FaSpinner className="animate-spin text-xl mr-2" />
+                {/* Thay đổi text để user biết đang chuyển trang */}
+                <span>Đang chuyển hướng...</span>
+              </>
             ) : (
               "Đăng nhập"
             )}

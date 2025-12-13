@@ -43,57 +43,70 @@ export const groupSeatsByRow = (layout: SeatCell[]) => {
     }, {} as Record<string, SeatCell[]>);
 };
 
+// --- HÀM STYLE ĐÃ ĐƯỢC SỬA ---
 export const getSeatStyle = (
   type: string,
   isSelected: boolean,
   isDisabled: boolean,
   isHeld: boolean
 ) => {
+  // 1. Xử lý ghế trống (không hiển thị)
   if (type === "EMPTY")
     return "invisible pointer-events-none border-0 w-8 h-8 m-1";
 
-  let baseStyle =
-    "flex items-center justify-center rounded text-[10px] font-bold transition-all border select-none";
+  // 2. Base layout (Flex center, font, border...)
+  let className =
+    "flex items-center justify-center rounded text-[10px] font-bold transition-all border select-none ";
 
+  // 3. QUAN TRỌNG: Xác định KÍCH THƯỚC trước (bất kể trạng thái là gì)
+  if (type === "COUPLE") {
+    className += "w-[72px] h-8 m-1 "; // Kích thước ghế đôi
+  } else {
+    className += "w-8 h-8 m-1 "; // Kích thước ghế đơn (Normal/VIP)
+  }
+
+  // 4. Xác định MÀU SẮC & CON TRỎ dựa trên mức độ ưu tiên
+  // Ưu tiên: Held > Disabled > Selected > Available
+
+  // Trạng thái: Bị giữ (Held / Booked) - Màu xám đậm
   if (isHeld) {
-    return `${baseStyle} bg-gray-400 border-gray-500 text-white cursor-not-allowed pointer-events-none w-8 h-8 m-1 opacity-70`;
+    return (
+      className +
+      "bg-gray-400 border-gray-500 text-white cursor-not-allowed pointer-events-none opacity-70"
+    );
   }
 
+  // Trạng thái: Disabled (Do chưa chọn vé / Hết quota) - Màu xám nhạt
   if (isDisabled) {
-    baseStyle +=
-      " cursor-not-allowed opacity-20 bg-gray-100 border-gray-200 text-gray-300 pointer-events-none";
-  } else {
-    baseStyle += " cursor-pointer hover:scale-110 shadow-sm";
+    return (
+      className +
+      "bg-gray-100 border-gray-200 text-gray-300 cursor-not-allowed pointer-events-none opacity-50"
+    );
   }
 
-  let sizeStyle = "w-8 h-8 m-1";
-  let colorStyle = "bg-white border-gray-300 text-gray-600";
-
-  if (!isDisabled) {
-    colorStyle = "hover:border-primary";
+  // Trạng thái: Đang chọn (Selected) - Màu theo loại ghế
+  if (isSelected) {
+    className += "shadow-md cursor-pointer ";
+    if (type === "COUPLE")
+      return className + "bg-pink-500 border-pink-500 text-white";
     if (type === "VIP")
-      colorStyle =
-        "border-orange-400 text-orange-600 bg-orange-50 hover:bg-orange-100";
-    else if (type === "COUPLE") {
-      sizeStyle = "w-[72px] h-8 m-1";
-      colorStyle = "border-pink-400 text-pink-600 bg-pink-50 hover:bg-pink-100";
-    }
-
-    if (isSelected) {
-      if (type === "COUPLE")
-        colorStyle = "bg-pink-500 border-pink-500 text-white shadow-md";
-      else if (type === "VIP")
-        colorStyle = "bg-orange-500 border-orange-500 text-white shadow-md";
-      else colorStyle = "bg-primary border-primary text-white shadow-md";
-    }
-  } else {
-    if (type === "COUPLE") sizeStyle = "w-[72px] h-8 m-1";
+      return className + "bg-orange-500 border-orange-500 text-white";
+    return className + "bg-primary border-primary text-white"; // Normal
   }
 
-  if (isHeld && type === "COUPLE") {
-    return `${baseStyle} w-[72px] h-8 m-1 bg-gray-400 border-gray-500 text-white cursor-not-allowed pointer-events-none opacity-70`;
-  }
-  return `${baseStyle} ${sizeStyle} ${colorStyle}`;
+  // Trạng thái: Mặc định (Available) - Màu trắng viền màu
+  className += "bg-white cursor-pointer hover:scale-110 shadow-sm ";
+
+  if (type === "COUPLE")
+    return className + "border-pink-400 text-pink-600 hover:bg-pink-50";
+  if (type === "VIP")
+    return className + "border-orange-400 text-orange-600 hover:bg-orange-100";
+
+  // Normal
+  return (
+    className +
+    "border-gray-300 text-gray-600 hover:border-primary hover:text-primary"
+  );
 };
 
 // Đếm số lượng ghế dựa trên ID đã chọn (So khớp với danh sách SeatModel)

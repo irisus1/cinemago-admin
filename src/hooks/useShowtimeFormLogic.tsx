@@ -8,8 +8,10 @@ import {
   movieService,
   showTimeService,
   type Cinema,
-  type Room,
-  type ShowTime,
+  Room,
+  ShowTime,
+  Movie,
+  ServerPaginated,
 } from "@/services";
 
 // ===== Helpers (Logic thuần túy) =====
@@ -46,11 +48,17 @@ export function useShowtimeFormLogic({
   onSuccess,
   onClose,
 }: Props) {
-  // --- Data State ---
+  const isPreSelected = Boolean(movieId && movieId !== "__ALL__");
+
   const [loading, setLoading] = useState(false);
   const [cinemas, setCinemas] = useState<Cinema[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [duration, setDuration] = useState<number | null>(null);
+
+  const [movies, setMovies] = useState<Movie[]>([]); // List phim để chọn
+  const [selectedMovieId, setSelectedMovieId] = useState<string>(
+    isPreSelected ? movieId : ""
+  );
 
   // --- Form State ---
   const [cinemaId, setCinemaId] = useState("");
@@ -66,53 +74,122 @@ export function useShowtimeFormLogic({
   const [format, setFormat] = useState("2D");
   const [subtitle, setSubtitle] = useState(false);
 
-  // --- Effects: Fetch Data ---
+  const handleMovieChange = useCallback(
+    (newId: string) => {
+      setSelectedMovieId(newId);
+      const found = movies.find((m) => m.id === newId);
+      setDuration(found?.duration ?? null);
+    },
+    [movies]
+  );
+
+  const handleCinemaChange = (newCinemaId: string) => {
+    setCinemaId(newCinemaId);
+    setRoomId(""); // Chỉ reset phòng khi người dùng TỰ TAY đổi rạp
+    setRooms([]); // Clear tạm danh sách phòng cũ
+  };
 
   useEffect(() => {
     if (!open) return;
 
-    // Reset cinemas & rooms state để tránh flash dữ liệu cũ
+    // Reset basics
     setCinemas([]);
+    setMovies([]);
 
-    (async () => {
+    if (isPreSelected) {
+      setSelectedMovieId(movieId);
+    } else {
+      setSelectedMovieId("");
+      setDuration(null);
+    }
+
+    const fetchData = async () => {
       try {
-        // Chạy song song để nhanh hơn
-        const [movieRes, cinemaRes] = await Promise.all([
-          movieId ? movieService.getMovieById(movieId) : null,
+        // Chạy song song 2 API lấy list
+        const [cinemaRes, moviesRes] = await Promise.all([
           cinemaService.getAllCinemas(),
+          movieService.getAllMovies(),
         ]);
 
-        if (movieRes) setDuration(movieRes.duration ?? null);
         setCinemas(cinemaRes.data ?? []);
-      } catch {
-        toast.error("Lỗi tải dữ liệu ban đầu (Rạp/Phim)");
+        const loadedMovies = moviesRes.data ?? [];
+        setMovies(loadedMovies);
+
+        // Logic tự động set Duration nếu đã có movie được chọn từ trước (từ props)
+        if (isPreSelected) {
+          const found = loadedMovies.find((m) => m.id === movieId);
+          if (found) {
+            setDuration(found.duration ?? null);
+          }
+        }
+      } catch (error) {
+        console.error(error);
+        toast.error("Lỗi tải dữ liệu ban đầu");
       }
-    })();
-  }, [open, movieId]);
+    };
+
+    fetchData();
+  }, [open, movieId, isPreSelected]);
+  // useEffect(() => {
+  //   if (!open) return;
+
+  //   // Reset cinemas & rooms state để tránh flash dữ liệu cũ
+  //   setCinemas([]);
+
+  //   (async () => {
+  //     try {
+  //       // Chạy song song để nhanh hơn
+  //       const [movieRes, cinemaRes] = await Promise.all([
+  //         movieId ? movieService.getMovieById(movieId) : null,
+  //         cinemaService.getAllCinemas(),
+  //       ]);
+
+  //       if (movieRes) setDuration(movieRes.duration ?? null);
+  //       setCinemas(cinemaRes.data ?? []);
+  //     } catch {
+  //       toast.error("Lỗi tải dữ liệu ban đầu (Rạp/Phim)");
+  //     }
+  //   })();
+  // }, [open, movieId]);
 
   useEffect(() => {
     if (!open || !cinemaId) {
       setRooms([]);
-      if (roomId) setRoomId("");
       return;
     }
+    let active = true;
+
     (async () => {
       try {
         const res = await roomService.getRooms({ cinemaId });
-        const data = res.data ?? [];
-        setRooms(data);
-        // Nếu room đang chọn không nằm trong rạp mới -> reset room
-        if (!data.some((r) => r.id === roomId)) setRoomId("");
+        if (active) {
+          const data = res.data ?? [];
+          setRooms(data);
+        }
       } catch {
-        toast.error("Không tải được danh sách phòng");
+        if (active) toast.error("Không tải được danh sách phòng");
       }
     })();
+    return () => {
+      active = false;
+    };
   }, [open, cinemaId]);
 
   useEffect(() => {
     if (!open) return;
 
     if (mode === "edit" && showtime) {
+      if (showtime.movieId) {
+        setSelectedMovieId(showtime.movieId);
+
+        const foundMovie = movies.find((m) => m.id === showtime.movieId);
+        if (foundMovie) {
+          setDuration(foundMovie.duration ?? null);
+        }
+      }
+
+      console.log(showtime);
+
       setCinemaId(showtime.cinemaId ?? "");
       setRoomId(showtime.roomId ?? "");
       setPrice(showtime.price != null ? String(showtime.price) : "");
@@ -182,11 +259,20 @@ export function useShowtimeFormLogic({
   };
 
   const canSubmit = useMemo(() => {
+    if (!selectedMovieId) return false;
     if (!cinemaId || !roomId || !startDate || duration == null) return false;
     if (price !== "" && Number.isNaN(Number(price))) return false;
     const validTimes = timeSlots.filter((t) => t && t.trim() !== "");
     return validTimes.length > 0;
-  }, [cinemaId, roomId, startDate, duration, price, timeSlots]);
+  }, [
+    cinemaId,
+    roomId,
+    startDate,
+    duration,
+    price,
+    timeSlots,
+    selectedMovieId,
+  ]);
 
   type SlotMeta = {
     originalIndex: number;
@@ -287,6 +373,11 @@ export function useShowtimeFormLogic({
   const handleSubmit = async () => {
     if (!canSubmit || duration == null) return;
 
+    if (!selectedMovieId) {
+      toast.error("Vui lòng chọn phim trước.");
+      return;
+    }
+
     const validTimes = timeSlots.filter((t) => t && t.trim() !== "");
     if (!validTimes.length) return;
 
@@ -374,7 +465,7 @@ export function useShowtimeFormLogic({
         const firstMeta = slotMetas[0];
         const body = {
           roomId,
-          movieId,
+          movieId: selectedMovieId,
           price: Number(price),
           startTime: firstMeta.startIso,
           endTime: firstMeta.endIso,
@@ -390,7 +481,7 @@ export function useShowtimeFormLogic({
         for (const slot of slotMetas) {
           const body = {
             roomId,
-            movieId,
+            movieId: selectedMovieId,
             price: Number(price),
             startTime: slot.startIso,
             endTime: slot.endIso,
@@ -420,6 +511,9 @@ export function useShowtimeFormLogic({
     loading,
     cinemas,
     rooms,
+    movies,
+    selectedMovieId,
+    setSelectedMovieId,
     // Form Values
     cinemaId,
     setCinemaId,
@@ -447,5 +541,7 @@ export function useShowtimeFormLogic({
     addTimeSlot,
     removeTimeSlot,
     handleSubmit,
+    handleMovieChange,
+    handleCinemaChange,
   };
 }

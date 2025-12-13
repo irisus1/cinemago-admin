@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { FiMenu, FiChevronDown, FiChevronRight } from "react-icons/fi";
 import { useState } from "react";
-
+import Image from "next/image";
 import ProfileModal from "./profile/ProfileModal";
 import AccountDropdown from "./profile/AccountDropdown";
 import type { SidebarTab } from "@/constants/constants";
@@ -42,7 +42,16 @@ export default function Sidebar({
       {/* Header */}
       <div className="flex items-center justify-between p-3 border-b">
         {isSidebarOpen && (
-          <h1 className="font-bold text-xl text-gray-800">CinemaGo</h1>
+          <div className="flex items-center gap-2">
+            <Image
+              src="/CinemaGo.svg"
+              alt="CinemaGo"
+              width={120}
+              height={32}
+              className="h-8 w-auto"
+            />
+            <span className="sr-only">CinemaGo</span>
+          </div>
         )}
         <button
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
