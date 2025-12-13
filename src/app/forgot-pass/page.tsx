@@ -31,7 +31,7 @@ export default function ForgotPasswordPage() {
     <div
       style={{
         backgroundColor: "rgb(245,245,245)",
-        backgroundImage: `url("/loginBG.png")`, // ảnh để trong public/
+        backgroundImage: `url("/background.jpg")`, // ảnh để trong public/
         backgroundSize: "cover",
       }}
       className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8"
