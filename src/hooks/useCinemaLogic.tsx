@@ -143,8 +143,8 @@ export function useCinemaLogic() {
 
   const handleDelete = (g: Cinema) => {
     openConfirm(
-      "Xác nhận xóa",
-      <>Bạn có chắc chắn muốn xóa rạp phim này không?</>,
+      "Xác nhận lưu trữ",
+      <>Bạn có chắc chắn muốn lưu trữ rạp phim này không?</>,
       async () => {
         setIsConfirmDialogOpen(false);
         try {

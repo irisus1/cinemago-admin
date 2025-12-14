@@ -321,8 +321,8 @@ export function useMovieLogic() {
   // CRUD Actions
   const handleDelete = (m: Movie) => {
     openConfirm(
-      "Xác nhận xóa",
-      <>Bạn có chắc chắn muốn xóa phim này không?</>,
+      "Xác nhận lưu trữ",
+      <>Bạn có chắc chắn muốn lưu trữ phim này không?</>,
       async () => {
         setIsConfirmDialogOpen(false);
         try {
