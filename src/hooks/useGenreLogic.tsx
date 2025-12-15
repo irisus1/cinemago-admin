@@ -119,8 +119,8 @@ export function useGenreLogic() {
 
   const handleDelete = (g: Genre) => {
     openConfirm(
-      "Xác nhận xóa",
-      <>Bạn có chắc muốn xóa thể loại này không ?</>,
+      "Xác nhận lưu trữ",
+      <>Bạn có chắc muốn lưu trữ thể loại này không ?</>,
       async () => {
         setIsConfirmDialogOpen(false);
         try {

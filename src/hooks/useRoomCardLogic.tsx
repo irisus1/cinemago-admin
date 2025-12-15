@@ -240,11 +240,9 @@ export function useRoomLogic(initialCinemaId?: string) {
 
   const handleDelete = (room: Room) => {
     openConfirm(
-      "Xác nhận xóa",
+      "Xác nhận lưu trữ",
       <>
-        Bạn có chắc chắn muốn xóa (ẩn) phòng <b>{room.name}</b> không?
-        <br />
-        Việc này không thể hoàn tác.
+        Bạn có chắc chắn muốn lưu trữ (ẩn) phòng <b>{room.name}</b> không?
       </>,
       async () => {
         setIsConfirmDialogOpen(false);

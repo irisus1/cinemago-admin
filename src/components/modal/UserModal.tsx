@@ -40,9 +40,21 @@ export default function UserModal({
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const baseValid = fullname.trim().length > 0 && email.trim().length > 0;
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z]).{8,}$/;
+
+  const isEmailValid = emailRegex.test(email);
+  const isPasswordValid = passwordRegex.test(password);
+
+  const showEmailError = email.length > 0 && !isEmailValid;
+  const showPasswordError = password.length > 0 && !isPasswordValid;
+
+  const baseValid = fullname.trim().length > 0 && isEmailValid;
+
   const valid =
-    mode === "create" ? baseValid && password.trim().length > 0 : baseValid;
+    mode === "create"
+      ? baseValid && isPasswordValid
+      : baseValid && (password.length === 0 || isPasswordValid);
 
   useEffect(() => {
     if (!open) return;
@@ -120,27 +132,36 @@ export default function UserModal({
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">
-                    Họ tên *
+                    Họ tên <span className="text-red-500">*</span>
                   </label>
                   <input
                     value={fullname}
                     onChange={(e) => setFullname(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-lg"
+                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Nhập họ tên"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium mb-1">
-                    Email *
+                    Email <span className="text-red-500">*</span>
                   </label>
                   <input
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-lg"
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
+                      showEmailError
+                        ? "border-red-500 focus:ring-red-500"
+                        : "focus:ring-blue-500"
+                    }`}
                     placeholder="Nhập email"
                     type="email"
                   />
+                  {showEmailError && (
+                    <p className="text-red-500 text-xs mt-1">
+                      Email không đúng định dạng.
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -153,7 +174,11 @@ export default function UserModal({
                   <input
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-lg"
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
+                      showPasswordError
+                        ? "border-red-500 focus:ring-red-500"
+                        : "focus:ring-blue-500"
+                    }`}
                     type="password"
                     placeholder={
                       mode === "create"
@@ -161,6 +186,17 @@ export default function UserModal({
                         : "Để trống nếu không đổi mật khẩu"
                     }
                   />
+                  {showPasswordError && (
+                    <p className="text-red-500 text-xs mt-1">
+                      Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa và chữ
+                      thường.
+                    </p>
+                  )}
+                  {mode === "create" && password.length === 0 && (
+                    <p className="text-gray-500 text-xs mt-1">
+                      Yêu cầu: 8+ ký tự, 1 chữ hoa, 1 chữ thường.
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex gap-3">
@@ -171,7 +207,7 @@ export default function UserModal({
                     <select
                       value={gender}
                       onChange={(e) => setGender(e.target.value as Gender)}
-                      className="w-full px-3 py-2 border rounded-lg"
+                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="MALE">Nam</option>
                       <option value="FEMALE">Nữ</option>
@@ -186,7 +222,7 @@ export default function UserModal({
                     <select
                       value={role}
                       onChange={(e) => setRole(e.target.value as Role)}
-                      className="w-full px-3 py-2 border rounded-lg"
+                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="ADMIN">ADMIN</option>
                       <option value="USER">Người dùng</option>
@@ -205,10 +241,10 @@ export default function UserModal({
                 <button
                   disabled={!valid || loading}
                   onClick={handleSubmit}
-                  className={`px-4 py-2 rounded-lg text-white ${
+                  className={`px-4 py-2 rounded-lg text-white transition-colors ${
                     valid && !loading
                       ? "bg-blue-600 hover:bg-blue-700"
-                      : "bg-gray-400"
+                      : "bg-gray-400 cursor-not-allowed"
                   }`}
                 >
                   {mode === "create"

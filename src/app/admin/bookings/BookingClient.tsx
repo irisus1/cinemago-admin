@@ -18,6 +18,7 @@ import {
   SelectItem,
   SelectValue,
 } from "@/components/ui/select";
+import RefreshLoader from "@/components/Loading";
 
 export default function BookingsListPage() {
   const {
@@ -291,6 +292,8 @@ export default function BookingsListPage() {
         cinemaMap={cinemaMap}
         showTimeMap={showTimeMap}
       />
+
+      <RefreshLoader isOpen={loading} />
     </div>
   );
 }

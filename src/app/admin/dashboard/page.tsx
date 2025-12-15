@@ -38,6 +38,7 @@ import {
   MovieRevenueItem,
   CinemaRevenueItem,
 } from "@/services";
+import { DateNativeVN } from "@/components/DateNativeVN";
 
 type ChartItem = { name: string; revenue: number };
 const PIE_COLORS: string[] = ["#4f46e5", "#22c55e"];
@@ -216,18 +217,21 @@ export default function Dashboard() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-2">
-            <Input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="w-[140px]"
+            <DateNativeVN
+              valueISO={startDate}
+              onChangeISO={(iso) => setStartDate(iso)}
+              className="relative"
+              // minISO={todayISO}
+              widthClass="w-[140px]"
             />
             <span className="text-muted-foreground">→</span>
-            <Input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="w-[140px]"
+
+            <DateNativeVN
+              valueISO={endDate}
+              onChangeISO={(iso) => setEndDate(iso)}
+              className="relative"
+              // minISO={todayISO}
+              widthClass="w-[140px]"
             />
           </div>
           <Button onClick={refresh} className="gap-2">

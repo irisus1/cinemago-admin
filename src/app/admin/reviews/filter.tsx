@@ -113,7 +113,7 @@ const ReviewFilters: React.FC<ReviewFiltersProps> = ({
             </Select>
           </div>
 
-          <div className="flex flex-col gap-1 min-w-[160px]">
+          {/* <div className="flex flex-col gap-1 min-w-[160px]">
             <Select
               value={filters.type ?? "all"}
               onValueChange={(value) =>
@@ -133,7 +133,7 @@ const ReviewFilters: React.FC<ReviewFiltersProps> = ({
                 <SelectItem value="Không khả dụng">Không khả dụng</SelectItem>
               </SelectContent>
             </Select>
-          </div>
+          </div> */}
 
           <div className="flex flex-col gap-1 min-w-[160px]">
             <Select

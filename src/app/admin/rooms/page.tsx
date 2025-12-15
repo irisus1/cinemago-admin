@@ -22,6 +22,8 @@ import {
 } from "@/components/SearchableCombobox";
 import { type Room } from "@/services";
 import { useRoomLogic } from "@/hooks/useRoomCardLogic";
+import RefreshLoader from "@/components/Loading";
+
 export default function RoomCard() {
   const {
     // Data & State
@@ -276,7 +278,6 @@ export default function RoomCard() {
         message={dialogMessage}
         onCancel={() => {
           setIsConfirmDialogOpen(false);
-          setOpen(true);
         }}
         cancelText="Hủy"
         onConfirm={() => {
@@ -303,6 +304,8 @@ export default function RoomCard() {
         message={dialogMessage}
         confirmText="Đóng"
       />
+
+      <RefreshLoader isOpen={loading} />
     </div>
   );
 }

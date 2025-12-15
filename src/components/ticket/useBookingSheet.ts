@@ -118,10 +118,11 @@ export const useBookingLogic = ({
       const bookedIds = Array.isArray(bookRes)
         ? bookRes.map((i: BookingSeat) => i.seatId)
         : [];
+
       const heldIds = Array.isArray(holdRes)
         ? holdRes.map((i: HeldSeatResponse) => i.seatId)
         : [];
-
+      console.log(heldIds);
       // Logic: Ban đầu chưa chọn gì cả, nên TẤT CẢ ghế held từ API đều là blocked
       const allBlocked = new Set([...bookedIds, ...heldIds]);
 
@@ -454,7 +455,7 @@ export const useBookingLogic = ({
     }
 
     // Kiểm tra xem ghế đã chọn chưa
-    const isSelecting = !selectedSeats.includes(seat.id);
+    const isSelecting = !idsToToggle.some((id) => selectedSeats.includes(id));
 
     // Thêm vào hàng đợi xử lý (để hiện loading trên ghế)
     setProcessingSeats((prev) => {

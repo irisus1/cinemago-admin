@@ -86,11 +86,9 @@ export default function SeatSelectionStep({
 
     if (isAnySelected) {
       // === LOGIC BỎ CHỌN ===
-      // Loại bỏ tất cả idsToToggle ra khỏi danh sách hiện tại
       newSelected = selectedSeats.filter((id) => !idsToToggle.includes(id));
     } else {
       // === LOGIC CHỌN MỚI ===
-      // [QUAN TRỌNG] Dùng Set để đảm bảo Unique, tránh trường hợp add trùng
       const uniqueSet = new Set([...selectedSeats, ...idsToToggle]);
       newSelected = Array.from(uniqueSet);
     }
@@ -152,10 +150,8 @@ export default function SeatSelectionStep({
           selectedSeats={selectedSeats}
           loading={loadingLayout}
           isSeatDisabled={checkSeatDisabled}
-          // onSeatClick={handleSeatClick}
           processingSeats={processingSeats}
           onSeatClick={handleSeatClick}
-          // [NEW]
           heldSeats={heldSeats}
         />
       </div>
@@ -182,11 +178,14 @@ const TicketCounter = ({
     <div className="text-center mb-3">
       <div className="font-bold text-gray-800">{label}</div>
       <div className="text-primary font-bold text-lg">{formatVND(price)}</div>
-      {type !== "standard" && price > basePrice && (
-        <div className="text-[12px] text-gray-400 mt-1">
-          (phụ thu + {formatVND(price - basePrice * 2)})
-        </div>
-      )}
+      {(type === "vip" || type === "couple") &&
+        price > (type === "couple" ? basePrice * 2 : basePrice) && (
+          <div className="text-[12px] text-gray-400 mt-1">
+            (phụ thu +{" "}
+            {formatVND(price - (type === "couple" ? basePrice * 2 : basePrice))}
+            )
+          </div>
+        )}
     </div>
     <div className="flex items-center gap-3 w-full justify-center">
       <Button

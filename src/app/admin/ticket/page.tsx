@@ -11,6 +11,7 @@ import {
 } from "@/services";
 import { DateNativeVN } from "@/components/DateNativeVN";
 import BookingSheet from "./bookingSheet";
+import RefreshLoader from "@/components/Loading";
 
 /** Helpers */
 /** Helpers */
@@ -287,6 +288,8 @@ export default function AdminWalkupBookingPage() {
         cinemaId={selectedCinemaId}
         date={dateStr}
       />
+
+      <RefreshLoader isOpen={loading} />
     </div>
   );
 }
