@@ -267,12 +267,8 @@ export function useShowtimeLogic() {
   const handleDelete = useCallback(
     (showtime: ShowTime) => {
       openConfirm(
-        "Xác nhận xóa",
-        <>
-          Bạn có chắc chắn muốn xóa suất chiếu này không?
-          <br />
-          Việc này không thể hoàn tác.
-        </>,
+        "Xác nhận lưu trữ",
+        <>Bạn có chắc chắn muốn lưu trữ suất chiếu này không?</>,
         async () => {
           setIsConfirmDialogOpen(false);
           try {

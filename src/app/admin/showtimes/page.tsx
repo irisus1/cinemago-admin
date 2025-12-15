@@ -412,12 +412,12 @@ export default function ShowtimesListPage() {
                                       >
                                         <FiEdit2 size={18} />
                                       </button>
-                                      <button
+                                      {/* <button
                                         onClick={() => handleDelete(showtime)}
                                         className="text-red-600 hover:text-red-800"
                                       >
                                         <FiTrash2 size={18} />
-                                      </button>
+                                      </button> */}
                                     </>
                                   ) : (
                                     <button

@@ -278,7 +278,6 @@ export default function RoomCard() {
         message={dialogMessage}
         onCancel={() => {
           setIsConfirmDialogOpen(false);
-          setOpen(true);
         }}
         cancelText="Hủy"
         onConfirm={() => {
