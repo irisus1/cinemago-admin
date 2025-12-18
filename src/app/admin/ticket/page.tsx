@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useState, useEffect } from "react";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import MovieGrid from "@/components/booking/MovieGrid";
 import {
   showTimeService,
@@ -14,13 +15,12 @@ import BookingSheet from "./bookingSheet";
 import RefreshLoader from "@/components/Loading";
 
 /** Helpers */
-/** Helpers */
 const todayLocalISODate = () => {
   const d = new Date();
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`; // YYYY-MM-DD (local VN)
+  return `${y}-${m}-${day}`;
 };
 
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -38,72 +38,95 @@ const toUtcDayRangeFromLocalISO = (dateStr: string) => {
   const localEndExclusive = new Date(y, m - 1, d + 1, 0, 0, 0, 0);
 
   // chuyển sang ISO UTC có Z
-  const startTime = localStart.toISOString(); // 27T17:00Z
-  const endTime = new Date(localEndExclusive.getTime() - 1).toISOString(); // 28T16:59:59.999Z
+  const startTime = localStart.toISOString();
+  const endTime = new Date(localEndExclusive.getTime() - 1).toISOString();
 
   return { startTime, endTime };
 };
 
 export default function AdminWalkupBookingPage() {
-  const [dateStr, setDateStr] = useState<string>(() => todayLocalISODate());
-  // Khoảng UTC tương ứng với 00:00 - 23:59 ngày dateStr theo giờ VN
-  const dayRange = useMemo(() => toUtcDayRangeFromLocalISO(dateStr), [dateStr]);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+
+  // --- STATE ---
+  const [dateStr, setDateStr] = useState<string>(() => {
+    return searchParams.get("date") || todayLocalISODate();
+  });
 
   const [cinemas, setCinemas] = useState<Cinema[]>([]);
   const [selectedCinemaId, setSelectedCinemaId] = useState<string>("");
   const [movies, setMovies] = useState<Movie[]>([]);
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
-
   const [loading, setLoading] = useState(false);
 
+  const dayRange = useMemo(() => toUtcDayRangeFromLocalISO(dateStr), [dateStr]);
+
+  const updateUrl = (
+    updates: {
+      date?: string;
+      cinemaId?: string;
+      movieId?: string;
+      sheetOpen?: string;
+      showtimeId?: string;
+    }
+  ) => {
+    const params = new URLSearchParams(searchParams.toString());
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value === undefined || value === null) {
+        params.delete(key);
+      } else {
+        params.set(key, value);
+      }
+    });
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  };
+
+  // 1. Fetch Cinemas + Init from URL
   useEffect(() => {
     (async () => {
       try {
-        // 1. Fetch list rạp
         const res = await cinemaService.getAllCinemas();
         const list = res?.data || [];
         setCinemas(list);
+
+        // Logic ưu tiên: URL param -> LocalStorage -> Default
+        const urlCinemaId = searchParams.get("cinemaId");
         const savedId = localStorage.getItem("admin_persistent_cinema_id");
 
-        const hasSaved =
-          savedId && list.some((c) => String(c.id) === String(savedId));
+        let targetId = "";
 
-        if (hasSaved) {
-          setSelectedCinemaId(savedId as string);
+        if (urlCinemaId && list.some((c) => String(c.id) === urlCinemaId)) {
+          targetId = urlCinemaId;
+        } else if (savedId && list.some((c) => String(c.id) === savedId)) {
+          targetId = savedId;
         } else if (list.length > 0) {
-          const defaultId = String(list[0].id);
-          setSelectedCinemaId(defaultId);
-          localStorage.setItem("admin_persistent_cinema_id", defaultId);
+          targetId = String(list[0].id);
+        }
 
-          // option: xoá id cũ cho sạch
-          if (savedId && !hasSaved) {
-            localStorage.removeItem("admin_persistent_cinema_id");
+        if (targetId) {
+          setSelectedCinemaId(targetId);
+          localStorage.setItem("admin_persistent_cinema_id", targetId);
+          if (targetId !== urlCinemaId) {
+            updateUrl({ cinemaId: targetId });
           }
-        } else {
-          // Không có rạp nào
-          setSelectedCinemaId("");
-          localStorage.removeItem("admin_persistent_cinema_id");
         }
       } catch (error) {
         console.error("Failed to fetch cinemas", error);
       }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleCinemaChange = (newId: string) => {
-    setSelectedCinemaId(newId);
-
-    localStorage.setItem("admin_persistent_cinema_id", newId);
-  };
+  // 2. Load Movies & Restore Sheet State
   useEffect(() => {
     let cancelled = false;
     if (!selectedCinemaId) return;
+
     (async () => {
       try {
         setLoading(true);
-
-        console.log(dayRange.startTime, dayRange.endTime);
 
         // 1) Lấy showtimes theo khoảng [start, end)
         const sts = await showTimeService.getShowTimes({
@@ -112,12 +135,8 @@ export default function AdminWalkupBookingPage() {
           cinemaId: selectedCinemaId,
           isActive: true,
         });
-
-        console.log(sts);
-
         const data = sts?.data ?? [];
 
-        // 2) Map movieId -> meta từ showtime (ngôn ngữ, định dạng, giá min, giờ sớm nhất)
         const metaByMovieId: Record<
           string,
           {
@@ -132,50 +151,24 @@ export default function AdminWalkupBookingPage() {
         for (const s of data) {
           const mid = String(s.movieId || "");
           if (!mid) continue;
-
           const curr = metaByMovieId[mid] || {
-            languages: [],
-            formats: [],
-            minPrice: null,
-            earliestStart: null,
-            hasSubtitle: null,
+            languages: [], formats: [], minPrice: null, earliestStart: null, hasSubtitle: null
           };
-
-          if (s.language && !curr.languages.includes(s.language)) {
-            curr.languages = curr.languages.concat(s.language);
-          }
-          if (s.format && !curr.formats.includes(s.format)) {
-            curr.formats = curr.formats.concat(s.format);
-          }
+          if (s.language && !curr.languages.includes(s.language)) curr.languages.push(s.language);
+          if (s.format && !curr.formats.includes(s.format)) curr.formats.push(s.format);
           if (typeof s.price === "number") {
-            curr.minPrice =
-              curr.minPrice == null
-                ? s.price
-                : Math.min(curr.minPrice, s.price);
+            curr.minPrice = curr.minPrice === null ? s.price : Math.min(curr.minPrice, s.price);
           }
           if (s.startTime) {
-            curr.earliestStart =
-              curr.earliestStart == null ||
-              new Date(s.startTime) < new Date(curr.earliestStart)
-                ? s.startTime
-                : curr.earliestStart;
+            curr.earliestStart = curr.earliestStart === null || new Date(s.startTime) < new Date(curr.earliestStart) ? s.startTime : curr.earliestStart;
           }
-          if (typeof s.subtitle === "boolean") {
-            curr.hasSubtitle =
-              curr.hasSubtitle == null
-                ? s.subtitle
-                : curr.hasSubtitle || s.subtitle;
-          }
-
+          if (typeof s.subtitle === "boolean") curr.hasSubtitle = curr.hasSubtitle || s.subtitle;
           metaByMovieId[mid] = curr;
         }
 
-        // 3) Lấy chi tiết từng phim
         const ids = Object.keys(metaByMovieId);
         if (ids.length === 0) {
-          if (!cancelled) {
-            setMovies([]);
-          }
+          if (!cancelled) setMovies([]);
           return;
         }
 
@@ -183,16 +176,24 @@ export default function AdminWalkupBookingPage() {
           ids.map((id) => movieService.getMovieById(id))
         );
 
-        // 4) Gắn showtimeMeta vào movie để MovieGrid dùng fallback khi field thiếu
         const moviesEnriched = details.map((m) => {
           const meta = metaByMovieId[String(m.id)];
           return Object.assign({}, m, { showtimeMeta: meta });
         });
 
-        console.log(moviesEnriched);
-
         if (!cancelled) {
           setMovies(moviesEnriched as Movie[]);
+
+          const urlMovieId = searchParams.get("movieId");
+          const urlSheetOpen = searchParams.get("sheetOpen");
+
+          if (urlMovieId && urlSheetOpen === "true") {
+            const foundMovie = moviesEnriched.find(m => String(m.id) === urlMovieId);
+            if (foundMovie) {
+              setSelectedMovie(foundMovie as Movie);
+              setIsSheetOpen(true);
+            }
+          }
         }
       } catch {
         if (!cancelled) setMovies([]);
@@ -203,24 +204,41 @@ export default function AdminWalkupBookingPage() {
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dayRange.startTime, dayRange.endTime, selectedCinemaId]);
+
+
+  // --- HANDLERS ---
+
+  const handleCinemaChange = (newId: string) => {
+    setSelectedCinemaId(newId);
+    localStorage.setItem("admin_persistent_cinema_id", newId);
+    updateUrl({ cinemaId: newId });
+  };
+
+  const handleDateChange = (iso: string) => {
+    setDateStr(iso);
+    updateUrl({ date: iso });
+  };
 
   const handleMovieSelect = (movie: Movie) => {
     setSelectedMovie(movie);
     setIsSheetOpen(true);
+    updateUrl({ movieId: String(movie.id), sheetOpen: "true" });
   };
 
   const handleCloseSheet = () => {
     setIsSheetOpen(false);
+    updateUrl({ sheetOpen: undefined, showtimeId: undefined });
     setTimeout(() => setSelectedMovie(null), 300);
   };
+
   // ====== UI ======
   return (
     <div className="max-w-7xl mx-auto">
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <h1 className="text-3xl font-bold">Đặt vé tại rạp cho ngày hôm nay</h1>
 
-        {/* Chọn ngày để lọc suất chiếu */}
         <div className="flex items-center gap-3">
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-gray-700">
@@ -248,11 +266,7 @@ export default function AdminWalkupBookingPage() {
 
             <DateNativeVN
               valueISO={dateStr}
-              onChangeISO={(iso) => {
-                console.log("Ngày chọn:", iso);
-                // setSelectedDate(iso)
-                setDateStr(iso);
-              }}
+              onChangeISO={handleDateChange}
               className="relative "
               widthClass="w-full "
             />
