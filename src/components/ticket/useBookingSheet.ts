@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import axios, { AxiosError } from "axios";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
   showTimeService,
   roomService,
@@ -51,11 +52,11 @@ const toUtcDayRangeFromLocal = (dateStr: string) => {
   const [y, m, d] = dateStr.split("-").map(Number);
 
   // m-1 vì JS month 0–11
-  const localStart = new Date(y, m - 1, d, 0, 0, 0, 0); // 28/11 00:00 VN
-  const localNext = new Date(y, m - 1, d + 1, 0, 0, 0, 0); // 29/11 00:00 VN
+  const localStart = new Date(y, m - 1, d, 0, 0, 0, 0);
+  const localNext = new Date(y, m - 1, d + 1, 0, 0, 0, 0);
 
-  const startTime = localStart.toISOString(); // 27/11 17:00Z
-  const endTime = new Date(localNext.getTime() - 1).toISOString(); // 28/11 16:59:59.999Z
+  const startTime = localStart.toISOString();
+  const endTime = new Date(localNext.getTime() - 1).toISOString();
 
   return { startTime, endTime };
 };
@@ -66,6 +67,10 @@ export const useBookingLogic = ({
   cinemaId,
   date,
 }: UseBookingLogicProps) => {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+
   // --- STATE ---
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -96,7 +101,7 @@ export const useBookingLogic = ({
 
   const socketRef = useRef<Socket | null>(null);
 
-  const [timeLeft, setTimeLeft] = useState<number>(0); // Số giây còn lại
+  const [timeLeft, setTimeLeft] = useState<number>(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   //holdseat
@@ -105,15 +110,33 @@ export const useBookingLogic = ({
     selectedSeatsRef.current = selectedSeats;
   }, [selectedSeats]);
 
-  const fetchInitialSeatStatus = useCallback(async () => {
-    if (!selectedShowtime) return;
-    try {
-      const id = String(selectedShowtime.id);
+  const selectedShowtimeRef = useRef<SelectedShowtimeInfo | null>(null);
+  useEffect(() => {
+    selectedShowtimeRef.current = selectedShowtime;
+  }, [selectedShowtime]);
 
+  // --- PERSISTENCE HELPERS ---
+  const getStorageKey = (showtimeId: string) => `booking_state_${showtimeId}`;
+
+  // 1. Auto-save State
+  useEffect(() => {
+    if (!selectedShowtime) return;
+    const stateToSave = {
+      quantities,
+      selectedSeats,
+      foodQuantities,
+      timestamp: Date.now(),
+    };
+    sessionStorage.setItem(getStorageKey(String(selectedShowtime.id)), JSON.stringify(stateToSave));
+  }, [quantities, selectedSeats, foodQuantities, selectedShowtime]);
+
+  // -- Helper: Fetch seat status (Safe to call from anywhere) --
+  const fetchInitialSeatStatusFn = useCallback(async (showtimeId: string) => {
+    try {
       // 1. Lấy danh sách đang giữ (API)
-      const holdRes = await roomService.getHeldSeats(id);
+      const holdRes = await roomService.getHeldSeats(showtimeId);
       // 2. Lấy danh sách đã bán (API)
-      const bookRes = await bookingService.getBookedSeats(id);
+      const bookRes = await bookingService.getBookedSeats(showtimeId);
 
       const bookedIds = Array.isArray(bookRes)
         ? bookRes.map((i: BookingSeat) => i.seatId)
@@ -122,55 +145,63 @@ export const useBookingLogic = ({
       const heldIds = Array.isArray(holdRes)
         ? holdRes.map((i: HeldSeatResponse) => i.seatId)
         : [];
-      console.log(heldIds);
-      // Logic: Ban đầu chưa chọn gì cả, nên TẤT CẢ ghế held từ API đều là blocked
+
+      // Nếu ghế nằm trong SessionStorage của tôi -> Không coi là Blocked
+      let mySavedSeats: string[] = [];
+      try {
+        const saved = sessionStorage.getItem(getStorageKey(showtimeId));
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed.selectedSeats)) {
+            mySavedSeats = parsed.selectedSeats;
+          }
+        }
+      } catch (e) { console.error("Error reading storage for override", e); }
+
       const allBlocked = new Set([...bookedIds, ...heldIds]);
+
+      mySavedSeats.forEach(id => allBlocked.delete(id));
 
       setBlockedSeats(Array.from(allBlocked));
     } catch (e) {
       console.error("Failed to fetch initial seat status", e);
     }
-  }, [selectedShowtime]);
+  }, []);
+
+  const fetchInitialSeatStatus = useCallback(() => {
+    if (selectedShowtime) fetchInitialSeatStatusFn(String(selectedShowtime.id));
+  }, [selectedShowtime, fetchInitialSeatStatusFn]);
 
   const releaseAllSeats = useCallback(async () => {
     const seatsToRelease = selectedSeatsRef.current;
-    if (seatsToRelease.length === 0 || !selectedShowtime) return;
+    const currentShowtime = selectedShowtimeRef.current;
+
+    if (seatsToRelease.length === 0 || !currentShowtime) return;
 
     try {
-      const showtimeIdStr = String(selectedShowtime.id);
+      const showtimeIdStr = String(currentShowtime.id);
       await Promise.all(
         seatsToRelease.map((id) =>
           roomService.releaseSeat(showtimeIdStr, id).catch(() => null)
         )
       );
+
+
       console.log("Released all held seats on cleanup");
     } catch (e) {
       console.error("Error releasing seats:", e);
     }
-  }, [selectedShowtime]);
-
-  //time left
-  const formattedTime = useMemo(() => {
-    if (timeLeft <= 0) return "";
-    const m = Math.floor(timeLeft / 60);
-    const s = timeLeft % 60;
-    return `${m}:${pad(s)}`; // pad hàm cũ của bạn: String(n).padStart(2, '0')
-  }, [timeLeft]);
+  }, []);
 
   const handleTimeout = useCallback(async () => {
     if (timerRef.current) clearInterval(timerRef.current);
-
     // Gọi hàm release (đã định nghĩa ở code trước)
     await releaseAllSeats();
-
     // Reset toàn bộ state
     setSelectedSeats([]);
     setQuantities({ standard: 0, vip: 0, couple: 0 });
     setFoodQuantities({});
-
     toast.error("Hết thời gian giữ ghế. Vui lòng chọn lại!");
-
-    // Optional: Đóng modal
     // setIsOpen(false);
   }, [releaseAllSeats]);
 
@@ -187,7 +218,7 @@ export const useBookingLogic = ({
 
     // 2. Set thời gian ban đầu (chỉ chạy khi chưa có timer)
     if (timeLeft === 0 && selectedSeats.length > 0) {
-      setTimeLeft(300); // 5 phút
+      setTimeLeft(300);
     }
 
     // 3. Chạy timer
@@ -218,23 +249,89 @@ export const useBookingLogic = ({
     handleTimeout,
   ]);
 
-  // 1. Reset state khi đóng sheet
-  useEffect(() => {
-    if (!isOpen) {
-      releaseAllSeats();
-
-      setSelectedShowtime(null);
-      setQuantities({ standard: 0, vip: 0, couple: 0 });
-      setSelectedSeats([]);
-      setSeatList([]);
-      setSeatLayout([]);
-      setFoodQuantities({});
-      setProcessingSeats([]);
-      setBlockedSeats([]);
+  const handleSelectShowtime = useCallback(async (
+    id: string,
+    roomName: string,
+    roomId: string,
+    basePrice: number,
+    vipSurcharge: number,
+    coupleSurcharge: number
+  ) => {
+    // Current Check
+    const current = selectedShowtimeRef.current;
+    if (current && current.id !== id) {
+      await releaseAllSeats();
     }
-  }, [isOpen, releaseAllSeats]);
 
-  // 2. Fetch Showtimes & Foods
+    setQuantities({ standard: 0, vip: 0, couple: 0 });
+    setSelectedSeats([]);
+    setSeatList([]);
+    setFoodQuantities({});
+    setSeatLayout([]);
+    setProcessingSeats([]);
+    setBlockedSeats([]);
+
+    // --- REHYDRATION LOGIC ---
+    try {
+      const saved = sessionStorage.getItem(getStorageKey(id));
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.selectedSeats) setSelectedSeats(parsed.selectedSeats);
+        if (parsed.quantities) setQuantities(parsed.quantities);
+        if (parsed.foodQuantities) setFoodQuantities(parsed.foodQuantities);
+
+        if (Array.isArray(parsed.selectedSeats) && parsed.selectedSeats.length > 0) {
+          Promise.all(parsed.selectedSeats.map((sid: string) =>
+            roomService.holdSeat(id, sid).catch(err => console.warn("Re-hold failed", sid))
+          ));
+        }
+      }
+    } catch (err) {
+      console.error("Rehydration failed", err);
+    }
+
+    setSelectedShowtime({
+      id,
+      roomName,
+      roomId,
+      basePrice,
+      vipSurcharge,
+      coupleSurcharge,
+    });
+
+    setLoadingLayout(true);
+    try {
+      const res = await roomService.getRoomById(roomId);
+      setSeatList(Array.isArray(res.seats) ? res.seats : []);
+      setSeatLayout(Array.isArray(res.seatLayout) ? res.seatLayout : []);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoadingLayout(false);
+    }
+  }, [releaseAllSeats]);
+
+
+  // 1. Sync State -> URL
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const params = new URLSearchParams(searchParams.toString());
+    const currentShowtimeId = params.get("showtimeId");
+
+    // Nếu INTERNAL state có showtime, mà URL khác -> Cập nhật URL
+    if (selectedShowtime && selectedShowtime.id !== currentShowtimeId) {
+      params.set("showtimeId", selectedShowtime.id);
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    }
+    // Nếu INTERNAL state null (đã clear), mà URL còn -> Xoá URL
+    else if (!selectedShowtime && currentShowtimeId) {
+      params.delete("showtimeId");
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    }
+  }, [selectedShowtime, isOpen, pathname, router, searchParams]);
+
+  // 2. Fetch Showtimes & Foods & Auto-restore Status
   useEffect(() => {
     if (!isOpen || !movie || !cinemaId) return;
     const { startTime, endTime } = toUtcDayRangeFromLocal(date);
@@ -244,7 +341,7 @@ export const useBookingLogic = ({
       setLoading(true);
       try {
         const resSt = await showTimeService.getShowTimes({
-          startTime, // UTC có Z
+          startTime,
           endTime,
           cinemaId,
           movieId: movie.id,
@@ -260,14 +357,21 @@ export const useBookingLogic = ({
         );
         const roomInfoMap: Record<string, Room> = {};
         roomRes.forEach((r: Room, index) => {
-          console.log(r);
-
           if (r) roomInfoMap[String(uniqueRoomIds[index])] = r;
         });
 
         const now = new Date();
         const groups: Record<string, GroupedByRoom> = {};
-        rawShowtimes.forEach((item: ShowTime) => {
+
+        let foundShowtimeToRestore: (SelectedShowtimeInfo & {
+          price: number;
+          vipPrice: number;
+          couplePrice: number
+        }) | null = null;
+
+        const requiredShowtimeId = searchParams.get("showtimeId");
+
+        for (const item of rawShowtimes) {
           const rId = String(item.roomId);
           const fmt = item.format || "2D";
           const rInfo = roomInfoMap[rId] || {
@@ -284,15 +388,31 @@ export const useBookingLogic = ({
           const showtimeDate = new Date(cleanTime);
           const isPast = showtimeDate < now;
 
-          groups[rId].formats[fmt].push({
+          const stItem = {
             id: item.id,
             startTime: cleanTime,
             price: Number(item.price) || 0,
             vipPrice: Number(rInfo.VIP) || 0,
             couplePrice: Number(rInfo.COUPLE) || 0,
             isPast,
-          });
-        });
+          };
+
+          if (requiredShowtimeId && String(item.id) === requiredShowtimeId) {
+            foundShowtimeToRestore = {
+              id: stItem.id,
+              roomName: rInfo.name,
+              roomId: rId,
+              basePrice: stItem.price,
+              vipSurcharge: stItem.vipPrice,
+              coupleSurcharge: stItem.couplePrice,
+              price: stItem.price,
+              vipPrice: stItem.vipPrice,
+              couplePrice: stItem.couplePrice,
+            };
+          }
+
+          groups[rId].formats[fmt].push(stItem);
+        }
 
         const result = Object.values(groups).map((room) => {
           Object.keys(room.formats).forEach((fmtKey) => {
@@ -308,6 +428,20 @@ export const useBookingLogic = ({
 
         const foodList = await foodDrinkService.getFoodDrinks();
         setFoods(foodList.data || []);
+
+        // --- AUTO RESTORE SHOWTIME ---
+        if (foundShowtimeToRestore) {
+          const st = foundShowtimeToRestore;
+          handleSelectShowtime(
+            st.id,
+            st.roomName,
+            st.roomId,
+            st.price,
+            st.vipPrice,
+            st.couplePrice
+          );
+        }
+
       } catch (error) {
         console.error(error);
         setGroupedData([]);
@@ -316,21 +450,46 @@ export const useBookingLogic = ({
       }
     };
     fetchData();
-  }, [isOpen, movie, cinemaId, date]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, movie, cinemaId, date, handleSelectShowtime]);
+
+
+  // 1. Reset state khi đóng sheet
+  useEffect(() => {
+    if (!isOpen) {
+      releaseAllSeats();
+
+
+      if (selectedShowtimeRef.current) {
+        sessionStorage.removeItem(getStorageKey(String(selectedShowtimeRef.current.id)));
+      }
+
+      setSelectedShowtime(null);
+      setQuantities({ standard: 0, vip: 0, couple: 0 });
+      setSelectedSeats([]);
+      setSeatList([]);
+      setSeatLayout([]);
+      setFoodQuantities({});
+      setProcessingSeats([]);
+      setBlockedSeats([]);
+    }
+  }, [isOpen, releaseAllSeats]);
+
 
   //socket
   useEffect(() => {
     if (!selectedShowtime) return;
 
-    // A. Gọi API lấy trạng thái ban đầu (Booked + Held)
-    fetchInitialSeatStatus();
+    fetchInitialSeatStatusFn(String(selectedShowtime.id));
 
     // B. Kết nối Socket
-    socketRef.current = io(SOCKET_URL, {
-      path: "/socket.io", // Khớp với config BE Gateway
-      // transports: ["websocket"],
-      withCredentials: true, // Bật nếu BE cần cookie
-    });
+    if (!socketRef.current) {
+      socketRef.current = io(SOCKET_URL, {
+        path: "/socket.io",
+        // transports: ["websocket"],
+        withCredentials: true,
+      });
+    }
 
     // C. Join Room
     socketRef.current.emit("join-showtime", selectedShowtime.id);
@@ -370,74 +529,13 @@ export const useBookingLogic = ({
     return () => {
       if (socketRef.current) {
         socketRef.current.emit("leave-showtime", selectedShowtime.id);
+        socketRef.current.off("seat-update");
+
         socketRef.current.disconnect();
+        socketRef.current = null;
       }
     };
-  }, [selectedShowtime, fetchInitialSeatStatus]);
-  // --- HANDLERS ---
-
-  const handleSelectShowtime = async (
-    id: string,
-    roomName: string,
-    roomId: string,
-    basePrice: number,
-    vipSurcharge: number,
-    coupleSurcharge: number
-  ) => {
-    if (selectedShowtime && selectedShowtime.id !== id) {
-      await releaseAllSeats();
-    }
-
-    setQuantities({ standard: 0, vip: 0, couple: 0 });
-    setSelectedSeats([]);
-    setSeatList([]);
-    setFoodQuantities({});
-    setSeatLayout([]);
-    setProcessingSeats([]);
-
-    setBlockedSeats([]);
-
-    setSelectedShowtime({
-      id,
-      roomName,
-      roomId,
-      basePrice,
-      vipSurcharge,
-      coupleSurcharge,
-    });
-
-    setLoadingLayout(true);
-    try {
-      const res = await roomService.getRoomById(roomId);
-      setSeatList(Array.isArray(res.seats) ? res.seats : []);
-      setSeatLayout(Array.isArray(res.seatLayout) ? res.seatLayout : []);
-
-      // const holdRes = await roomService.getHeldSeats(String(id));
-      // console.log("Held seats:", holdRes);
-
-      // const book = await bookingService.getBookedSeats(id);
-      // console.log("Booked seats:", book);
-
-      // // 1. Extract held seat IDs
-      // const heldIds = Array.isArray(holdRes)
-      //   ? holdRes.map((item) => item.seatId)
-      //   : [];
-
-      // // 2. Extract booked seat IDs
-      // const bookedIds = Array.isArray(book)
-      //   ? book.map((item) => item.seatId)
-      //   : [];
-
-      // // 3. Merge + remove duplicates
-      // const mergedSeatIds = Array.from(new Set([...heldIds, ...bookedIds]));
-
-      // setHeldSeats(mergedSeatIds);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoadingLayout(false);
-    }
-  };
+  }, [selectedShowtime, fetchInitialSeatStatusFn]);
 
   const handleToggleSeat = async (
     seat: SeatModal,
@@ -471,49 +569,86 @@ export const useBookingLogic = ({
           idsToToggle.map((id) => roomService.holdSeat(showtimeIdStr, id))
         );
 
-        // [FIX QUAN TRỌNG]: Dùng Set để đảm bảo ID là duy nhất khi thêm mới
         setSelectedSeats((prev) =>
           Array.from(new Set([...prev, ...idsToToggle]))
         );
       } else {
-        // --- LOGIC BỎ CHỌN (Release) ---
         await Promise.all(
           idsToToggle.map((id) => roomService.releaseSeat(showtimeIdStr, id))
         );
 
-        // Lọc bỏ ID ra khỏi danh sách
         setSelectedSeats((prev) =>
           prev.filter((id) => !idsToToggle.includes(id))
         );
       }
     } catch (error: unknown) {
       console.error("Seat action failed:", error);
-      // ... (Giữ nguyên phần xử lý lỗi của bạn) ...
 
-      // Sync lại dữ liệu nếu lỗi
       fetchInitialSeatStatus();
 
-      // Nếu lỗi khi đang chọn -> Phải bỏ chọn trong state (rollback UI)
       if (isSelecting) {
         setSelectedSeats((prev) =>
           prev.filter((id) => !idsToToggle.includes(id))
         );
       }
     } finally {
-      // Xóa khỏi hàng đợi xử lý
       setProcessingSeats((prev) =>
         prev.filter((id) => !idsToToggle.includes(id))
       );
     }
   };
 
-  const updateQuantity = (type: TicketType, delta: number) => {
-    setQuantities((prev) => {
-      const newValue = prev[type] + delta;
-      return newValue < 0 || newValue > 5
-        ? prev
-        : { ...prev, [type]: newValue };
-    });
+  const updateQuantity = async (type: TicketType, delta: number) => {
+    const currentQty = quantities[type];
+    const newQty = currentQty + delta;
+
+    if (newQty < 0 || newQty > 5) return;
+
+    setQuantities((prev) => ({ ...prev, [type]: newQty }));
+
+    if (delta < 0) {
+      const mapType: Record<TicketType, string> = {
+        standard: "NORMAL",
+        vip: "VIP",
+        couple: "COUPLE",
+      };
+      const targetSeatType = mapType[type];
+
+      const seatsOfType = selectedSeats.filter((id) => {
+        const seat = seatList.find((s) => s.id === id);
+        return seat?.seatType === targetSeatType;
+      });
+
+      const currentSeatCount = seatsOfType.length;
+      const multiplier = type === "couple" ? 2 : 1;
+      const targetSeatCount = newQty * multiplier;
+
+      if (currentSeatCount > targetSeatCount) {
+        const seatsToRemoveCount = currentSeatCount - targetSeatCount;
+
+        const seatsToRemove = seatsOfType.slice(-seatsToRemoveCount);
+
+        if (seatsToRemove.length > 0 && selectedShowtime) {
+          console.log(`Auto-releasing ${type} seats (LIFO):`, seatsToRemove);
+
+          setSelectedSeats((prev) =>
+            prev.filter((id) => !seatsToRemove.includes(id))
+          );
+          try {
+            const showtimeIdStr = String(selectedShowtime.id);
+            await Promise.all(
+              seatsToRemove.map((id) =>
+                roomService.releaseSeat(showtimeIdStr, id).catch((err) => {
+                  console.warn("Failed to release seat", id, err);
+                })
+              )
+            );
+          } catch (error) {
+            console.error("Auto-release seats failed:", error);
+          }
+        }
+      }
+    }
   };
 
   const updateFoodQuantity = (id: string | number, delta: number) => {
@@ -555,12 +690,7 @@ export const useBookingLogic = ({
 
       console.log("=== PAYLOAD GỬI ĐI ===", bookingData);
 
-      // const res = await roomService.getHeldSeats(selectedShowtime.id);
-      // console.log(res);
 
-      //   for (const seatId of selectedSeats) {
-      //     await roomService.holdSeat(selectedShowtime.id, seatId);
-      //   }
 
       const bookingRes = await bookingService.createBooking(bookingData);
       const { id: bookingId, totalPrice } = bookingRes;
@@ -581,7 +711,6 @@ export const useBookingLogic = ({
         paymentRes = await paymentService.checkoutWithZaloPay(paymentPayload);
       }
 
-      // 4. Redirect user đến trang thanh toán
       if (paymentRes) {
         try {
           window.localStorage.setItem("cinemago_lastBookingId", bookingId);
@@ -600,7 +729,7 @@ export const useBookingLogic = ({
     } catch (error) {
       console.error("Payment Process Error:", error);
       toast.error("Có lỗi xảy ra trong quá trình xử lý thanh toán.");
-      setIsSubmitting(false); // Chỉ tắt loading nếu lỗi, nếu thành công thì trang đã redirect
+      setIsSubmitting(false);
     }
   };
 
@@ -619,9 +748,9 @@ export const useBookingLogic = ({
     const ticketPrice =
       quantities.standard * selectedShowtime.basePrice +
       quantities.vip *
-        (selectedShowtime.basePrice + selectedShowtime.vipSurcharge) +
+      (selectedShowtime.basePrice + selectedShowtime.vipSurcharge) +
       quantities.couple *
-        (selectedShowtime.basePrice * 2 + selectedShowtime.coupleSurcharge * 2);
+      (selectedShowtime.basePrice * 2 + selectedShowtime.coupleSurcharge * 2);
 
     let foodPrice = 0;
     const foodItemsStr: string[] = [];
@@ -646,12 +775,10 @@ export const useBookingLogic = ({
     const seatNames = uniqueSelectedIds
       .map((id) => {
         const s = seatList.find((item) => item.id === id);
-        // Ưu tiên hiển thị seatName (vd: E5) hoặc seatNumber nếu name null
         return s ? s.seatNumber : "";
       })
-      .filter((name) => name !== ""); // Loại bỏ rỗng
+      .filter((name) => name !== "");
 
-    // Sắp xếp alpha-beta và join
     const seatsStr =
       seatNames.length === 0 ? "Chưa chọn" : seatNames.sort().join(", ");
 
@@ -671,6 +798,12 @@ export const useBookingLogic = ({
     foodQuantities,
     foods,
   ]);
+
+  const formattedTime = useMemo(() => {
+    const minutes = Math.floor(timeLeft / 60);
+    const seconds = timeLeft % 60;
+    return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  }, [timeLeft]);
 
   return {
     // State
