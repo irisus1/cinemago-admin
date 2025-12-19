@@ -13,28 +13,33 @@ import { type Movie } from "@/services";
 import { formatVND } from "../../../components/ticket/seat-helper";
 
 // Import Hook Logic
-import { useBookingLogic } from "../../../components/ticket/useBookingSheet";
+// import { useBookingLogic } from "../../../components/ticket/useBookingSheet";
 
 // Import Component con
+import PaymentMethodModal from "@/components/modal/PaymentModal";
 import SeatSelectionStep from "../../../components/ticket/SeatSelection";
 import ShowtimeList from "@/components/ticket/showtimelist";
 import FoodSelector from "../../../components/ticket/foodSelector";
-import PaymentMethodModal from "@/components/modal/PaymentModal";
+import { RefreshCcw } from "lucide-react";
 
 interface BookingSheetProps {
   isOpen: boolean;
   onClose: () => void;
+  onReopen: () => void;
   movie: Movie | null;
   cinemaId: string;
   date: string;
+  bookingState: any; // Using explicit type or any if complex
 }
 
 export default function BookingSheet({
   isOpen,
   onClose,
+  onReopen,
   movie,
   cinemaId,
   date,
+  bookingState,
 }: BookingSheetProps) {
   const {
     loading,
@@ -73,7 +78,8 @@ export default function BookingSheet({
     isEnoughSeats,
     formattedSelectedSeats,
     formattedFoods,
-  } = useBookingLogic({ isOpen, movie, cinemaId, date });
+    resetBookingSession,
+  } = bookingState;
 
   const seatSelectionRef = useRef<HTMLDivElement>(null);
 
@@ -95,13 +101,28 @@ export default function BookingSheet({
         side="right"
       >
         <SheetHeader className="px-6 pt-6 mb-4">
-          <SheetTitle className="text-2xl font-bold text-primary">
-            {movie?.title}
-          </SheetTitle>
-          <SheetDescription>
-            Thời lượng: {movie?.duration} phút •{" "}
-            {date?.split("-").reverse().join("-")}
-          </SheetDescription>
+          <div className="flex items-start justify-between">
+            <div className="space-y-1">
+              <SheetTitle className="text-2xl font-bold text-primary">
+                {movie?.title}
+              </SheetTitle>
+              <SheetDescription>
+                Thời lượng: {movie?.duration} phút •{" "}
+                {date?.split("-").reverse().join("-")}
+              </SheetDescription>
+            </div>
+            {selectedShowtime && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-red-500 hover:text-red-600 border-red-200 hover:bg-red-50 gap-2"
+                onClick={resetBookingSession}
+              >
+                <RefreshCcw className="w-3 h-3" />
+                Hủy phiên
+              </Button>
+            )}
+          </div>
         </SheetHeader>
 
         <div className="px-6 pb-48">
@@ -203,8 +224,8 @@ export default function BookingSheet({
                 {totalQty === 0
                   ? "Vui lòng chọn vé"
                   : isEnoughSeats
-                  ? "Xác nhận đặt vé"
-                  : "Vui lòng chọn đủ ghế"}
+                    ? "Xác nhận đặt vé"
+                    : "Vui lòng chọn đủ ghế"}
               </Button>
             </div>
 

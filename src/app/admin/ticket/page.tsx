@@ -13,6 +13,8 @@ import {
 import { DateNativeVN } from "@/components/DateNativeVN";
 import BookingSheet from "./bookingSheet";
 import RefreshLoader from "@/components/Loading";
+import { useBookingLogic } from "@/components/ticket/useBookingSheet";
+import { FloatingIndicator } from "@/components/ticket/FloatingIndicator";
 
 /** Helpers */
 const todayLocalISODate = () => {
@@ -61,6 +63,21 @@ export default function AdminWalkupBookingPage() {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // --- LIFTED BOOKING LOGIC ---
+  const bookingState = useBookingLogic({
+    isOpen: isSheetOpen, // Note: isOpen here affects some effects within the hook. 
+    // If we want it to run even when closed, we might need to adjust the hook or pass true?
+    // Actually, the minimize logic we added relies on hook running.
+    // The hook's toggle effects (like clearing on close) were removed or modified.
+    // We must ensure the hook knows the "sheet visibility" if it needs to, 
+    // BUT for minimization, the hook should potentially receive `true` or we rely on the hook NOT clearing data on 'isOpen=false'.
+    // In our previous edit we REMOVED the auto-cleanup on isOpen=false.
+    // So passing `isOpen` which toggles is fine, as it changes effects but doesn't kill data.
+    movie: selectedMovie,
+    cinemaId: selectedCinemaId,
+    date: dateStr,
+  });
+
   const dayRange = useMemo(() => toUtcDayRangeFromLocalISO(dateStr), [dateStr]);
 
   const updateUrl = (
@@ -82,6 +99,14 @@ export default function AdminWalkupBookingPage() {
     });
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   };
+
+  // Sync Sheet Open State with URL
+  useEffect(() => {
+    const isUrlOpen = searchParams.get("sheetOpen") === "true";
+    if (isUrlOpen && !isSheetOpen && selectedMovie) {
+      setIsSheetOpen(true);
+    }
+  }, [searchParams, isSheetOpen, selectedMovie]);
 
   // 1. Fetch Cinemas + Init from URL
   useEffect(() => {
@@ -222,6 +247,13 @@ export default function AdminWalkupBookingPage() {
   };
 
   const handleMovieSelect = (movie: Movie) => {
+    // Nếu đang chọn phim khác -> Reset phiên cũ
+    if (selectedMovie && String(selectedMovie.id) !== String(movie.id)) {
+      if (bookingState.selectedSeats.length > 0 || bookingState.selectedShowtime) {
+        bookingState.resetBookingSession();
+      }
+    }
+
     setSelectedMovie(movie);
     setIsSheetOpen(true);
     updateUrl({ movieId: String(movie.id), sheetOpen: "true" });
@@ -230,7 +262,8 @@ export default function AdminWalkupBookingPage() {
   const handleCloseSheet = () => {
     setIsSheetOpen(false);
     updateUrl({ sheetOpen: undefined, showtimeId: undefined });
-    setTimeout(() => setSelectedMovie(null), 300);
+    // Remove auto-clear to support Minimize & Floating Indicator
+    // setTimeout(() => setSelectedMovie(null), 300);
   };
 
   // ====== UI ======
@@ -298,10 +331,22 @@ export default function AdminWalkupBookingPage() {
       <BookingSheet
         isOpen={isSheetOpen}
         onClose={handleCloseSheet}
+        onReopen={() => setIsSheetOpen(true)}
         movie={selectedMovie}
         cinemaId={selectedCinemaId}
         date={dateStr}
+        bookingState={bookingState}
       />
+
+      {/* Floating Indicator (Page Level) */}
+      {!isSheetOpen && bookingState.selectedShowtime && (
+        <FloatingIndicator
+          count={bookingState.totalQty}
+          movieName={bookingState.selectedShowtime.roomName ? `${selectedMovie?.title} - ${bookingState.selectedShowtime.roomName}` : selectedMovie?.title}
+          formattedTime={bookingState.formattedTime}
+          onReopen={() => setIsSheetOpen(true)}
+        />
+      )}
 
       <RefreshLoader isOpen={loading} />
     </div>
