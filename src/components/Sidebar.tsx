@@ -8,6 +8,7 @@ import Image from "next/image";
 import ProfileModal from "./profile/ProfileModal";
 import AccountDropdown from "./profile/AccountDropdown";
 import type { SidebarTab } from "@/constants/constants";
+import { useAuth } from "@/context/AuthContext";
 
 interface SidebarProps {
   isSidebarOpen: boolean;
@@ -20,9 +21,16 @@ export default function Sidebar({
   setIsSidebarOpen,
   tabs,
 }: SidebarProps) {
+  const { user } = useAuth();
   const pathname = usePathname();
   const [openProfile, setOpenProfile] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+
+  // Filter tabs by role
+  const filteredTabs = tabs.filter((tab) => {
+    if (!tab.allowedRoles) return true; // No restriction
+    return user?.role && tab.allowedRoles.includes(user.role);
+  });
 
   const toggleGroup = (name: string) => {
     if (!isSidebarOpen) {
@@ -35,9 +43,8 @@ export default function Sidebar({
 
   return (
     <div
-      className={`${
-        isSidebarOpen ? "w-[300px]" : "w-20"
-      } bg-white shadow-lg transition-all duration-300 ease-in-out h-screen flex flex-col z-50 relative`} // Thêm z-50 để sidebar nổi lên trên nội dung chính
+      className={`${isSidebarOpen ? "w-[300px]" : "w-20"
+        } bg-white shadow-lg transition-all duration-300 ease-in-out h-screen flex flex-col z-50 relative`} // Thêm z-50 để sidebar nổi lên trên nội dung chính
     >
       {/* Header */}
       <div className="flex items-center justify-between p-3 border-b">
@@ -62,12 +69,11 @@ export default function Sidebar({
       </div>
 
       <nav
-        className={`p-3 flex-1 ${
-          isSidebarOpen ? "overflow-y-auto" : "overflow-visible"
-        }`}
+        className={`p-3 flex-1 ${isSidebarOpen ? "overflow-y-auto" : "overflow-visible"
+          }`}
       >
         <ul className="space-y-2">
-          {tabs.map((tab, index) => {
+          {filteredTabs.map((tab, index) => {
             if (tab.type === "group") {
               const isChildActive = tab.children.some(
                 (child) => child.path === pathname
@@ -79,11 +85,10 @@ export default function Sidebar({
                   <button
                     type="button"
                     onClick={() => toggleGroup(tab.name)}
-                    className={`flex items-center w-full px-3 py-3.5 rounded-xl justify-between text-[15px] ${
-                      isChildActive
-                        ? "text-blue-600 font-semibold bg-blue-50"
-                        : "text-gray-700 hover:bg-gray-100"
-                    } transition-colors duration-200`}
+                    className={`flex items-center w-full px-3 py-3.5 rounded-xl justify-between text-[15px] ${isChildActive
+                      ? "text-blue-600 font-semibold bg-blue-50"
+                      : "text-gray-700 hover:bg-gray-100"
+                      } transition-colors duration-200`}
                   >
                     <div className="flex items-center">
                       <span
@@ -114,10 +119,9 @@ export default function Sidebar({
                       className={`
                         ml-4 space-y-1 overflow-hidden
                         transition-all duration-300 ease-in-out
-                        ${
-                          isGroupOpen
-                            ? "max-h-40 opacity-100 mt-1"
-                            : "max-h-0 opacity-0"
+                        ${isGroupOpen
+                          ? "max-h-40 opacity-100 mt-1"
+                          : "max-h-0 opacity-0"
                         }
                       `}
                     >
@@ -127,11 +131,10 @@ export default function Sidebar({
                           <li key={childIndex}>
                             <Link
                               href={child.path}
-                              className={`flex items-center px-3 py-2.5 rounded-lg text-[14px] ${
-                                isActive
-                                  ? "text-blue-600 font-semibold bg-blue-50"
-                                  : "text-gray-700 hover:bg-gray-100"
-                              } transition-colors duration-200`}
+                              className={`flex items-center px-3 py-2.5 rounded-lg text-[14px] ${isActive
+                                ? "text-blue-600 font-semibold bg-blue-50"
+                                : "text-gray-700 hover:bg-gray-100"
+                                } transition-colors duration-200`}
                             >
                               <span
                                 className={
@@ -162,11 +165,10 @@ export default function Sidebar({
                             <li key={childIndex}>
                               <Link
                                 href={child.path}
-                                className={`flex items-center px-3 py-2 rounded-md text-[14px] ${
-                                  isActive
-                                    ? "text-blue-600 bg-blue-50 font-medium"
-                                    : "text-gray-700 hover:bg-gray-100"
-                                }`}
+                                className={`flex items-center px-3 py-2 rounded-md text-[14px] ${isActive
+                                  ? "text-blue-600 bg-blue-50 font-medium"
+                                  : "text-gray-700 hover:bg-gray-100"
+                                  }`}
                               >
                                 {child.icon}
                                 <span className="ml-2">{child.name}</span>
@@ -187,11 +189,10 @@ export default function Sidebar({
               <li key={index} className="group relative">
                 <Link
                   href={tab.path}
-                  className={`flex items-center p-3 rounded-lg ${
-                    isActive
-                      ? "text-blue-500 font-bold bg-blue-50"
-                      : "text-gray-700 hover:bg-gray-100"
-                  }`}
+                  className={`flex items-center p-3 rounded-lg ${isActive
+                    ? "text-blue-500 font-bold bg-blue-50"
+                    : "text-gray-700 hover:bg-gray-100"
+                    }`}
                 >
                   <span
                     className={isActive ? "text-blue-500" : "text-gray-700"}
