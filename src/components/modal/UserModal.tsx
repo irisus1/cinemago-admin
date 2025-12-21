@@ -9,10 +9,10 @@ import {
   TransitionChild,
 } from "@headlessui/react";
 
-import type { User, CreateUserRequest } from "@/services";
+import { type User, type CreateUserRequest, cinemaService, type Cinema } from "@/services";
 
 type Gender = "MALE" | "FEMALE" | "OTHER";
-type Role = "ADMIN" | "USER";
+type Role = "ADMIN" | "MANAGER" | "EMPLOYEE";
 
 type UserModalProps = {
   open: boolean;
@@ -36,9 +36,28 @@ export default function UserModal({
   const [fullname, setFullname] = useState(user?.fullname ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
   const [gender, setGender] = useState<Gender>("MALE");
-  const [role, setRole] = useState<Role>("USER");
+  // Default to EMPLOYEE instead of ADMIN for safety, or ADMIN if that's the only other option? 
+  // Requirement: "ADMIN, MANAGER, EMPLOYEE". Default to EMPLOYEE is safer.
+  const [role, setRole] = useState<Role>("EMPLOYEE");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Cinema selection
+  const [cinemas, setCinemas] = useState<Cinema[]>([]);
+  const [selectedCinemaId, setSelectedCinemaId] = useState<string>("");
+
+  useEffect(() => {
+    // Fetch cinemas when modal opens or on mount
+    const fetchCinemas = async () => {
+      try {
+        const res = await cinemaService.getAllCinemas({ limit: 100 });
+        setCinemas(res.data || []);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    fetchCinemas();
+  }, []);
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z]).{8,}$/;
@@ -51,10 +70,14 @@ export default function UserModal({
 
   const baseValid = fullname.trim().length > 0 && isEmailValid;
 
+  // Cinema is required if role is NOT ADMIN
+  const isCinemaRequired = role !== "ADMIN";
+  const isCinemaValid = !isCinemaRequired || (isCinemaRequired && selectedCinemaId.length > 0);
+
   const valid =
     mode === "create"
-      ? baseValid && isPasswordValid
-      : baseValid && (password.length === 0 || isPasswordValid);
+      ? baseValid && isPasswordValid && isCinemaValid
+      : baseValid && (password.length === 0 || isPasswordValid) && isCinemaValid;
 
   useEffect(() => {
     if (!open) return;
@@ -63,14 +86,18 @@ export default function UserModal({
       setFullname(user.fullname ?? "");
       setEmail(user.email ?? "");
       setGender((user.gender as Gender) || "MALE");
-      setRole((user.role as Role) || "USER");
+      // Cast role strictly
+      const r = (user.role as Role);
+      setRole((["ADMIN", "MANAGER", "EMPLOYEE"].includes(r) ? r : "EMPLOYEE") as Role);
       setPassword("");
+      setSelectedCinemaId(user.cinemaId || "");
     } else {
       setFullname("");
       setEmail("");
       setGender("MALE");
-      setRole("USER");
+      setRole("EMPLOYEE");
       setPassword("");
+      setSelectedCinemaId("");
     }
   }, [open, mode, user]);
 
@@ -80,12 +107,23 @@ export default function UserModal({
     try {
       setLoading(true);
 
-      const payload: CreateUserRequest = {
+      const foundCinema = isCinemaRequired ? cinemas.find(c => c.id === selectedCinemaId) : undefined;
+
+      // Type assertion or update service types if needed
+      const payload: any = {
         fullname: fullname.trim(),
         email: email.trim(),
         gender,
         role,
       };
+
+      if (isCinemaRequired && foundCinema) {
+        payload.cinemaId = foundCinema.id;
+        payload.cinemaName = foundCinema.name;
+      } else {
+        payload.cinemaId = null;
+        payload.cinemaName = null;
+      }
 
       if (mode === "create") {
         payload.password = password.trim();
@@ -149,11 +187,10 @@ export default function UserModal({
                   <input
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
-                      showEmailError
-                        ? "border-red-500 focus:ring-red-500"
-                        : "focus:ring-blue-500"
-                    }`}
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 ${showEmailError
+                      ? "border-red-500 focus:ring-red-500"
+                      : "focus:ring-blue-500"
+                      }`}
                     placeholder="Nhập email"
                     type="email"
                   />
@@ -174,11 +211,10 @@ export default function UserModal({
                   <input
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
-                      showPasswordError
-                        ? "border-red-500 focus:ring-red-500"
-                        : "focus:ring-blue-500"
-                    }`}
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 ${showPasswordError
+                      ? "border-red-500 focus:ring-red-500"
+                      : "focus:ring-blue-500"
+                      }`}
                     type="password"
                     placeholder={
                       mode === "create"
@@ -224,11 +260,30 @@ export default function UserModal({
                       onChange={(e) => setRole(e.target.value as Role)}
                       className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
-                      <option value="ADMIN">ADMIN</option>
-                      <option value="USER">Người dùng</option>
+                      <option value="ADMIN">Quản trị viên</option>
+                      <option value="MANAGER">Quản lý rạp</option>
+                      <option value="EMPLOYEE">Nhân viên bán vé</option>
                     </select>
                   </div>
                 </div>
+
+                {isCinemaRequired && (
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Rạp chiếu phim <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={selectedCinemaId}
+                      onChange={e => setSelectedCinemaId(e.target.value)}
+                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">-- Chọn rạp --</option>
+                      {cinemas.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
 
               <div className="mt-5 flex justify-end gap-2">
@@ -241,19 +296,18 @@ export default function UserModal({
                 <button
                   disabled={!valid || loading}
                   onClick={handleSubmit}
-                  className={`px-4 py-2 rounded-lg text-white transition-colors ${
-                    valid && !loading
-                      ? "bg-blue-600 hover:bg-blue-700"
-                      : "bg-gray-400 cursor-not-allowed"
-                  }`}
+                  className={`px-4 py-2 rounded-lg text-white transition-colors ${valid && !loading
+                    ? "bg-blue-600 hover:bg-blue-700"
+                    : "bg-gray-400 cursor-not-allowed"
+                    }`}
                 >
                   {mode === "create"
                     ? loading
                       ? "Đang tạo..."
                       : "Thêm"
                     : loading
-                    ? "Đang lưu..."
-                    : "Lưu"}
+                      ? "Đang lưu..."
+                      : "Lưu"}
                 </button>
               </div>
             </DialogPanel>

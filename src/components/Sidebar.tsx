@@ -2,12 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FiMenu, FiChevronDown, FiChevronRight } from "react-icons/fi";
-import { useState } from "react";
+import { FiMenu, FiChevronDown, FiChevronRight, FiMapPin } from "react-icons/fi";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import ProfileModal from "./profile/ProfileModal";
 import AccountDropdown from "./profile/AccountDropdown";
 import type { SidebarTab } from "@/constants/constants";
+import { useAuth } from "@/context/AuthContext";
+import { useCinemaStore } from "@/store/useCinemaStore";
+import { cinemaService, type Cinema } from "@/services";
 
 interface SidebarProps {
   isSidebarOpen: boolean;
@@ -24,6 +27,53 @@ export default function Sidebar({
   const [openProfile, setOpenProfile] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
+  const { user } = useAuth();
+  const { selectedCinemaId, setSelectedCinema } = useCinemaStore();
+  const [cinemas, setCinemas] = useState<Cinema[]>([]);
+
+  // RBAC Filter
+  const filteredTabs = tabs.filter((tab) => {
+    if (!user) return false;
+    // 1. Check parent role
+    if (tab.allowedRoles && !tab.allowedRoles.includes(user.role)) return false;
+    return true;
+  }).map(tab => {
+    // 2. Check children role if group
+    if (tab.type === 'group') {
+      const validChildren = tab.children.filter(child =>
+        !child.allowedRoles || child.allowedRoles.includes(user!.role)
+      );
+      // Return null if no children valid? Or empty group?
+      // Let's keep it but shallow copy
+      return { ...tab, children: validChildren };
+    }
+    return tab;
+  }).filter(tab => {
+    // Remove groups with no children
+    if (tab.type === 'group' && tab.children.length === 0) return false;
+    return true;
+  });
+
+  // Fetch Cinemas for ADMIN
+  useEffect(() => {
+    if (user?.role === "ADMIN") {
+      const fetchCinemas = async () => {
+        try {
+          const res = await cinemaService.getAllCinemas({ limit: 100 });
+          setCinemas(res.data || []);
+          // Auto select first if none selected?
+          // if (!selectedCinemaId && res.data.length > 0) {
+          //   setSelectedCinema(res.data[0].id, res.data[0].name);
+          // }
+        } catch (e) {
+          console.error(e);
+        }
+      };
+      fetchCinemas();
+    }
+  }, [user, selectedCinemaId, setSelectedCinema]);
+
+
   const toggleGroup = (name: string) => {
     if (!isSidebarOpen) {
       setIsSidebarOpen(true);
@@ -33,11 +83,75 @@ export default function Sidebar({
     setOpenGroups((prev) => ({ ...prev, [name]: !prev[name] }));
   };
 
+  const handleCinemaChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const id = e.target.value;
+    const found = cinemas.find((c) => c.id === id);
+    if (found) {
+      setSelectedCinema(found.id, found.name);
+    }
+  }
+
+  // Determine Cinema Display
+  const renderCinemaSelector = () => {
+    if (!user) return null;
+
+    // // A. ADMIN: Dropdown
+    // if (user.role === "ADMIN") {
+    //   if (!isSidebarOpen) return (
+    //     <div className="flex justify-center py-4 border-b">
+    //       <FiMapPin className="text-blue-600 w-6 h-6" title={useCinemaStore.getState().selectedCinemaName || "Chọn rạp"} />
+    //     </div>
+    //   );
+
+    //   return (
+    //     <div className="px-3 py-4 border-b">
+    //       <label className="text-xs font-semibold text-gray-500 uppercase mb-2 block">
+    //         Đang làm việc tại
+    //       </label>
+    //       <select
+    //         className="w-full p-2 border rounded-md text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+    //         value={selectedCinemaId || ""}
+    //         onChange={handleCinemaChange}
+    //       >
+    //         <option value="" disabled>-- Chọn rạp --</option>
+    //         {cinemas.map(c => (
+    //           <option key={c.id} value={c.id}>
+    //             {c.name}
+    //           </option>
+    //         ))}
+    //       </select>
+    //     </div>
+    //   )
+    // }
+
+    // B. MANAGER/EMPLOYEE: Static Text
+    if (user.role === "MANAGER" || user.role === "EMPLOYEE") {
+      const cinemaName = user.cinemaName || selectedCinemaId || "Rạp của bạn"; // Fallback
+      if (!isSidebarOpen) return (
+        <div className="flex justify-center py-4 border-b">
+          <FiMapPin className="text-gray-600 w-6 h-6" title={cinemaName} />
+        </div>
+      );
+      return (
+        <div className="px-3 py-4 border-b">
+          <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">
+            Rạp chiếu phim
+          </label>
+          <div className="font-bold text-gray-800 flex items-center gap-2">
+            <FiMapPin className="text-blue-600" />
+            <span className="truncate">{cinemaName}</span>
+          </div>
+        </div>
+      )
+    }
+
+    return null;
+  }
+
   return (
     <div
-      className={`${
-        isSidebarOpen ? "w-[300px]" : "w-20"
-      } bg-white shadow-lg transition-all duration-300 ease-in-out h-screen flex flex-col z-50 relative`} // Thêm z-50 để sidebar nổi lên trên nội dung chính
+      className={`${isSidebarOpen ? "w-[300px]" : "w-20"
+        } bg-white shadow-lg transition-all duration-300 ease-in-out h-screen flex flex-col z-50 relative`}
     >
       {/* Header */}
       <div className="flex items-center justify-between p-3 border-b">
@@ -50,7 +164,6 @@ export default function Sidebar({
               height={32}
               className="h-8 w-auto"
             />
-            <span className="sr-only">CinemaGo</span>
           </div>
         )}
         <button
@@ -61,13 +174,15 @@ export default function Sidebar({
         </button>
       </div>
 
+      {/* Cinema Selector */}
+      {renderCinemaSelector()}
+
       <nav
-        className={`p-3 flex-1 ${
-          isSidebarOpen ? "overflow-y-auto" : "overflow-visible"
-        }`}
+        className={`p-3 flex-1 ${isSidebarOpen ? "overflow-y-auto" : "overflow-visible"
+          }`}
       >
         <ul className="space-y-2">
-          {tabs.map((tab, index) => {
+          {filteredTabs.map((tab, index) => {
             if (tab.type === "group") {
               const isChildActive = tab.children.some(
                 (child) => child.path === pathname
@@ -79,11 +194,10 @@ export default function Sidebar({
                   <button
                     type="button"
                     onClick={() => toggleGroup(tab.name)}
-                    className={`flex items-center w-full px-3 py-3.5 rounded-xl justify-between text-[15px] ${
-                      isChildActive
-                        ? "text-blue-600 font-semibold bg-blue-50"
-                        : "text-gray-700 hover:bg-gray-100"
-                    } transition-colors duration-200`}
+                    className={`flex items-center w-full px-3 py-3.5 rounded-xl justify-between text-[15px] ${isChildActive
+                      ? "text-blue-600 font-semibold bg-blue-50"
+                      : "text-gray-700 hover:bg-gray-100"
+                      } transition-colors duration-200`}
                   >
                     <div className="flex items-center">
                       <span
@@ -114,10 +228,9 @@ export default function Sidebar({
                       className={`
                         ml-4 space-y-1 overflow-hidden
                         transition-all duration-300 ease-in-out
-                        ${
-                          isGroupOpen
-                            ? "max-h-40 opacity-100 mt-1"
-                            : "max-h-0 opacity-0"
+                        ${isGroupOpen
+                          ? "max-h-40 opacity-100 mt-1"
+                          : "max-h-0 opacity-0"
                         }
                       `}
                     >
@@ -127,11 +240,10 @@ export default function Sidebar({
                           <li key={childIndex}>
                             <Link
                               href={child.path}
-                              className={`flex items-center px-3 py-2.5 rounded-lg text-[14px] ${
-                                isActive
-                                  ? "text-blue-600 font-semibold bg-blue-50"
-                                  : "text-gray-700 hover:bg-gray-100"
-                              } transition-colors duration-200`}
+                              className={`flex items-center px-3 py-2.5 rounded-lg text-[14px] ${isActive
+                                ? "text-blue-600 font-semibold bg-blue-50"
+                                : "text-gray-700 hover:bg-gray-100"
+                                } transition-colors duration-200`}
                             >
                               <span
                                 className={
@@ -162,11 +274,10 @@ export default function Sidebar({
                             <li key={childIndex}>
                               <Link
                                 href={child.path}
-                                className={`flex items-center px-3 py-2 rounded-md text-[14px] ${
-                                  isActive
-                                    ? "text-blue-600 bg-blue-50 font-medium"
-                                    : "text-gray-700 hover:bg-gray-100"
-                                }`}
+                                className={`flex items-center px-3 py-2 rounded-md text-[14px] ${isActive
+                                  ? "text-blue-600 bg-blue-50 font-medium"
+                                  : "text-gray-700 hover:bg-gray-100"
+                                  }`}
                               >
                                 {child.icon}
                                 <span className="ml-2">{child.name}</span>
@@ -187,11 +298,10 @@ export default function Sidebar({
               <li key={index} className="group relative">
                 <Link
                   href={tab.path}
-                  className={`flex items-center p-3 rounded-lg ${
-                    isActive
-                      ? "text-blue-500 font-bold bg-blue-50"
-                      : "text-gray-700 hover:bg-gray-100"
-                  }`}
+                  className={`flex items-center p-3 rounded-lg ${isActive
+                    ? "text-blue-500 font-bold bg-blue-50"
+                    : "text-gray-700 hover:bg-gray-100"
+                    }`}
                 >
                   <span
                     className={isActive ? "text-blue-500" : "text-gray-700"}

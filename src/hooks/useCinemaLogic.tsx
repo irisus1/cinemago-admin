@@ -215,8 +215,8 @@ export function useCinemaLogic() {
       return roomService.createRoom({
         cinemaId: cinemaId,
         name: room.name,
-        vipPrice: room.vipPrice,
-        couplePrice: room.couplePrice,
+        vipPrice: room.vipPrice === 0 ? 1 : room.vipPrice,
+        couplePrice: room.couplePrice === 0 ? 1 : room.couplePrice,
         seatLayout: room.seatLayout,
       });
     });

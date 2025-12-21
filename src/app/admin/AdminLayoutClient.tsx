@@ -57,9 +57,10 @@ import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
 import { useAuth } from "@/context/AuthContext";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { adminTabs } from "@/constants/constants";
 import { toast } from "sonner";
+import { useCinemaStore } from "@/store/useCinemaStore";
 
 export default function AdminLayoutClient({
   children,
@@ -69,6 +70,8 @@ export default function AdminLayoutClient({
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const { user, isLoading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
+  const { setSelectedCinema } = useCinemaStore();
 
   // Logic bảo vệ trang
   useEffect(() => {
@@ -79,11 +82,26 @@ export default function AdminLayoutClient({
       return;
     }
 
-    if (user.role !== "ADMIN") {
+    // Initialize Cinema for Manager/Employee
+    if (user.role === "MANAGER" || user.role === "EMPLOYEE") {
+      if (user.cinemaId && user.cinemaName) {
+        setSelectedCinema(user.cinemaId, user.cinemaName);
+      }
+    }
+
+    const allowedRoles = ["ADMIN", "MANAGER", "EMPLOYEE"];
+    if (!allowedRoles.includes(user.role)) {
       toast.error("Bạn không có quyền truy cập trang quản trị!");
       router.push("/login");
+      return;
     }
-  }, [isLoading, user, router]);
+
+    // Redirect EMPLOYEE who tries to access dashboard
+    if (user.role === "EMPLOYEE" && pathname === "/admin/dashboard") {
+      router.replace("/admin/ticket");
+    }
+
+  }, [isLoading, user, router, pathname, setSelectedCinema]);
 
   if (isLoading) return null; // Hoặc loading spinner
 

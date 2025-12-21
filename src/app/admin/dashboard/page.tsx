@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { LabelList } from "recharts";
+import { useAuth } from "@/context/AuthContext"; // Import useAuth
 import {
   DollarSign,
   Users,
@@ -48,6 +49,7 @@ const truncateText = (text: string, maxLength: number = 15) => {
 };
 
 export default function Dashboard() {
+  const { user } = useAuth(); // Hooks
   // ===== Khoảng thời gian mặc định: hôm nay -> +7 ngày
   const todayISO = new Date().toISOString().slice(0, 10);
   const sevenDaysAfterISO = new Date(Date.now() + 7 * 86400000)
@@ -316,89 +318,95 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card className="h-[380px] xl:col-span-2">
-          <CardHeader className="flex items-center justify-between flex-row pb-2">
-            <div className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5" />
-              <CardTitle>Doanh thu theo rạp chiếu</CardTitle>
-            </div>
-          </CardHeader>
+        {user?.role === "ADMIN" && (
+          <Card className="h-[380px] xl:col-span-2">
+            <CardHeader className="flex items-center justify-between flex-row pb-2">
+              <div className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5" />
+                <CardTitle>Doanh thu theo rạp chiếu</CardTitle>
+              </div>
+            </CardHeader>
 
-          <CardContent className="h-[300px] pt-0">
-            {loading ? (
-              <div className="h-full w-full animate-pulse rounded-xl bg-muted/40" />
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={byCinema}
-                  margin={{ top: 12, right: 12, left: 4, bottom: 0 }}
-                >
-                  <defs>
-                    <linearGradient
-                      id="revenueGradient"
-                      x1="0"
-                      y1="0"
-                      x2="0"
-                      y2="1"
-                    >
-                      <stop
-                        offset="0%"
-                        stopColor="hsl(var(--primary))"
-                        stopOpacity={0.9}
-                      />
-                      <stop
-                        offset="100%"
-                        stopColor="hsl(var(--primary))"
-                        stopOpacity={0.4}
-                      />
-                    </linearGradient>
-                  </defs>
+            <CardContent className="h-[300px] pt-0">
+              {loading ? (
+                <div className="h-full w-full animate-pulse rounded-xl bg-muted/40" />
+              ) : (
+                // Only show chart if NOT Manager (Admin sees it). 
+                // Wait, if I am Manager, valid `byCinema` might be just my cinema or global? 
+                // Requirement says: "Admin sees Cinema Comparison Chart. Manager hides this chart".
+                // I need to useAuth() hook here to check role.
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={byCinema}
+                    margin={{ top: 12, right: 12, left: 4, bottom: 0 }}
+                  >
+                    <defs>
+                      <linearGradient
+                        id="revenueGradient"
+                        x1="0"
+                        y1="0"
+                        x2="0"
+                        y2="1"
+                      >
+                        <stop
+                          offset="0%"
+                          stopColor="hsl(var(--primary))"
+                          stopOpacity={0.9}
+                        />
+                        <stop
+                          offset="100%"
+                          stopColor="hsl(var(--primary))"
+                          stopOpacity={0.4}
+                        />
+                      </linearGradient>
+                    </defs>
 
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    vertical={false}
-                    stroke="hsl(var(--border))"
-                  />
-                  <XAxis
-                    dataKey="name"
-                    tickLine={false}
-                    axisLine={false}
-                    tick={{
-                      fontSize: 15,
-                      fill: "hsl(var(--muted-foreground))",
-                    }}
-                  />
-                  <YAxis
-                    tickFormatter={fmtNumber}
-                    tickLine={false}
-                    axisLine={false}
-                    tick={{
-                      fontSize: 13,
-                      fill: "hsl(var(--muted-foreground))",
-                    }}
-                  />
-                  <Tooltip
-                    formatter={(value: number | string) => fmtVND(value)}
-                    cursor={{ fill: "rgba(148, 163, 184, 0.18)" }}
-                  />
-                  <Legend
-                    verticalAlign="top"
-                    align="right"
-                    iconType="circle"
-                    wrapperStyle={{ fontSize: 12 }}
-                  />
-                  <Bar
-                    dataKey="revenue"
-                    name="Doanh thu"
-                    fill="url(#revenueGradient)"
-                    radius={[8, 8, 0, 0]}
-                    maxBarSize={48}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      vertical={false}
+                      stroke="hsl(var(--border))"
+                    />
+                    <XAxis
+                      dataKey="name"
+                      tickLine={false}
+                      axisLine={false}
+                      tick={{
+                        fontSize: 15,
+                        fill: "hsl(var(--muted-foreground))",
+                      }}
+                    />
+                    <YAxis
+                      tickFormatter={fmtNumber}
+                      tickLine={false}
+                      axisLine={false}
+                      tick={{
+                        fontSize: 13,
+                        fill: "hsl(var(--muted-foreground))",
+                      }}
+                    />
+                    <Tooltip
+                      formatter={(value: number | string) => fmtVND(value)}
+                      cursor={{ fill: "rgba(148, 163, 184, 0.18)" }}
+                    />
+                    <Legend
+                      verticalAlign="top"
+                      align="right"
+                      iconType="circle"
+                      wrapperStyle={{ fontSize: 12 }}
+                    />
+                    <Bar
+                      dataKey="revenue"
+                      name="Doanh thu"
+                      fill="url(#revenueGradient)"
+                      radius={[8, 8, 0, 0]}
+                      maxBarSize={48}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Hàng biểu đồ 2 */}
@@ -518,9 +526,8 @@ function MetricCard({ title, value, icon, loading, delta }: MetricCardProps) {
           </CardTitle>
           {typeof delta === "number" && (
             <span
-              className={`inline-flex items-center text-xs font-medium ${
-                delta >= 0 ? "text-emerald-600" : "text-rose-600"
-              }`}
+              className={`inline-flex items-center text-xs font-medium ${delta >= 0 ? "text-emerald-600" : "text-rose-600"
+                }`}
             >
               {delta >= 0 ? "+" : ""}
               {Math.abs(delta)}%

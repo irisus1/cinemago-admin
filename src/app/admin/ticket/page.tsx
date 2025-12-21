@@ -65,14 +65,8 @@ export default function AdminWalkupBookingPage() {
 
   // --- LIFTED BOOKING LOGIC ---
   const bookingState = useBookingLogic({
-    isOpen: isSheetOpen, // Note: isOpen here affects some effects within the hook. 
-    // If we want it to run even when closed, we might need to adjust the hook or pass true?
-    // Actually, the minimize logic we added relies on hook running.
-    // The hook's toggle effects (like clearing on close) were removed or modified.
-    // We must ensure the hook knows the "sheet visibility" if it needs to, 
-    // BUT for minimization, the hook should potentially receive `true` or we rely on the hook NOT clearing data on 'isOpen=false'.
-    // In our previous edit we REMOVED the auto-cleanup on isOpen=false.
-    // So passing `isOpen` which toggles is fine, as it changes effects but doesn't kill data.
+    isOpen: isSheetOpen,
+
     movie: selectedMovie,
     cinemaId: selectedCinemaId,
     date: dateStr,
