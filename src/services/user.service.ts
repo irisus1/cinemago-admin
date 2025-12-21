@@ -20,7 +20,7 @@ export type UserParams = {
   page?: number;
   limit?: number;
   search?: string;
-  role?: "ADMIN" | "USER";
+  role?: "ADMIN" | "USER" | "SUPER_ADMIN" | "CINEMA_MANAGER" | "STAFF";
   isActive?: boolean;
 };
 
