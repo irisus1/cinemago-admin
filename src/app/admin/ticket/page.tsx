@@ -15,6 +15,7 @@ import BookingSheet from "./bookingSheet";
 import RefreshLoader from "@/components/Loading";
 import { useBookingLogic } from "@/components/ticket/useBookingSheet";
 import { FloatingIndicator } from "@/components/ticket/FloatingIndicator";
+import { useAuth } from "@/context/AuthContext";
 
 /** Helpers */
 const todayLocalISODate = () => {
@@ -50,6 +51,11 @@ export default function AdminWalkupBookingPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
+  const { user } = useAuth();
+
+  // RBAC for Cinema Manager
+  const isCinemaManager = user?.role === "CINEMA_MANAGER";
+  const managerCinemaId = user?.cinemaId;
 
   // --- STATE ---
   const [dateStr, setDateStr] = useState<string>(() => {
@@ -128,6 +134,12 @@ export default function AdminWalkupBookingPage() {
           targetId = savedId;
         } else if (list.length > 0) {
           targetId = String(list[0].id);
+        }
+
+        // RBAC Override
+        if (isCinemaManager && managerCinemaId) {
+          // Ensure the manager's cinema is in the list (or just set it forcefully)
+          targetId = managerCinemaId;
         }
 
         if (targetId) {
@@ -278,9 +290,10 @@ export default function AdminWalkupBookingPage() {
               Chọn rạp:
             </label>
             <select
-              className="rounded-md border px-3 py-2 text-sm bg-white min-w-[200px]"
+              className="rounded-md border px-3 py-2 text-sm bg-white min-w-[200px] disabled:bg-gray-100 disabled:text-gray-500"
               value={selectedCinemaId}
               onChange={(e) => handleCinemaChange(e.target.value)}
+              disabled={isCinemaManager}
             >
               {cinemas.length === 0 && (
                 <option value="">Đang tải rạp...</option>

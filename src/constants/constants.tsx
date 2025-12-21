@@ -13,37 +13,44 @@ import { GiTheaterCurtains } from "react-icons/gi";
 
 export type SidebarTab =
   | {
-      type?: "item"; // mặc định
+    type?: "item"; // mặc định
+    name: string;
+    path: string;
+    icon: React.ReactNode;
+    allowedRoles?: string[];
+  }
+  | {
+    type: "group";
+    name: string;
+    icon: React.ReactNode;
+    children: {
       name: string;
       path: string;
       icon: React.ReactNode;
-    }
-  | {
-      type: "group";
-      name: string;
-      icon: React.ReactNode;
-      children: {
-        name: string;
-        path: string;
-        icon: React.ReactNode;
-      }[];
-    };
+      allowedRoles?: string[];
+    }[];
+    allowedRoles?: string[];
+  };
 
 export const adminTabs: SidebarTab[] = [
   {
     name: "Trang chủ",
     path: "/admin/dashboard",
     icon: <RxDashboard className="w-6 h-6" />,
+    allowedRoles: ["SUPER_ADMIN", "CINEMA_MANAGER", "ADMIN"],
   },
   {
     name: "Đặt vé trực tiếp",
     path: "/admin/ticket",
     icon: <LucideTicket className="w-6 h-6" />,
+    // STAFF only sees this
+    allowedRoles: ["SUPER_ADMIN", "CINEMA_MANAGER", "STAFF", "ADMIN"],
   },
   {
     name: "Quản lý đơn vé",
     path: "/admin/bookings",
     icon: <MdOutlineBookmarks className="w-6 h-6" />,
+    allowedRoles: ["SUPER_ADMIN", "CINEMA_MANAGER", "ADMIN"],
   },
 
   // ==== GROUP: Phim & suất chiếu ====
@@ -51,6 +58,7 @@ export const adminTabs: SidebarTab[] = [
     type: "group",
     name: "Phim & suất chiếu",
     icon: <GiFilmSpool className="w-6 h-6" />,
+    allowedRoles: ["SUPER_ADMIN", "CINEMA_MANAGER", "ADMIN"],
     children: [
       {
         name: "Quản lý phim",
@@ -70,6 +78,7 @@ export const adminTabs: SidebarTab[] = [
     type: "group",
     name: "Rạp & phòng chiếu",
     icon: <GiTheaterCurtains className="w-6 h-6" />,
+    allowedRoles: ["SUPER_ADMIN", "CINEMA_MANAGER", "ADMIN"],
     children: [
       {
         name: "Quản lý rạp chiếu phim",
@@ -88,20 +97,24 @@ export const adminTabs: SidebarTab[] = [
     name: "Quản lý thể loại phim",
     path: "/admin/genres",
     icon: <FiChrome className="w-6 h-6" />,
+    allowedRoles: ["SUPER_ADMIN", "CINEMA_MANAGER", "ADMIN"],
   },
   {
     name: "Quản lý đồ ăn/uống",
     path: "/admin/food-drink",
     icon: <BiFoodMenu className="w-6 h-6" />,
+    allowedRoles: ["SUPER_ADMIN", "CINEMA_MANAGER", "ADMIN"],
   },
   {
     name: "Đánh giá phim",
     path: "/admin/reviews",
     icon: <MdStars className="w-6 h-6" />,
+    allowedRoles: ["SUPER_ADMIN", "CINEMA_MANAGER", "ADMIN"],
   },
   {
     name: "Quản lý người dùng",
     path: "/admin/users",
     icon: <FiUser className="w-6 h-6" />,
+    allowedRoles: ["SUPER_ADMIN", "ADMIN"],
   },
 ];
