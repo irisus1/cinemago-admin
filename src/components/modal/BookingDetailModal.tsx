@@ -10,6 +10,7 @@ import {
   ShowTime,
   SeatModal,
 } from "@/services";
+import { useAuth } from "@/context/AuthContext";
 
 // 1. Cập nhật Interface Props để nhận các Map
 interface Props {
@@ -48,6 +49,7 @@ const BookingDetailModal: React.FC<Props> = ({
 }) => {
   const [details, setDetails] = useState<BookingDetails | null>(null);
   const [loadingFood, setLoadingFood] = useState(false);
+  const { user: currentUser } = useAuth(); // <--- Get current user
 
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat("vi-VN", {
@@ -138,13 +140,23 @@ const BookingDetailModal: React.FC<Props> = ({
 
       // 1. Lấy User từ Map
       const user = booking.userId ? userMap[booking.userId] : null;
-      const userObj = user
-        ? {
+
+      let userObj = null;
+      if (user) {
+        // Logic override tên nếu là chính mình đặt (Khách vãng lai)
+        if (currentUser && user.email === currentUser.email) {
+          userObj = {
+            name: "Khách vãng lai (Tại quầy)",
+            email: "",
+
+          };
+        } else {
+          userObj = {
             name: user.fullname,
             email: user.email,
-            gender: user.gender,
-          }
-        : null;
+          };
+        }
+      }
 
       // 2. Lấy Showtime & Room & Cinema từ Map
       const showTime = showTimeMap[booking.showtimeId];
@@ -315,8 +327,8 @@ const BookingDetailModal: React.FC<Props> = ({
                           {seat.type === "VIP"
                             ? "Ghế VIP"
                             : seat.type === "COUPLE"
-                            ? "Ghế đôi"
-                            : "Ghế thường"}
+                              ? "Ghế đôi"
+                              : "Ghế thường"}
                         </td>
                         <td className="px-3 py-2 text-right font-medium">
                           {formatCurrency(seat.price)}
@@ -358,11 +370,10 @@ const BookingDetailModal: React.FC<Props> = ({
                     {details.foodItems.map((item, idx) => (
                       <tr key={idx} className="hover:bg-gray-50">
                         <td
-                          className={`px-4 py-2 font-medium ${
-                            item.name.includes("Đang tải")
-                              ? "text-gray-400 italic"
-                              : "text-gray-800"
-                          }`}
+                          className={`px-4 py-2 font-medium ${item.name.includes("Đang tải")
+                            ? "text-gray-400 italic"
+                            : "text-gray-800"
+                            }`}
                         >
                           {item.name}
                         </td>

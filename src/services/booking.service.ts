@@ -51,6 +51,7 @@ export type MyBookingParams = {
   limit?: number;
   showtimeId?: string;
   type?: string;
+  cinemaId?: string;
 };
 
 type ApiErrorBody = { message?: string };

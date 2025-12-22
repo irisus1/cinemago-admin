@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import RefreshLoader from "@/components/Loading";
+import { useAuth } from "@/context/AuthContext";
 
 export default function BookingsListPage() {
   const {
@@ -79,6 +80,8 @@ export default function BookingsListPage() {
       });
   }, [bookings, showTimeMap, movieMap]);
 
+  const { user: currentUser } = useAuth();
+
   const columns: Column<Booking>[] = [
     {
       header: "Mã đơn",
@@ -93,15 +96,20 @@ export default function BookingsListPage() {
       render: (_, r) => {
         if (!r.userId)
           return <span className="text-gray-400 italic">Khách vãng lai</span>;
-        const user = userMap[r.userId];
 
-        return user ? (
+        const bookingUser = userMap[r.userId];
+        if (!bookingUser) return <span className="text-xs animate-pulse">Đang tải...</span>;
+
+        // Logic check offline booking (NV/Manager đặt hộ)
+        if (currentUser && bookingUser.email === currentUser.email) {
+          return <span className="text-gray-500 italic">Khách vãng lai (Tại quầy)</span>;
+        }
+
+        return (
           <div>
-            <div className="font-medium text-sm">{user.fullname}</div>
-            <div className="text-xs text-gray-500">{user.email}</div>
+            <div className="font-medium text-sm">{bookingUser.fullname}</div>
+            <div className="text-xs text-gray-500">{bookingUser.email}</div>
           </div>
-        ) : (
-          <span className="text-xs animate-pulse">Đang tải...</span>
         );
       },
     },

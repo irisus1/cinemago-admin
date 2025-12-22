@@ -15,6 +15,7 @@ import {
   Room,
   Cinema,
 } from "@/services";
+import { useAuth } from "@/context/AuthContext";
 
 // Định nghĩa các Map
 type UserMap = Record<string, User>;
@@ -62,6 +63,8 @@ export function useBookingLogic() {
   const canClearFilters =
     showtimeFilter !== "__ALL__" || typeFilter !== "__ALL__";
 
+  const { user } = useAuth();
+
   const fetchBookings = useCallback(async () => {
     try {
       setLoading(true);
@@ -71,6 +74,7 @@ export function useBookingLogic() {
         limit,
         showtimeId: showtimeFilter === "__ALL__" ? undefined : showtimeFilter,
         type: typeFilter === "__ALL__" ? undefined : typeFilter,
+        cinemaId: user?.role === "MANAGER" ? user.cinemaId : undefined,
       });
 
       const bookingList = res.data;
