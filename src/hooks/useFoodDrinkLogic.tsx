@@ -58,26 +58,53 @@ export function useFoodDrinkLogic() {
   };
 
   // --- CINEMA LOADING ---
+  // --- CINEMA LOADING ---
   useEffect(() => {
-    (async () => {
+    const initCinemaData = async () => {
+
+      if (isManager && user?.cinemaId) {
+        setCinemaId(user.cinemaId);
+        // setCinemaOptions([{
+        //   value: user.cinemaId,
+        //   label: (user as any).cinemaName || "Rạp hiện tại",
+        //   meta: ""
+        // }]);
+        return;
+      }
+
       try {
-        const res = await cinemaService.getAllCinemas({ page: 1, limit: 100 });
-        const opts = (res.data as Cinema[])?.map((c) => ({
+        const first = await cinemaService.getAllCinemas({ page: 1, limit: 7 });
+        const total = first.pagination.totalPages;
+        let allCinemas = first.data;
+
+        if (total > 1) {
+          const promises = [];
+          for (let i = 2; i <= total; i++) {
+            promises.push(cinemaService.getAllCinemas({ page: i, limit: 7 }));
+          }
+          const results = await Promise.all(promises);
+          const others = results.flatMap((r) => r.data);
+          allCinemas = [...allCinemas, ...others];
+        }
+
+        const opts = allCinemas.map((c) => ({
           value: c.id,
           label: c.name,
           meta: c.city,
-        })) || [];
+        }));
         setCinemaOptions(opts);
 
-        if (isManager && user?.cinemaId) {
-          setCinemaId(user.cinemaId);
-        } else if (!isManager && opts.length > 0 && !cinemaId) {
+        // Logic chọn rạp mặc định cho Admin nếu chưa chọn
+        if (!cinemaId && opts.length > 0) {
           setCinemaId(opts[0].value);
         }
       } catch (e) {
         console.error("Load cinemas error", e);
+        toast.error("Không thể tải danh sách rạp");
       }
-    })();
+    };
+
+    initCinemaData();
   }, [isManager, user?.cinemaId]);
 
   // --- DATA FETCHING ---

@@ -482,8 +482,34 @@ export const useBookingLogic = ({
         });
         setGroupedData(result);
 
-        const foodList = await foodDrinkService.getFoodDrinks();
-        setFoods(foodList.data || []);
+        let allFoods: any[] = [];
+        let currentPage = 1;
+        let hasMore = true;
+        const LIMIT = 10;
+
+        try {
+          while (hasMore) {
+            const foodRes = await foodDrinkService.getFoodDrinks({
+              page: currentPage,
+              limit: LIMIT,
+              cinemaId: cinemaId,
+            });
+
+            const newItems = foodRes?.data || [];
+
+            allFoods = [...allFoods, ...newItems];
+
+            if (foodRes?.pagination.hasNextPage) {
+              currentPage++;
+            } else {
+              hasMore = false;
+            }
+          }
+        } catch (foodError) {
+          console.error("Error fetching foods:", foodError);
+        }
+
+        setFoods(allFoods);
 
         // --- AUTO RESTORE SHOWTIME ---
         if (foundShowtimeToRestore) {
@@ -510,9 +536,7 @@ export const useBookingLogic = ({
   }, [isOpen, movie, cinemaId, date, handleSelectShowtime]);
 
 
-  // 1. Reset state khi đóng sheet
-  // 1. Reset state khi đóng sheet -> ĐÃ BỎ (Để hỗ trợ minimize)
-  // Thay vào đó, cung cấp hàm Manual Reset
+
   const resetBookingSession = useCallback(async () => {
     await releaseAllSeats();
 
@@ -757,6 +781,7 @@ export const useBookingLogic = ({
         showtimeId: String(selectedShowtime.id),
         seatIds: selectedSeats,
         foodDrinks: foodDrinkPayload,
+        cinemaId: cinemaId,
       };
 
       console.log("=== PAYLOAD GỬI ĐI ===", bookingData);

@@ -14,6 +14,8 @@ import {
   ServerPaginated,
 } from "@/services";
 
+import { useAuth } from "@/context/AuthContext";
+
 // ===== Helpers (Logic thuần túy) =====
 const pad = (n: number) => String(n).padStart(2, "0");
 
@@ -48,6 +50,9 @@ export function useShowtimeFormLogic({
   onSuccess,
   onClose,
 }: Props) {
+  const { user } = useAuth();
+  const isManager = user?.role === "MANAGER";
+
   const isPreSelected = Boolean(movieId && movieId !== "__ALL__");
 
   const [loading, setLoading] = useState(false);
@@ -105,14 +110,24 @@ export function useShowtimeFormLogic({
 
     const fetchData = async () => {
       try {
-        // Chạy song song 2 API lấy list
-        const [cinemaRes, moviesRes] = await Promise.all([
-          cinemaService.getAllCinemas(),
-          movieService.getAllMovies(),
-        ]);
+        let loadedMovies: Movie[] = [];
 
-        setCinemas(cinemaRes.data ?? []);
-        const loadedMovies = moviesRes.data ?? [];
+        if (isManager && user?.cinemaId) {
+          const moviesRes = await movieService.getAllMovies();
+          loadedMovies = moviesRes.data ?? [];
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          setCinemas([{ id: user.cinemaId, name: (user as any).cinemaName || "Rạp hiện tại" } as any]);
+        } else {
+          // Chạy song song 2 API lấy list
+          const [cinemaRes, moviesRes] = await Promise.all([
+            cinemaService.getAllCinemas(),
+            movieService.getAllMovies(),
+          ]);
+
+          setCinemas(cinemaRes.data ?? []);
+          loadedMovies = moviesRes.data ?? [];
+        }
+
         setMovies(loadedMovies);
 
         // Logic tự động set Duration nếu đã có movie được chọn từ trước (từ props)
@@ -127,6 +142,7 @@ export function useShowtimeFormLogic({
         toast.error("Lỗi tải dữ liệu ban đầu");
       }
     };
+
 
     fetchData();
   }, [open, movieId, isPreSelected]);
@@ -208,7 +224,7 @@ export function useShowtimeFormLogic({
       setFormat(showtime.format ?? "2D");
       setSubtitle(Boolean(showtime.subtitle));
     } else {
-      setCinemaId("");
+      setCinemaId(isManager && user?.cinemaId ? user.cinemaId : "");
       setRoomId("");
       setPrice("");
       setStartDate("");
@@ -542,6 +558,10 @@ export function useShowtimeFormLogic({
     removeTimeSlot,
     handleSubmit,
     handleMovieChange,
+
     handleCinemaChange,
+
+    // Auth
+    isManager,
   };
 }

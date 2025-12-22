@@ -32,13 +32,16 @@ type Props = {
   movieId: string;
   showtime?: ShowTime;
   onSuccess?: () => void;
+  disableCinemaSelect?: boolean;
+  fixedCinemaId?: string;
 };
 
 export default function ShowtimeModal(props: Props) {
-  const { open, onClose, mode } = props;
+  const { open, onClose, mode, disableCinemaSelect } = props;
 
   // Gọi Hook Logic
   const {
+    isManager,
     loading,
     cinemas,
     rooms,
@@ -120,7 +123,9 @@ export default function ShowtimeModal(props: Props) {
             <Select
               value={cinemaId}
               onValueChange={handleCinemaChange}
-              disabled={!selectedMovieId || movies.length === 0}
+              disabled={
+                disableCinemaSelect || !selectedMovieId || movies.length === 0
+              }
             >
               <SelectTrigger className="mt-1 h-10 w-full">
                 <SelectValue

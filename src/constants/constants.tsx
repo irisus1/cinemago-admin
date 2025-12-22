@@ -69,6 +69,7 @@ export const adminTabs: SidebarTab[] = [
         name: "Quản lý phim",
         path: "/admin/movies",
         icon: <FiFilm className="w-5 h-5" />,
+        allowedRoles: ["ADMIN"],
       },
       {
         name: "Quản lý suất chiếu",

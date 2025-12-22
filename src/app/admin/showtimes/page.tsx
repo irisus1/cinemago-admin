@@ -75,6 +75,9 @@ export default function ShowtimesListPage() {
     dialogTitle,
     dialogMessage,
     onConfirm,
+
+    isManager,
+    user,
   } = useShowtimeLogic();
 
   const [viewOpen, setViewOpen] = useState(false);
@@ -165,19 +168,21 @@ export default function ShowtimesListPage() {
             </div>
 
             {/* Lọc theo rạp */}
-            <div className="min-w-0 w-[260px] ">
-              <SearchableCombobox
-                options={filteredCinemaOptions}
-                value={cinemaId}
-                onChange={(id) => {
-                  setCinemaId(id);
-                  setPage(1);
-                }}
-                placeholder="Chọn rạp"
-                searchPlaceholder="Tìm theo tên rạp / thành phố..."
-                widthClass="w-[260px] "
-              />
-            </div>
+            {!isManager && (
+              <div className="min-w-0 w-[260px] ">
+                <SearchableCombobox
+                  options={filteredCinemaOptions}
+                  value={cinemaId}
+                  onChange={(id) => {
+                    setCinemaId(id);
+                    setPage(1);
+                  }}
+                  placeholder="Chọn rạp"
+                  searchPlaceholder="Tìm theo tên rạp / thành phố..."
+                  widthClass="w-[260px] "
+                />
+              </div>
+            )}
 
             {/* Lọc theo trạng thái active */}
             <div className="min-w-0 w-[200px] border border-gray-400 rounded-lg">
@@ -503,6 +508,8 @@ export default function ShowtimesListPage() {
         mode={editShowtime ? "edit" : "create"}
         showtime={editShowtime || undefined}
         movieId={movieId}
+        disableCinemaSelect={isManager}
+        fixedCinemaId={isManager && user?.cinemaId ? user.cinemaId : undefined}
         onSuccess={async () => {
           handleRefresh();
         }}
