@@ -15,6 +15,10 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { FoodDrink } from "@/services";
 import { toast } from "sonner";
+import {
+  SearchableCombobox,
+  SelectOption,
+} from "@/components/SearchableCombobox";
 
 type FormDataFood = {
   name: string;
@@ -22,6 +26,7 @@ type FormDataFood = {
   price: string;
   type: "SNACK" | "DRINK" | "COMBO";
   file?: File | null;
+  cinemaId?: string;
 };
 
 export default function FoodDrinkModal({
@@ -29,6 +34,9 @@ export default function FoodDrinkModal({
   onClose,
   editData,
   onSubmit,
+  cinemaOptions,
+  hideCinemaSelect,
+  fixedCinemaId,
 }: {
   open: boolean;
   onClose: () => void;
@@ -38,12 +46,16 @@ export default function FoodDrinkModal({
     mode: "create" | "edit",
     original?: FoodDrink | null
   ) => void | Promise<void>;
+  cinemaOptions?: SelectOption[];
+  hideCinemaSelect?: boolean;
+  fixedCinemaId?: string;
 }) {
   const [name, setName] = React.useState("");
   const [desc, setDesc] = React.useState("");
   const [price, setPrice] = React.useState("");
   const [type, setType] = React.useState<"SNACK" | "DRINK" | "COMBO">("SNACK");
   const [file, setFile] = React.useState<File | null>(null);
+  const [cinemaId, setCinemaId] = React.useState("");
   const [preview, setPreview] = React.useState<string | null>(null);
   const toastRef = React.useRef<string | null>(null);
   React.useEffect(() => {
@@ -53,16 +65,19 @@ export default function FoodDrinkModal({
       setPrice(String(editData.price));
       setType(editData.type as "SNACK" | "DRINK" | "COMBO");
       setPreview(editData.image ?? null);
+      // @ts-expect-error: Assuming editData might have cinemaId if updated in service
+      setCinemaId(editData.cinemaId || fixedCinemaId || "");
       setFile(null);
     } else {
       setName("");
       setDesc("");
       setPrice("");
       setType("SNACK");
+      setCinemaId(fixedCinemaId || "");
       setFile(null);
       setPreview(null);
     }
-  }, [editData, open]);
+  }, [editData, open, fixedCinemaId]);
 
   const onPickFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -82,6 +97,11 @@ export default function FoodDrinkModal({
       return;
     }
 
+    if (!hideCinemaSelect && !cinemaId) {
+      toast.warning("Vui lòng chọn rạp");
+      return;
+    }
+
     const mode: "create" | "edit" = editData ? "edit" : "create";
 
     onSubmit?.(
@@ -91,6 +111,7 @@ export default function FoodDrinkModal({
         price,
         type,
         file,
+        cinemaId: hideCinemaSelect ? fixedCinemaId : cinemaId,
       },
       mode,
       editData ?? null
@@ -203,6 +224,21 @@ export default function FoodDrinkModal({
                 </select>
               </div>
             </div>
+            {!hideCinemaSelect && cinemaOptions && (
+              <div>
+                <Label className="text-base font-medium">Rạp chiếu</Label>
+                <div className="mt-3">
+                  <SearchableCombobox
+                    options={cinemaOptions}
+                    value={cinemaId}
+                    onChange={setCinemaId}
+                    placeholder="Chọn rạp"
+                    searchPlaceholder="Tìm rạp..."
+                    widthClass="w-full"
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

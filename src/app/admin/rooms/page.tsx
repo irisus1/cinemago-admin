@@ -66,6 +66,7 @@ export default function RoomCard() {
     // New Submit Logic
     isSubmitting,
     handleSubmitRoom,
+    isManager,
   } = useRoomLogic();
 
   // ===== columns =====
@@ -82,12 +83,12 @@ export default function RoomCard() {
       render: (v) =>
         v
           ? Intl.DateTimeFormat("vi-VN", {
-              hour: "2-digit",
-              minute: "2-digit",
-              day: "2-digit",
-              month: "2-digit",
-              year: "numeric",
-            }).format(new Date(v as string))
+            hour: "2-digit",
+            minute: "2-digit",
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+          }).format(new Date(v as string))
           : "—",
     },
     {
@@ -153,20 +154,22 @@ export default function RoomCard() {
 
         <div className="grid w-full grid-cols-[1fr_auto] gap-x-4 gap-y-3">
           <div className="flex flex-wrap items-center gap-4 min-w-0">
-            <div className="min-w-0">
-              <SearchableCombobox
-                options={cinemaOptions}
-                value={cinemaId}
-                onChange={(id) => {
-                  setCinemaId(id);
-                  setPage(1);
-                  // fetchRooms(1);
-                }}
-                placeholder="Chọn rạp"
-                searchPlaceholder="Tìm rạp theo tên / thành phố..."
-                widthClass="w-[260px]"
-              />
-            </div>
+            {!isManager && (
+              <div className="min-w-0">
+                <SearchableCombobox
+                  options={cinemaOptions}
+                  value={cinemaId}
+                  onChange={(id) => {
+                    setCinemaId(id);
+                    setPage(1);
+                    // fetchRooms(1);
+                  }}
+                  placeholder="Chọn rạp"
+                  searchPlaceholder="Tìm rạp theo tên / thành phố..."
+                  widthClass="w-[260px]"
+                />
+              </div>
+            )}
 
             <div className="relative w-[240px]">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />

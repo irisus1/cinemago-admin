@@ -24,6 +24,7 @@ export type {
 
 export type {
   Cinema,
+  CinemaPublic,
   CreateCinemaRequest,
   UpdateCinemaRequest,
   CinemaFormPayload,

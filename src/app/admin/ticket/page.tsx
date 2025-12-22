@@ -54,7 +54,7 @@ export default function AdminWalkupBookingPage() {
   const { user } = useAuth();
 
   // RBAC for Cinema Manager
-  const isCinemaManager = user?.role === "CINEMA_MANAGER";
+  const isCinemaManager = user?.role === "MANAGER";
   const managerCinemaId = user?.cinemaId;
 
   // --- STATE ---

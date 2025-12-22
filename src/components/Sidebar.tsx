@@ -2,7 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FiMenu, FiChevronDown, FiChevronRight, FiMapPin } from "react-icons/fi";
+import {
+  FiMenu,
+  FiChevronDown,
+  FiChevronRight,
+  FiMapPin,
+} from "react-icons/fi";
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import ProfileModal from "./profile/ProfileModal";
@@ -10,7 +15,7 @@ import AccountDropdown from "./profile/AccountDropdown";
 import type { SidebarTab } from "@/constants/constants";
 import { useAuth } from "@/context/AuthContext";
 import { useCinemaStore } from "@/store/useCinemaStore";
-import { cinemaService, type Cinema } from "@/services";
+import { cinemaService, type Cinema, type CinemaPublic } from "@/services";
 
 interface SidebarProps {
   isSidebarOpen: boolean;
@@ -29,50 +34,63 @@ export default function Sidebar({
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
   const { selectedCinemaId, setSelectedCinema } = useCinemaStore();
-  const [cinemas, setCinemas] = useState<Cinema[]>([]);
+  const [currentCinema, setCurrentCinema] = useState<Cinema | CinemaPublic | null>(
+    null
+  );
 
-  // RBAC Filter
-  const filteredTabs = tabs.filter((tab) => {
-    if (!user) return false;
-    // 1. Check parent role
-    if (tab.allowedRoles && !tab.allowedRoles.includes(user.role)) return false;
-    return true;
-  }).map(tab => {
-    // 2. Check children role if group
-    if (tab.type === 'group') {
-      const validChildren = tab.children.filter(child =>
-        !child.allowedRoles || child.allowedRoles.includes(user!.role)
-      );
-      // Return null if no children valid? Or empty group?
-      // Let's keep it but shallow copy
-      return { ...tab, children: validChildren };
-    }
-    return tab;
-  }).filter(tab => {
-    // Remove groups with no children
-    if (tab.type === 'group' && tab.children.length === 0) return false;
-    return true;
-  });
+  const filteredTabs = tabs
+    .filter((tab) => {
+      if (!user) return false;
+      if (tab.allowedRoles && !tab.allowedRoles.includes(user.role))
+        return false;
+      return true;
+    })
+    .map((tab) => {
+      if (tab.type === "group" && tab.children) {
+        const validChildren = tab.children.filter(
+          (child) =>
+            !child.allowedRoles || child.allowedRoles.includes(user!.role)
+        );
 
-  // Fetch Cinemas for ADMIN
-  useEffect(() => {
-    if (user?.role === "ADMIN") {
-      const fetchCinemas = async () => {
-        try {
-          const res = await cinemaService.getAllCinemas({ limit: 100 });
-          setCinemas(res.data || []);
-          // Auto select first if none selected?
-          // if (!selectedCinemaId && res.data.length > 0) {
-          //   setSelectedCinema(res.data[0].id, res.data[0].name);
-          // }
-        } catch (e) {
-          console.error(e);
+        if (validChildren.length === 1) {
+          return {
+            ...validChildren[0],
+          };
         }
-      };
-      fetchCinemas();
-    }
-  }, [user, selectedCinemaId, setSelectedCinema]);
 
+        return { ...tab, children: validChildren };
+      }
+      return tab;
+    })
+    .filter((tab) => {
+      if (tab.type === "group" && tab.children.length === 0) {
+        return false;
+      }
+      return true;
+    });
+
+  useEffect(() => {
+    const fetchCinema = async () => {
+      if (!user) return;
+
+      const targetId = selectedCinemaId || user.cinemaId;
+
+      if (!targetId) {
+        setCurrentCinema(null);
+        return;
+      }
+
+      try {
+        const res = await cinemaService.getCinemaById(targetId);
+
+        setCurrentCinema(res);
+      } catch (e) {
+        console.error(e);
+      }
+    };
+
+    fetchCinema();
+  }, [user, selectedCinemaId, setSelectedCinema]);
 
   const toggleGroup = (name: string) => {
     if (!isSidebarOpen) {
@@ -83,55 +101,31 @@ export default function Sidebar({
     setOpenGroups((prev) => ({ ...prev, [name]: !prev[name] }));
   };
 
-  const handleCinemaChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const id = e.target.value;
-    const found = cinemas.find((c) => c.id === id);
-    if (found) {
-      setSelectedCinema(found.id, found.name);
-    }
-  }
-
-  // Determine Cinema Display
   const renderCinemaSelector = () => {
     if (!user) return null;
 
-    // // A. ADMIN: Dropdown
-    // if (user.role === "ADMIN") {
-    //   if (!isSidebarOpen) return (
-    //     <div className="flex justify-center py-4 border-b">
-    //       <FiMapPin className="text-blue-600 w-6 h-6" title={useCinemaStore.getState().selectedCinemaName || "Chọn rạp"} />
-    //     </div>
-    //   );
+    if (
+      user.role === "MANAGER" ||
+      user.role === "EMPLOYEE"
 
-    //   return (
-    //     <div className="px-3 py-4 border-b">
-    //       <label className="text-xs font-semibold text-gray-500 uppercase mb-2 block">
-    //         Đang làm việc tại
-    //       </label>
-    //       <select
-    //         className="w-full p-2 border rounded-md text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-    //         value={selectedCinemaId || ""}
-    //         onChange={handleCinemaChange}
-    //       >
-    //         <option value="" disabled>-- Chọn rạp --</option>
-    //         {cinemas.map(c => (
-    //           <option key={c.id} value={c.id}>
-    //             {c.name}
-    //           </option>
-    //         ))}
-    //       </select>
-    //     </div>
-    //   )
-    // }
+    ) {
+      if (!currentCinema) {
+        if (!selectedCinemaId) return null;
 
-    // B. MANAGER/EMPLOYEE: Static Text
-    if (user.role === "MANAGER" || user.role === "EMPLOYEE") {
-      const cinemaName = user.cinemaName || selectedCinemaId || "Rạp của bạn"; // Fallback
-      if (!isSidebarOpen) return (
-        <div className="flex justify-center py-4 border-b">
-          <FiMapPin className="text-gray-600 w-6 h-6" title={cinemaName} />
-        </div>
-      );
+        return (
+          <div className="flex justify-center py-4 border-b">
+            <span className="text-gray-400 text-xs">...</span>
+          </div>
+        )
+      }
+
+      const cinemaName = currentCinema.name;
+      if (!isSidebarOpen)
+        return (
+          <div className="flex justify-center py-4 border-b">
+            <FiMapPin className="text-gray-600 w-6 h-6" title={cinemaName} />
+          </div>
+        );
       return (
         <div className="px-3 py-4 border-b">
           <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">
@@ -142,11 +136,11 @@ export default function Sidebar({
             <span className="truncate">{cinemaName}</span>
           </div>
         </div>
-      )
+      );
     }
 
     return null;
-  }
+  };
 
   return (
     <div
@@ -329,6 +323,6 @@ export default function Sidebar({
         onOpenProfile={() => setOpenProfile(true)}
       />
       <ProfileModal open={openProfile} onClose={() => setOpenProfile(false)} />
-    </div >
+    </div>
   );
 }

@@ -238,7 +238,7 @@ export default function ShowtimesListPage() {
           getRowKey={(r) => r.id}
         /> */}
         <table className="w-full text-sm text-left">
-          <thead className="text-xs text-gray-700 uppercase bg-gray-50 border-b">
+          <thead className="text-xs text-gray-700 bg-gray-50 border-b">
             <tr>
               <th className="px-6 py-3 font-medium border-r">Phim</th>
               <th className="px-6 py-3 font-medium border-r">Phòng / Rạp</th>
@@ -573,8 +573,8 @@ export default function ShowtimesListPage() {
                   <span>
                     {viewShowtime.price != null
                       ? new Intl.NumberFormat("vi-VN").format(
-                          Number(viewShowtime.price)
-                        ) + " ₫"
+                        Number(viewShowtime.price)
+                      ) + " ₫"
                       : "—"}
                   </span>
                 </div>

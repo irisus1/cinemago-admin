@@ -127,25 +127,24 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className={`w-full py-2 text-white rounded-md flex items-center justify-center transition-all ${loading
-            className={`w-full py-2 text-white rounded-md flex items-center justify-center transition-all ${loading
-              ? "bg-indigo-400 cursor-not-allowed"
-              : "bg-indigo-600 hover:bg-indigo-700"
-              }`}
-              }`}
+            className={`w-full py-2 text-white rounded-md flex items-center justify-center transition-all ${
+              loading
+                ? "bg-indigo-400 cursor-not-allowed"
+                : "bg-indigo-600 hover:bg-indigo-700"
+            }`}
           >
-          {loading ? (
-            <>
-              <FaSpinner className="animate-spin text-xl mr-2" />
-              {/* Thay đổi text để user biết đang chuyển trang */}
-              <span>Đang chuyển hướng...</span>
-            </>
-          ) : (
-            "Đăng nhập"
-          )}
-        </button>
-      </form>
+            {loading ? (
+              <>
+                <FaSpinner className="animate-spin text-xl mr-2" />
+                {/* Thay đổi text để user biết đang chuyển trang */}
+                <span>Đang chuyển hướng...</span>
+              </>
+            ) : (
+              "Đăng nhập"
+            )}
+          </button>
+        </form>
+      </div>
     </div>
-    </div >
   );
 }

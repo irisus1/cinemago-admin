@@ -9,7 +9,12 @@ import {
   TransitionChild,
 } from "@headlessui/react";
 
-import { type User, type CreateUserRequest, cinemaService, type Cinema } from "@/services";
+import {
+  type User,
+  type CreateUserRequest,
+  cinemaService,
+  type Cinema,
+} from "@/services";
 
 type Gender = "MALE" | "FEMALE" | "OTHER";
 type Role = "ADMIN" | "MANAGER" | "EMPLOYEE";
@@ -24,6 +29,8 @@ type UserModalProps = {
     mode: "create" | "edit",
     user?: User
   ) => void | Promise<void>;
+  fixedRole?: Role; // New prop
+  hideCinemaSelect?: boolean; // New prop
 };
 
 export default function UserModal({
@@ -32,13 +39,14 @@ export default function UserModal({
   mode,
   user,
   onSubmit,
+  fixedRole,
+  hideCinemaSelect = false,
 }: UserModalProps) {
   const [fullname, setFullname] = useState(user?.fullname ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
   const [gender, setGender] = useState<Gender>("MALE");
-  // Default to EMPLOYEE instead of ADMIN for safety, or ADMIN if that's the only other option? 
-  // Requirement: "ADMIN, MANAGER, EMPLOYEE". Default to EMPLOYEE is safer.
-  const [role, setRole] = useState<Role>("EMPLOYEE");
+  // Default to fixedRole if provided, else EMPLOYEE
+  const [role, setRole] = useState<Role>(fixedRole ?? "EMPLOYEE");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -47,7 +55,9 @@ export default function UserModal({
   const [selectedCinemaId, setSelectedCinemaId] = useState<string>("");
 
   useEffect(() => {
-    // Fetch cinemas when modal opens or on mount
+    // Only fetch if we need to show select
+    if (hideCinemaSelect) return;
+
     const fetchCinemas = async () => {
       try {
         const res = await cinemaService.getAllCinemas({ limit: 100 });
@@ -55,9 +65,9 @@ export default function UserModal({
       } catch (e) {
         console.error(e);
       }
-    }
+    };
     fetchCinemas();
-  }, []);
+  }, [hideCinemaSelect]);
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z]).{8,}$/;
@@ -70,14 +80,19 @@ export default function UserModal({
 
   const baseValid = fullname.trim().length > 0 && isEmailValid;
 
-  // Cinema is required if role is NOT ADMIN
+  // Cinema is required if role is NOT ADMIN AND not hidden
   const isCinemaRequired = role !== "ADMIN";
-  const isCinemaValid = !isCinemaRequired || (isCinemaRequired && selectedCinemaId.length > 0);
+  const isCinemaValid =
+    hideCinemaSelect ||
+    !isCinemaRequired ||
+    (isCinemaRequired && selectedCinemaId.length > 0);
 
   const valid =
     mode === "create"
       ? baseValid && isPasswordValid && isCinemaValid
-      : baseValid && (password.length === 0 || isPasswordValid) && isCinemaValid;
+      : baseValid &&
+      (password.length === 0 || isPasswordValid) &&
+      isCinemaValid;
 
   useEffect(() => {
     if (!open) return;
@@ -86,20 +101,19 @@ export default function UserModal({
       setFullname(user.fullname ?? "");
       setEmail(user.email ?? "");
       setGender((user.gender as Gender) || "MALE");
-      // Cast role strictly
-      const r = (user.role as Role);
-      setRole((["ADMIN", "MANAGER", "EMPLOYEE"].includes(r) ? r : "EMPLOYEE") as Role);
+      const r = user.role as Role;
+      setRole(fixedRole ?? (["ADMIN", "MANAGER", "EMPLOYEE"].includes(r) ? r : "EMPLOYEE"));
       setPassword("");
       setSelectedCinemaId(user.cinemaId || "");
     } else {
       setFullname("");
       setEmail("");
       setGender("MALE");
-      setRole("EMPLOYEE");
+      setRole(fixedRole ?? "EMPLOYEE");
       setPassword("");
       setSelectedCinemaId("");
     }
-  }, [open, mode, user]);
+  }, [open, mode, user, fixedRole]);
 
   async function handleSubmit() {
     if (!valid || !onSubmit) return;
@@ -107,23 +121,25 @@ export default function UserModal({
     try {
       setLoading(true);
 
-      const foundCinema = isCinemaRequired ? cinemas.find(c => c.id === selectedCinemaId) : undefined;
+      const foundCinema = isCinemaRequired
+        ? cinemas.find((c) => c.id === selectedCinemaId)
+        : undefined;
 
-      // Type assertion or update service types if needed
-      const payload: any = {
+      const payload: CreateUserRequest = {
         fullname: fullname.trim(),
         email: email.trim(),
         gender,
         role,
       };
 
-      if (isCinemaRequired && foundCinema) {
-        payload.cinemaId = foundCinema.id;
-        payload.cinemaName = foundCinema.name;
-      } else {
-        payload.cinemaId = null;
-        payload.cinemaName = null;
+      if (!hideCinemaSelect) {
+        if (isCinemaRequired && foundCinema) {
+          payload.cinemaId = foundCinema.id;
+        } else {
+          delete payload.cinemaId;
+        }
       }
+      // If hidden, allow parent to inject (payload will lack cinemaId here)
 
       if (mode === "create") {
         payload.password = password.trim();
@@ -258,7 +274,9 @@ export default function UserModal({
                     <select
                       value={role}
                       onChange={(e) => setRole(e.target.value as Role)}
-                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      disabled={!!fixedRole}
+                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${fixedRole ? "bg-gray-100 cursor-not-allowed" : ""
+                        }`}
                     >
                       <option value="ADMIN">Quản trị viên</option>
                       <option value="MANAGER">Quản lý rạp</option>
@@ -267,19 +285,21 @@ export default function UserModal({
                   </div>
                 </div>
 
-                {isCinemaRequired && (
+                {!hideCinemaSelect && isCinemaRequired && (
                   <div>
                     <label className="block text-sm font-medium mb-1">
                       Rạp chiếu phim <span className="text-red-500">*</span>
                     </label>
                     <select
                       value={selectedCinemaId}
-                      onChange={e => setSelectedCinemaId(e.target.value)}
+                      onChange={(e) => setSelectedCinemaId(e.target.value)}
                       className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="">-- Chọn rạp --</option>
-                      {cinemas.map(c => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
+                      {cinemas.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
                       ))}
                     </select>
                   </div>

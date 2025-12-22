@@ -20,8 +20,9 @@ export type UserParams = {
   page?: number;
   limit?: number;
   search?: string;
-  role?: "ADMIN" | "USER" | "SUPER_ADMIN" | "CINEMA_MANAGER" | "STAFF";
+  role?: "ADMIN" | "USER" | "MANAGER" | "EMPLOYEE";
   isActive?: boolean;
+  cinemaId?: string;
 };
 
 type PaginationMeta = {

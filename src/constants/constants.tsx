@@ -37,7 +37,13 @@ export const adminTabs: SidebarTab[] = [
     name: "Trang chủ",
     path: "/admin/dashboard",
     icon: <RxDashboard className="w-6 h-6" />,
-    allowedRoles: ["ADMIN", "MANAGER"],
+    allowedRoles: ["ADMIN"],
+  },
+  {
+    name: "Trang chủ",
+    path: "/admin/manager-dashboard",
+    icon: <RxDashboard className="w-6 h-6" />,
+    allowedRoles: ["MANAGER"],
   },
   {
     name: "Đặt vé trực tiếp",
@@ -83,14 +89,7 @@ export const adminTabs: SidebarTab[] = [
         name: "Quản lý rạp chiếu phim",
         path: "/admin/cinema",
         icon: <TbTheater className="w-5 h-5" />,
-        allowedRoles: ["ADMIN"], // Manager không quản lý danh sách rạp (họ chỉ quản lý rạp của họ -> sẽ xử lý logic riêng hoặc ẩn luôn tab này nếu không cần thiết. Theo yêu cầu: Manager xem Báo cáo, Phim, Lịch chiếu.)
-        // Theo prompt: MANAGER xem "Quản lý phim, Lịch chiếu, Báo cáo". "Quản lý rạp" không được nhắc đến explicit là được xem list rạp. 
-        // Tuy nhiên, nếu Manager quản lý 1 rạp, họ có thể cần vào xem detail rạp của họ. 
-        // Tạm thời để ADMIN cho "Quản lý rạp chiếu phim" (list), nếu Manager cần xem rạp của mình thì họ sẽ xem qua Dashboard hoặc trang Profile rạp riêng.
-        // Prompt nói: ẩn menu hệ thống như "Quản lý Tài khoản", "Cấu hình hệ thống".
-        // Và "Cinema Selector... Manager: Ẩn dropdown, hiển thị tên rạp".
-        // Để an toàn, tôi sẽ để ADMIN cho submenu "Quản lý rạp chiếu phim". "Quản lý phòng chiếu" thì Manager cần để tạo phòng cho rạp họ? 
-        // Prompt không nói rõ "Quản lý phòng chiếu". Chắc chắn là có.
+        allowedRoles: ["ADMIN"],
       },
       {
         name: "Quản lý phòng chiếu",
@@ -105,7 +104,7 @@ export const adminTabs: SidebarTab[] = [
     name: "Quản lý thể loại phim",
     path: "/admin/genres",
     icon: <FiChrome className="w-6 h-6" />,
-    allowedRoles: ["ADMIN", "MANAGER"],
+    allowedRoles: ["ADMIN"],
   },
   {
     name: "Quản lý đồ ăn/uống",
@@ -117,7 +116,13 @@ export const adminTabs: SidebarTab[] = [
     name: "Đánh giá phim",
     path: "/admin/reviews",
     icon: <MdStars className="w-6 h-6" />,
-    allowedRoles: ["ADMIN", "MANAGER"],
+    allowedRoles: ["ADMIN"],
+  },
+  {
+    name: "Quản lý nhân viên",
+    path: "/admin/employees",
+    icon: <FiUser className="w-6 h-6" />,
+    allowedRoles: ["MANAGER"],
   },
   {
     name: "Quản lý người dùng",
