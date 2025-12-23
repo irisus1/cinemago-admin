@@ -95,6 +95,47 @@ export type MovieRevenueResponse = {
 
 // ... (CinemaRevenueItem, CinemaRevenueResponse, MovieRevenueItem, MovieRevenueResponse definitions skipped)
 class DashboardService {
+  async getMovieCount(): Promise<number> {
+    try {
+      const { data } = await api.get<{ data: { totalMovies: number } }>(
+        "/movies/dashboard/total-count"
+      );
+      return data.data.totalMovies ?? 0;
+    } catch (e: unknown) {
+      const msg = getMsg(e, "Không thể lấy tổng số phim.");
+      console.error("Get movie count error:", e);
+      throw new Error(msg);
+    }
+  }
+
+  // GET /cinemas/dashboard/total-count -> { data: { totalCinemas } }
+  async getCinemaCount(): Promise<number> {
+    try {
+      const { data } = await api.get<{ data: { totalCinemas: number } }>(
+        "/cinemas/dashboard/total-count"
+      );
+      return data.data.totalCinemas ?? 0;
+    } catch (e: unknown) {
+      const msg = getMsg(e, "Không thể lấy tổng số rạp chiếu.");
+      console.error("Get cinema count error:", e);
+      throw new Error(msg);
+    }
+  }
+
+  // GET /users/dashboard/total-count -> { data: { totalUsers } }
+  async getUserCount(): Promise<number> {
+    try {
+      const { data } = await api.get<{ data: { totalUsers: number } }>(
+        "/users/dashboard/total-count"
+      );
+      return data.data.totalUsers ?? 0;
+    } catch (e: unknown) {
+      const msg = getMsg(e, "Không thể lấy tổng số người dùng.");
+      console.error("Get user count error:", e);
+      throw new Error(msg);
+    }
+  }
+
   // GET /bookings/dashboard/revenue?startDate=&endDate= -> { data | body: RevenueByPeriod }
   async getRevenueByPeriod(params: DateRangeParams): Promise<RevenueByPeriod> {
     try {

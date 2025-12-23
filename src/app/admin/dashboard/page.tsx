@@ -163,7 +163,7 @@ export default function Dashboard() {
 
       // ---- Revenue period
       const total = Number(rev.totalRevenue ?? 0);
-      const fnb = Number(rev.totalRevenueFromFoodDrink ?? 0);
+      const fnb = Number(rev.totalFoodDrinkRevenue ?? 0);
       const ticket = Math.max(0, total - fnb);
       setRevenue({ total, fnb, ticket });
 
