@@ -23,6 +23,7 @@ export type FoodParams = {
   limit?: number;
   search?: string;
   isAvailable?: boolean;
+  cinemaId?: string;
 };
 
 export type PaginationMeta = {

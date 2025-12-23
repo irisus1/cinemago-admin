@@ -75,23 +75,42 @@ const MovieCard: React.FC<MovieCardProps> = ({
             className="h-full w-full object-cover"
           />
 
-          {/* 2D/3D */}
+          {/* Formats (Dynamic) */}
           <div className="absolute left-0 top-0 flex items-center transition-transform duration-300 ease-in-out sm:group-hover:-translate-y-full">
-            <div className="flex">
-              {formatFlags.includes("2D") && (
-                <div className="flex h-[45px] w-[46px] items-center justify-center bg-[#FF9933] shadow-md">
-                  <span className="rounded-md border-2 border-black p-0.5 text-xs font-bold text-black">
-                    2D
-                  </span>
-                </div>
-              )}
-              {formatFlags.includes("3D") && (
-                <div className="flex h-[45px] w-[46px] items-center justify-center bg-[#663399] shadow-md">
-                  <span className="rounded-md border-2 border-white p-0.5 text-xs font-bold text-white">
-                    3D
-                  </span>
-                </div>
-              )}
+            <div className="flex flex-wrap">
+              {formatFlags.map((fmt) => {
+                let badgeClass =
+                  "flex h-[45px] w-[46px] items-center justify-center shadow-md ";
+                let spanClass = "rounded-md border-2 p-0.5 text-xs font-bold ";
+
+                switch (fmt.toUpperCase()) {
+                  case "2D":
+                    badgeClass += "bg-[#FF9933]";
+                    spanClass += "border-black text-black";
+                    break;
+                  case "3D":
+                    badgeClass += "bg-[#663399]";
+                    spanClass += "border-white text-white";
+                    break;
+                  case "IMAX":
+                    badgeClass += "bg-[#0054A6]";
+                    spanClass += "border-white text-white";
+                    break;
+                  case "4DX":
+                    badgeClass += "bg-black";
+                    spanClass += "border-[#DA291C] text-[#DA291C]";
+                    break;
+                  default:
+                    badgeClass += "bg-gray-800";
+                    spanClass += "border-gray-200 text-white";
+                }
+
+                return (
+                  <div key={fmt} className={badgeClass}>
+                    <span className={spanClass}>{fmt}</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
 

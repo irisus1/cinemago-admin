@@ -22,7 +22,7 @@ import axios from "axios";
 // ===== INTERFACES =====
 
 type Status = "loading" | "verifying" | "success" | "failed";
-type PaymentMethodType = "MOMO" | "ZALOPAY" | "VNPAY" | "UNKNOWN";
+type PaymentMethodType = "MoMo" | "ZaloPay" | "VnPay" | "COD" | "UNKNOWN";
 
 interface PaymentCheckResponse {
   // MoMo
@@ -104,19 +104,24 @@ function PaymentResultContent() {
       if (params.partnerCode === "MOMO") {
         paymentIdFromUrl = params.orderId;
         methodLabel = "Ví MoMo";
-        methodType = "MOMO";
+        methodType = "MoMo";
         amountFromUrl = Number(params.amount);
       } else if (params.vnp_TxnRef) {
         paymentIdFromUrl = params.vnp_TxnRef;
         methodLabel = "VNPay QR";
-        methodType = "VNPAY";
+        methodType = "VnPay";
         amountFromUrl = Number(params.vnp_Amount) / 100;
       } else if (params.apptransid) {
         // ZaloPay: apptransid
         paymentIdFromUrl = params.apptransid;
         methodLabel = "ZaloPay";
-        methodType = "ZALOPAY";
+        methodType = "ZaloPay";
         amountFromUrl = Number(params.amount);
+      } else if (params.method === "COD") {
+        paymentIdFromUrl = params.bookingId || "COD-" + Date.now();
+        methodLabel = "Thanh toán tại quầy (COD)";
+        methodType = "COD";
+        amountFromUrl = 0; // Sẽ lấy từ detail sau, hoặc params.amount nếu có
       }
 
       // Fallback: Lấy từ localStorage nếu URL bị mất param (F5 trang)
@@ -148,22 +153,29 @@ function PaymentResultContent() {
 
         // 2. GỌI ĐÚNG API THEO LOẠI VÍ
         switch (methodType) {
-          case "MOMO":
+          case "MoMo":
             res = (await paymentService.checkStatusMoMo(
               paymentIdFromUrl
             )) as PaymentCheckResponse;
             break;
-          case "ZALOPAY":
+          case "ZaloPay":
             // Bạn cần đảm bảo service có hàm này. Nếu chưa có, hãy thêm vào service frontend.
             res = (await paymentService.checkStatusZaloPay(
               paymentIdFromUrl
             )) as PaymentCheckResponse;
             break;
-          case "VNPAY":
+          case "VnPay":
             // Tương tự cho VNPay
             res = (await paymentService.checkStatusVnPay(
               paymentIdFromUrl
             )) as PaymentCheckResponse;
+            break;
+          case "COD":
+            res = {
+              status: "SUCCESS",
+              message: "Thanh toán tại quầy thành công",
+              bookingId: params.bookingId
+            };
             break;
           default:
             // Trường hợp fallback hoặc local storage không rõ method
@@ -185,11 +197,29 @@ function PaymentResultContent() {
         const backendReturnCode = res.return_code ?? res.data?.return_code; // ZaloPay
 
         // Logic check success tổng hợp
-        const isSuccess =
-          backendCode === 0 || // MoMo thành công
-          backendReturnCode === 1 || // ZaloPay thành công (return_code = 1)
-          backendStatus === "Đã thanh toán" ||
-          backendStatus === "SUCCESS";
+        let isSuccess = false;
+
+        const hasBackendData =
+          backendCode !== undefined ||
+          backendReturnCode !== undefined ||
+          backendStatus !== undefined;
+
+        if (hasBackendData) {
+          isSuccess =
+            backendCode === 0 || // MoMo thành công
+            backendReturnCode === 1 || // ZaloPay thành công (return_code = 1)
+            backendStatus === "Đã thanh toán" ||
+            backendStatus === "SUCCESS";
+        } else {
+          // Fallback: Check URL params if backend data is missing
+          if (methodType === "MoMo") {
+            isSuccess = params.resultCode === "0";
+          } else if (methodType === "VnPay") {
+            isSuccess = params.vnp_ResponseCode === "00";
+          } else if (methodType === "ZaloPay") {
+            isSuccess = params.status === "1";
+          }
+        }
 
         if (isSuccess) {
           setPaymentData((prev) => ({

@@ -25,10 +25,15 @@ import {
   HasIdName,
 } from "./helper";
 
+import { useAuth } from "@/context/AuthContext";
+
 type MovieOpt = { id: string; title: string };
 type CinemaOpt = { id: string; name: string; city?: string };
 
 export function useShowtimeLogic() {
+  const { user } = useAuth();
+  const isManager = user?.role === "MANAGER";
+
   const [showtimes, setShowtimes] = useState<ShowTime[]>([]);
   const [loadingShow, setLoadingShow] = useState(false);
 
@@ -58,7 +63,7 @@ export function useShowtimeLogic() {
   const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
   const [dialogTitle, setDialogTitle] = useState("");
   const [dialogMessage, setDialogMessage] = useState<ReactNode>("");
-  const [onConfirm, setOnConfirm] = useState<() => void>(() => {});
+  const [onConfirm, setOnConfirm] = useState<() => void>(() => { });
 
   const cinemaCache = useRef(new Map<string, string>());
   const roomCache = useRef(new Map<string, string>());
@@ -94,6 +99,25 @@ export function useShowtimeLogic() {
   useEffect(() => {
     (async () => {
       try {
+        // Init logic for Manager
+        if (isManager && user?.cinemaId) {
+          setCinemaId(user.cinemaId);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          setCinemaOptions([{ id: user.cinemaId, name: (user as any).cinemaName || "Rạp hiện tại" }]);
+          // Fetch only movies
+          const movies = await fetchAllPaginatedCached<Movie>("all-movies", (page, limit) =>
+            movieService.getAllMovies({ page, limit }).then((res) => ({
+              data: res.data ?? [],
+              pagination: res.pagination,
+            }))
+          );
+          setMovieOptions(movies.map((m: Movie) => ({
+            id: String(m.id),
+            title: m.title,
+          })));
+          return;
+        }
+
         const [movies, cinemas] = await Promise.all([
           fetchAllPaginatedCached<Movie>("all-movies", (page, limit) =>
             movieService.getAllMovies({ page, limit }).then((res) => ({
@@ -126,7 +150,9 @@ export function useShowtimeLogic() {
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isManager, user?.cinemaId]);
+
+
 
   // === FETCH SHOWTIME THEO FILTER + PAGINATION ===
   useEffect(() => {
@@ -283,7 +309,7 @@ export function useShowtimeLogic() {
             setDialogTitle("Thất bại");
             setDialogMessage(
               "Thao tác thất bại: " +
-                (err instanceof Error ? err.message : String(err))
+              (err instanceof Error ? err.message : String(err))
             );
             setIsErrorDialogOpen(true);
           }
@@ -312,7 +338,7 @@ export function useShowtimeLogic() {
             setDialogTitle("Thất bại");
             setDialogMessage(
               "Thao tác thất bại: " +
-                (err instanceof Error ? err.message : String(err))
+              (err instanceof Error ? err.message : String(err))
             );
             setIsErrorDialogOpen(true);
           }
@@ -413,5 +439,9 @@ export function useShowtimeLogic() {
     dialogTitle,
     dialogMessage,
     onConfirm,
+
+    // Auth
+    isManager,
+    user,
   };
 }

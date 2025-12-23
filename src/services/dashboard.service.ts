@@ -13,15 +13,43 @@ export type DateRangeParams = {
   startDate: string;
   endDate: string;
   type?: string; // nếu sau này bạn muốn filter theo loại booking
+  cinemaId?: string;
+};
+
+export type PeakHourParam = {
+  month: number;
+  year: number;
+  cinemaId?: string;
+  type?: string;
+};
+
+export type PeakHourItem = {
+  hour: number;
+  formattedHour: string;
+  ticketCount: number;
+};
+
+export type PeakHourResponse = {
+  period: any;
+  filters: any;
+  summary: {
+    totalTickets: number;
+    totalBookings: number;
+  };
+  topPeakHour: PeakHourItem | null;
+  top5PeakHours: PeakHourItem[];
+  peakHours: PeakHourItem[];
+  allHours: PeakHourItem[];
 };
 
 // Doanh thu theo giai đoạn
 export type RevenueByPeriod = {
   totalRevenue: number;
-  totalRevenueFromFoodDrink: number;
+  totalFoodDrinkRevenue: number;
+  totalTicketRevenue: number;
+  occupancyRate?: number;
 };
 
-// Item doanh thu theo rạp chiếu
 export type CinemaRevenueItem = {
   cinema: {
     id: string;
@@ -30,6 +58,12 @@ export type CinemaRevenueItem = {
     address?: string;
   } | null;
   totalRevenue: number;
+  // Extra fields from backend logic
+  ticketRevenue?: number;
+  foodDrinkRevenue?: number;
+  bookedSeats?: number;
+  totalSeats?: number;
+  occupancyRate?: number;
 };
 
 export type CinemaRevenueResponse = {
@@ -45,6 +79,12 @@ export type MovieRevenueItem = {
     title?: string;
   } | null;
   totalRevenue: number;
+  // Extra fields from backend logic  
+  ticketRevenue?: number;
+  foodDrinkRevenue?: number;
+  bookedSeats?: number;
+  totalSeats?: number;
+  occupancyRate?: number;
 };
 
 export type MovieRevenueResponse = {
@@ -52,49 +92,9 @@ export type MovieRevenueResponse = {
   moviesRevenue: MovieRevenueItem[];
 };
 
+
+// ... (CinemaRevenueItem, CinemaRevenueResponse, MovieRevenueItem, MovieRevenueResponse definitions skipped)
 class DashboardService {
-  // GET /movies/dashboard/total-count -> { data: { totalMovies } }
-  async getMovieCount(): Promise<number> {
-    try {
-      const { data } = await api.get<{ data: { totalMovies: number } }>(
-        "/movies/dashboard/total-count"
-      );
-      return data.data.totalMovies ?? 0;
-    } catch (e: unknown) {
-      const msg = getMsg(e, "Không thể lấy tổng số phim.");
-      console.error("Get movie count error:", e);
-      throw new Error(msg);
-    }
-  }
-
-  // GET /cinemas/dashboard/total-count -> { data: { totalCinemas } }
-  async getCinemaCount(): Promise<number> {
-    try {
-      const { data } = await api.get<{ data: { totalCinemas: number } }>(
-        "/cinemas/dashboard/total-count"
-      );
-      return data.data.totalCinemas ?? 0;
-    } catch (e: unknown) {
-      const msg = getMsg(e, "Không thể lấy tổng số rạp chiếu.");
-      console.error("Get cinema count error:", e);
-      throw new Error(msg);
-    }
-  }
-
-  // GET /users/dashboard/total-count -> { data: { totalUsers } }
-  async getUserCount(): Promise<number> {
-    try {
-      const { data } = await api.get<{ data: { totalUsers: number } }>(
-        "/users/dashboard/total-count"
-      );
-      return data.data.totalUsers ?? 0;
-    } catch (e: unknown) {
-      const msg = getMsg(e, "Không thể lấy tổng số người dùng.");
-      console.error("Get user count error:", e);
-      throw new Error(msg);
-    }
-  }
-
   // GET /bookings/dashboard/revenue?startDate=&endDate= -> { data | body: RevenueByPeriod }
   async getRevenueByPeriod(params: DateRangeParams): Promise<RevenueByPeriod> {
     try {
@@ -107,7 +107,9 @@ class DashboardService {
 
       return {
         totalRevenue: Number(body.totalRevenue ?? 0),
-        totalRevenueFromFoodDrink: Number(body.totalRevenueFromFoodDrink ?? 0),
+        totalFoodDrinkRevenue: Number(body.totalFoodDrinkRevenue ?? 0),
+        totalTicketRevenue: Number(body.totalTicketRevenue ?? 0),
+        occupancyRate: Number(body.occupancyRate ?? 0),
       };
     } catch (e: unknown) {
       const msg = getMsg(e, "Không thể lấy doanh thu theo giai đoạn.");
@@ -150,6 +152,21 @@ class DashboardService {
     } catch (e: unknown) {
       const msg = getMsg(e, "Không thể lấy doanh thu theo phim.");
       console.error("Lỗi getRevenueByPeriodAndMovie:", e);
+      throw new Error(msg);
+    }
+  }
+
+  // GET /bookings/dashboard/peak-hours?month=&year=&cinemaId=&type=
+  async getPeakHoursInMonth(params: PeakHourParam): Promise<PeakHourResponse> {
+    try {
+      const { data } = await api.get<{ data: PeakHourResponse }>(
+        "/bookings/dashboard/peak-hours",
+        { params }
+      );
+      return data.data;
+    } catch (e: unknown) {
+      const msg = getMsg(e, "Không thể lấy dữ liệu giờ cao điểm.");
+      console.error("Lỗi getPeakHoursInMonth:", e);
       throw new Error(msg);
     }
   }

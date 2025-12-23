@@ -46,7 +46,8 @@ export default function LoginPage() {
       const stored = localStorage.getItem("user");
       const user = stored ? JSON.parse(stored) : null;
 
-      if (user && user.role !== "ADMIN") {
+      const allowedRoles = ["ADMIN", "MANAGER", "EMPLOYEE"];
+      if (user && !allowedRoles.includes(user.role)) {
         toast.error("Bạn không có quyền truy cập trang quản trị!");
         setLoading(false);
         return;
@@ -54,7 +55,13 @@ export default function LoginPage() {
 
       toast.success("Đăng nhập thành công!");
 
-      router.replace("/admin/dashboard");
+      if (user?.role === "EMPLOYEE") {
+        router.replace("/admin/ticket");
+      } else if (user.role === "MANAGER") {
+        router.replace("/admin/manager-dashboard");
+      } else {
+        router.replace("/admin/dashboard");
+      }
     } catch (error) {
       toast.error("Đăng nhập thất bại!");
       setLoading(false);
@@ -122,11 +129,10 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className={`w-full py-2 text-white rounded-md flex items-center justify-center transition-all ${
-              loading
-                ? "bg-indigo-400 cursor-not-allowed"
-                : "bg-indigo-600 hover:bg-indigo-700"
-            }`}
+            className={`w-full py-2 text-white rounded-md flex items-center justify-center transition-all ${loading
+              ? "bg-indigo-400 cursor-not-allowed"
+              : "bg-indigo-600 hover:bg-indigo-700"
+              }`}
           >
             {loading ? (
               <>

@@ -2,12 +2,20 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FiMenu, FiChevronDown, FiChevronRight } from "react-icons/fi";
-import { useState } from "react";
+import {
+  FiMenu,
+  FiChevronDown,
+  FiChevronRight,
+  FiMapPin,
+} from "react-icons/fi";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import ProfileModal from "./profile/ProfileModal";
 import AccountDropdown from "./profile/AccountDropdown";
 import type { SidebarTab } from "@/constants/constants";
+import { useAuth } from "@/context/AuthContext";
+import { useCinemaStore } from "@/store/useCinemaStore";
+import { cinemaService, type Cinema, type CinemaPublic } from "@/services";
 
 interface SidebarProps {
   isSidebarOpen: boolean;
@@ -20,9 +28,69 @@ export default function Sidebar({
   setIsSidebarOpen,
   tabs,
 }: SidebarProps) {
+  const { user } = useAuth();
   const pathname = usePathname();
   const [openProfile, setOpenProfile] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+
+  const { selectedCinemaId, setSelectedCinema } = useCinemaStore();
+  const [currentCinema, setCurrentCinema] = useState<Cinema | CinemaPublic | null>(
+    null
+  );
+
+  const filteredTabs = tabs
+    .filter((tab) => {
+      if (!user) return false;
+      if (tab.allowedRoles && !tab.allowedRoles.includes(user.role))
+        return false;
+      return true;
+    })
+    .map((tab) => {
+      if (tab.type === "group" && tab.children) {
+        const validChildren = tab.children.filter(
+          (child) =>
+            !child.allowedRoles || child.allowedRoles.includes(user!.role)
+        );
+
+        if (validChildren.length === 1) {
+          return {
+            ...validChildren[0],
+          };
+        }
+
+        return { ...tab, children: validChildren };
+      }
+      return tab;
+    })
+    .filter((tab) => {
+      if (tab.type === "group" && tab.children.length === 0) {
+        return false;
+      }
+      return true;
+    });
+
+  useEffect(() => {
+    const fetchCinema = async () => {
+      if (!user) return;
+
+      const targetId = selectedCinemaId || user.cinemaId;
+
+      if (!targetId) {
+        setCurrentCinema(null);
+        return;
+      }
+
+      try {
+        const res = await cinemaService.getCinemaById(targetId);
+
+        setCurrentCinema(res);
+      } catch (e) {
+        console.error(e);
+      }
+    };
+
+    fetchCinema();
+  }, [user, selectedCinemaId, setSelectedCinema]);
 
   const toggleGroup = (name: string) => {
     if (!isSidebarOpen) {
@@ -33,11 +101,51 @@ export default function Sidebar({
     setOpenGroups((prev) => ({ ...prev, [name]: !prev[name] }));
   };
 
+  const renderCinemaSelector = () => {
+    if (!user) return null;
+
+    if (
+      user.role === "MANAGER" ||
+      user.role === "EMPLOYEE"
+
+    ) {
+      if (!currentCinema) {
+        if (!selectedCinemaId) return null;
+
+        return (
+          <div className="flex justify-center py-4 border-b">
+            <span className="text-gray-400 text-xs">...</span>
+          </div>
+        )
+      }
+
+      const cinemaName = currentCinema.name;
+      if (!isSidebarOpen)
+        return (
+          <div className="flex justify-center py-4 border-b">
+            <FiMapPin className="text-gray-600 w-6 h-6" title={cinemaName} />
+          </div>
+        );
+      return (
+        <div className="px-3 py-4 border-b">
+          <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">
+            Rạp chiếu phim
+          </label>
+          <div className="font-bold text-gray-800 flex items-center gap-2">
+            <FiMapPin className="text-blue-600" />
+            <span className="truncate">{cinemaName}</span>
+          </div>
+        </div>
+      );
+    }
+
+    return null;
+  };
+
   return (
     <div
-      className={`${
-        isSidebarOpen ? "w-[300px]" : "w-20"
-      } bg-white shadow-lg transition-all duration-300 ease-in-out h-screen flex flex-col z-50 relative`} // Thêm z-50 để sidebar nổi lên trên nội dung chính
+      className={`${isSidebarOpen ? "w-[300px]" : "w-20"
+        } bg-white shadow-lg transition-all duration-300 ease-in-out h-screen flex flex-col z-50 relative`}
     >
       {/* Header */}
       <div className="flex items-center justify-between p-3 border-b">
@@ -50,7 +158,6 @@ export default function Sidebar({
               height={32}
               className="h-8 w-auto"
             />
-            <span className="sr-only">CinemaGo</span>
           </div>
         )}
         <button
@@ -61,13 +168,15 @@ export default function Sidebar({
         </button>
       </div>
 
+      {/* Cinema Selector */}
+      {renderCinemaSelector()}
+
       <nav
-        className={`p-3 flex-1 ${
-          isSidebarOpen ? "overflow-y-auto" : "overflow-visible"
-        }`}
+        className={`p-3 flex-1 ${isSidebarOpen ? "overflow-y-auto" : "overflow-visible"
+          }`}
       >
         <ul className="space-y-2">
-          {tabs.map((tab, index) => {
+          {filteredTabs.map((tab, index) => {
             if (tab.type === "group") {
               const isChildActive = tab.children.some(
                 (child) => child.path === pathname
@@ -79,11 +188,10 @@ export default function Sidebar({
                   <button
                     type="button"
                     onClick={() => toggleGroup(tab.name)}
-                    className={`flex items-center w-full px-3 py-3.5 rounded-xl justify-between text-[15px] ${
-                      isChildActive
-                        ? "text-blue-600 font-semibold bg-blue-50"
-                        : "text-gray-700 hover:bg-gray-100"
-                    } transition-colors duration-200`}
+                    className={`flex items-center w-full px-3 py-3.5 rounded-xl justify-between text-[15px] ${isChildActive
+                      ? "text-blue-600 font-semibold bg-blue-50"
+                      : "text-gray-700 hover:bg-gray-100"
+                      } transition-colors duration-200`}
                   >
                     <div className="flex items-center">
                       <span
@@ -114,10 +222,9 @@ export default function Sidebar({
                       className={`
                         ml-4 space-y-1 overflow-hidden
                         transition-all duration-300 ease-in-out
-                        ${
-                          isGroupOpen
-                            ? "max-h-40 opacity-100 mt-1"
-                            : "max-h-0 opacity-0"
+                        ${isGroupOpen
+                          ? "max-h-40 opacity-100 mt-1"
+                          : "max-h-0 opacity-0"
                         }
                       `}
                     >
@@ -127,11 +234,10 @@ export default function Sidebar({
                           <li key={childIndex}>
                             <Link
                               href={child.path}
-                              className={`flex items-center px-3 py-2.5 rounded-lg text-[14px] ${
-                                isActive
-                                  ? "text-blue-600 font-semibold bg-blue-50"
-                                  : "text-gray-700 hover:bg-gray-100"
-                              } transition-colors duration-200`}
+                              className={`flex items-center px-3 py-2.5 rounded-lg text-[14px] ${isActive
+                                ? "text-blue-600 font-semibold bg-blue-50"
+                                : "text-gray-700 hover:bg-gray-100"
+                                } transition-colors duration-200`}
                             >
                               <span
                                 className={
@@ -162,11 +268,10 @@ export default function Sidebar({
                             <li key={childIndex}>
                               <Link
                                 href={child.path}
-                                className={`flex items-center px-3 py-2 rounded-md text-[14px] ${
-                                  isActive
-                                    ? "text-blue-600 bg-blue-50 font-medium"
-                                    : "text-gray-700 hover:bg-gray-100"
-                                }`}
+                                className={`flex items-center px-3 py-2 rounded-md text-[14px] ${isActive
+                                  ? "text-blue-600 bg-blue-50 font-medium"
+                                  : "text-gray-700 hover:bg-gray-100"
+                                  }`}
                               >
                                 {child.icon}
                                 <span className="ml-2">{child.name}</span>
@@ -187,11 +292,10 @@ export default function Sidebar({
               <li key={index} className="group relative">
                 <Link
                   href={tab.path}
-                  className={`flex items-center p-3 rounded-lg ${
-                    isActive
-                      ? "text-blue-500 font-bold bg-blue-50"
-                      : "text-gray-700 hover:bg-gray-100"
-                  }`}
+                  className={`flex items-center p-3 rounded-lg ${isActive
+                    ? "text-blue-500 font-bold bg-blue-50"
+                    : "text-gray-700 hover:bg-gray-100"
+                    }`}
                 >
                   <span
                     className={isActive ? "text-blue-500" : "text-gray-700"}

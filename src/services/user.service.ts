@@ -6,20 +6,23 @@ export interface User {
   fullname: string;
   email: string;
   gender: string;
-  role: "ADMIN" | "USER";
+  role: "ADMIN" | "USER" | "MANAGER" | "EMPLOYEE";
   password?: string;
   isActive: boolean;
   createdAt?: string;
   avatarUrl: string;
   updatedAt?: string;
+  cinemaId?: string;
+  cinemaName?: string;
 }
 
 export type UserParams = {
   page?: number;
   limit?: number;
   search?: string;
-  role?: "ADMIN" | "USER";
+  role?: "ADMIN" | "USER" | "MANAGER" | "EMPLOYEE";
   isActive?: boolean;
+  cinemaId?: string;
 };
 
 type PaginationMeta = {

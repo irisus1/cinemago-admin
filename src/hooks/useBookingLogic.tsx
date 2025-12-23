@@ -15,6 +15,7 @@ import {
   Room,
   Cinema,
 } from "@/services";
+import { useAuth } from "@/context/AuthContext";
 
 // Định nghĩa các Map
 type UserMap = Record<string, User>;
@@ -43,7 +44,7 @@ export function useBookingLogic() {
 
   // Pagination states
   const [page, setPage] = useState(1);
-  const [limit] = useState(3);
+  const [limit] = useState(7);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
 
@@ -51,16 +52,54 @@ export function useBookingLogic() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
 
-  //filter
-  const [showtimeFilter, setShowtimeFilter] = useState<"__ALL__" | string>(
-    "__ALL__"
-  );
-  const [typeFilter, setTypeFilter] = useState<
-    "__ALL__" | "online" | "offline"
-  >("__ALL__");
+  // Filters
+  const [showtimeFilter, setShowtimeFilter] = useState<"__ALL__" | string>("__ALL__");
+  const [typeFilter, setTypeFilter] = useState<"__ALL__" | "online" | "offline">("__ALL__");
+  const [statusFilter, setStatusFilter] = useState<"__ALL__" | "Chưa thanh toán" | "Đã thanh toán" | "Thanh toán thất bại">("__ALL__");
+
+  // New Filter Data States
+  const [filterMovies, setFilterMovies] = useState<Movie[]>([]);
+  const [filterShowtimes, setFilterShowtimes] = useState<ShowTime[]>([]);
+  const [selectedMovieFilter, setSelectedMovieFilter] = useState<string | null>(null);
+
+  // Fetch available movies for filter
+  useEffect(() => {
+    const fetchMovies = async () => {
+      try {
+        const res = await movieService.getAllMovies({ limit: 100, isActive: true });
+        setFilterMovies(res.data);
+      } catch (error) {
+        console.error("Failed to fetch filter movies", error);
+      }
+    };
+    fetchMovies();
+  }, []);
+
+  // Fetch showtimes when movie selected
+  useEffect(() => {
+    if (!selectedMovieFilter) {
+      setFilterShowtimes([]);
+      setShowtimeFilter("__ALL__");
+      return;
+    }
+    const fetchShowtimes = async () => {
+      try {
+        const res = await showTimeService.getShowTimes({ movieId: selectedMovieFilter, limit: 100 });
+        setFilterShowtimes(res.data);
+        setShowtimeFilter("__ALL__"); // Reset specific showtime when movie changes
+      } catch (error) {
+        console.error("Failed to fetch filter showtimes", error);
+      }
+    };
+    fetchShowtimes();
+  }, [selectedMovieFilter]);
 
   const canClearFilters =
-    showtimeFilter !== "__ALL__" || typeFilter !== "__ALL__";
+    showtimeFilter !== "__ALL__" ||
+    typeFilter !== "__ALL__" ||
+    statusFilter !== "__ALL__";
+
+  const { user } = useAuth();
 
   const fetchBookings = useCallback(async () => {
     try {
@@ -71,6 +110,9 @@ export function useBookingLogic() {
         limit,
         showtimeId: showtimeFilter === "__ALL__" ? undefined : showtimeFilter,
         type: typeFilter === "__ALL__" ? undefined : typeFilter,
+
+        status: statusFilter === "__ALL__" ? undefined : statusFilter,
+        cinemaId: user?.role === "MANAGER" ? user.cinemaId : undefined,
       });
 
       const bookingList = res.data;
@@ -173,11 +215,11 @@ export function useBookingLogic() {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, showtimeFilter, typeFilter]);
+  }, [page, limit, showtimeFilter, typeFilter, statusFilter, user?.role, user?.cinemaId]);
 
   useEffect(() => {
     setPage(1);
-  }, [showtimeFilter, typeFilter]);
+  }, [showtimeFilter, typeFilter, statusFilter]);
 
   useEffect(() => {
     fetchBookings();
@@ -196,6 +238,8 @@ export function useBookingLogic() {
   const clearFilters = () => {
     setShowtimeFilter("__ALL__");
     setTypeFilter("__ALL__");
+    setStatusFilter("__ALL__");
+    setSelectedMovieFilter(null);
   };
 
   return {
@@ -218,6 +262,16 @@ export function useBookingLogic() {
     setShowtimeFilter,
     typeFilter,
     setTypeFilter,
+
+    statusFilter,
+    setStatusFilter,
+
+    // Two-step filters
+    filterMovies,
+    filterShowtimes,
+    selectedMovieFilter,
+    setSelectedMovieFilter,
+
     clearFilters,
     canClearFilters,
 

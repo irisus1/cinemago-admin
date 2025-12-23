@@ -2,8 +2,15 @@
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { toast } from "sonner";
-import { foodDrinkService, type FoodDrink, PaginationMeta } from "@/services";
-import { set } from "date-fns";
+import {
+  foodDrinkService,
+  type FoodDrink,
+  PaginationMeta,
+  cinemaService,
+  Cinema,
+} from "@/services";
+import { useAuth } from "@/context/AuthContext";
+import { SelectOption } from "@/components/SearchableCombobox";
 
 const limit = 7;
 
@@ -22,6 +29,11 @@ export function useFoodDrinkLogic() {
   const [search, setSearch] = useState("");
   const [type, setType] = useState<string>("");
   const [isAvailable, setIsAvailable] = useState<string>("");
+  const { user } = useAuth();
+  const isManager = user?.role === "MANAGER";
+
+  const [cinemaId, setCinemaId] = useState("");
+  const [cinemaOptions, setCinemaOptions] = useState<SelectOption[]>([]);
 
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<FoodDrink | null>(null);
@@ -32,7 +44,7 @@ export function useFoodDrinkLogic() {
   const [errorOpen, setErrorOpen] = useState(false);
   const [dialogTitle, setDialogTitle] = useState("");
   const [dialogMsg, setDialogMsg] = useState<React.ReactNode>("");
-  const [onConfirm, setOnConfirm] = useState<() => void>(() => {});
+  const [onConfirm, setOnConfirm] = useState<() => void>(() => { });
 
   // --- CACHE ---
   const pageCache = useRef(
@@ -45,9 +57,73 @@ export function useFoodDrinkLogic() {
     allCache.current = null;
   };
 
+  // --- CINEMA LOADING ---
+  // --- CINEMA LOADING ---
+  useEffect(() => {
+    const initCinemaData = async () => {
+
+      if (isManager && user?.cinemaId) {
+        setCinemaId(user.cinemaId);
+        // setCinemaOptions([{
+        //   value: user.cinemaId,
+        //   label: (user as any).cinemaName || "Rạp hiện tại",
+        //   meta: ""
+        // }]);
+        return;
+      }
+
+      try {
+        const first = await cinemaService.getAllCinemas({ page: 1, limit: 7 });
+        const total = first.pagination.totalPages;
+        let allCinemas = first.data;
+
+        if (total > 1) {
+          const promises = [];
+          for (let i = 2; i <= total; i++) {
+            promises.push(cinemaService.getAllCinemas({ page: i, limit: 7 }));
+          }
+          const results = await Promise.all(promises);
+          const others = results.flatMap((r) => r.data);
+          allCinemas = [...allCinemas, ...others];
+        }
+
+        const opts = allCinemas.map((c) => ({
+          value: c.id,
+          label: c.name,
+          meta: c.city,
+        }));
+        setCinemaOptions(opts);
+
+        // Logic chọn rạp mặc định cho Admin nếu chưa chọn
+        if (!cinemaId && opts.length > 0) {
+          setCinemaId(opts[0].value);
+        }
+      } catch (e) {
+        console.error("Load cinemas error", e);
+        toast.error("Không thể tải danh sách rạp");
+      }
+    };
+
+    initCinemaData();
+  }, [isManager, user?.cinemaId]);
+
   // --- DATA FETCHING ---
   const fetchPage = useCallback(
     async (p: number) => {
+      if (isManager && !cinemaId) {
+        return {
+          data: [],
+          pagination: {
+            totalItems: 0,
+            totalPages: 1,
+            currentPage: 1,
+            pageSize: limit,
+            hasNextPage: false,
+            hasPrevPage: false,
+          },
+        };
+      }
+
       const cached = pageCache.current.get(p);
       if (cached) return cached;
 
@@ -59,14 +135,15 @@ export function useFoodDrinkLogic() {
           isAvailable === ""
             ? undefined
             : isAvailable === "true"
-            ? true
-            : false,
+              ? true
+              : false,
+        cinemaId: cinemaId || undefined,
       });
 
       pageCache.current.set(p, res);
       return res;
     },
-    [search, isAvailable]
+    [search, isAvailable, cinemaId, isManager]
   );
 
   const ensureAllDataLoaded = useCallback(async () => {
@@ -118,7 +195,7 @@ export function useFoodDrinkLogic() {
     } finally {
       setLoading(false);
     }
-  }, [ensureAllDataLoaded, search, type, isAvailable, page]);
+  }, [ensureAllDataLoaded, search, type, isAvailable, page, cinemaId]);
 
   // Effects
   useEffect(() => {
@@ -127,12 +204,20 @@ export function useFoodDrinkLogic() {
   }, [q]);
 
   useEffect(() => {
+    setPage(1);
+    clearCache(); // Filter changed -> clear cache to force refetch
+  }, [search, type, isAvailable, cinemaId]);
+
+  useEffect(() => {
     loadPage();
   }, [page, search, type, isAvailable, loadPage]);
 
-  useEffect(() => {
+  const handleCinemaChange = useCallback((id: string) => {
+    if (!id) return;
+    setCinemaId(id);
     setPage(1);
-  }, [search, type, isAvailable]);
+    clearCache();
+  }, []);
   // --- HELPERS ---
   const updateCacheItem = (id: string, patch: Partial<FoodDrink>) => {
     if (allCache.current) {
@@ -215,6 +300,7 @@ export function useFoodDrinkLogic() {
       price: string;
       type: "SNACK" | "DRINK" | "COMBO";
       file?: File | null;
+      cinemaId?: string;
     },
     mode: "create" | "edit",
     original?: FoodDrink | null
@@ -241,6 +327,7 @@ export function useFoodDrinkLogic() {
           fd.append("price", data.price);
           fd.append("type", data.type);
           if (data.file) fd.append("image", data.file);
+          if (data.cinemaId) fd.append("cinemaId", data.cinemaId);
 
           if (isCreate) {
             const created = await foodDrinkService.addFoodDrink(fd);
@@ -354,12 +441,17 @@ export function useFoodDrinkLogic() {
     setSearch("");
     setType("");
     setIsAvailable("");
+    if (!isManager) setCinemaId(""); // Only clear if admin
     setPage(1);
   };
 
   const canClearFilters = useMemo(
-    () => q.trim() !== "" || type.trim() !== "" || isAvailable.trim() !== "",
-    [q, type, isAvailable]
+    () =>
+      q.trim() !== "" ||
+      type.trim() !== "" ||
+      isAvailable.trim() !== "" ||
+      (!isManager && cinemaId !== ""),
+    [q, type, isAvailable, cinemaId, isManager]
   );
 
   return {
@@ -410,5 +502,12 @@ export function useFoodDrinkLogic() {
     dialogTitle,
     dialogMsg,
     onConfirm,
+
+    // Cinema
+    cinemaId,
+    setCinemaId: handleCinemaChange,
+    cinemaOptions,
+    isManager,
+    user,
   };
 }

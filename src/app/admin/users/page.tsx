@@ -22,7 +22,9 @@ import {
 
 const VI_ROLE: Record<string, string> = {
   ADMIN: "Quản trị viên",
-  USER: "Người dùng",
+  MANAGER: "Quản lý rạp",
+  EMPLOYEE: "Nhân viên",
+  USER: "Người dùng", // Keep for legacy if needed
 };
 
 const UsersListPage: React.FC = () => {
@@ -118,12 +120,12 @@ const UsersListPage: React.FC = () => {
       render: (v) =>
         v
           ? Intl.DateTimeFormat("vi-VN", {
-              hour: "2-digit",
-              minute: "2-digit",
-              day: "2-digit",
-              month: "2-digit",
-              year: "numeric",
-            }).format(new Date(v as string))
+            hour: "2-digit",
+            minute: "2-digit",
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+          }).format(new Date(v as string))
           : "—",
     },
     {
@@ -196,6 +198,8 @@ const UsersListPage: React.FC = () => {
                 <SelectContent>
                   <SelectItem value="__ALL__">Tất cả vai trò</SelectItem>
                   <SelectItem value="ADMIN">Quản trị viên</SelectItem>
+                  <SelectItem value="MANAGER">Quản lý rạp</SelectItem>
+                  <SelectItem value="EMPLOYEE">Nhân viên</SelectItem>
                   <SelectItem value="USER">Người dùng</SelectItem>
                 </SelectContent>
               </Select>

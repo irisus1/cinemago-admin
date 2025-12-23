@@ -23,6 +23,8 @@ export interface Booking {
   updatedAt: string;
   bookingSeats: BookingSeat[];
   bookingFoodDrinks: BookingFoodDrink[];
+  paymentMethod?: string;
+  status?: string;
 }
 
 export interface CreateBookingRequest {
@@ -51,6 +53,8 @@ export type MyBookingParams = {
   limit?: number;
   showtimeId?: string;
   type?: string;
+  cinemaId?: string;
+  status?: string;
 };
 
 type ApiErrorBody = { message?: string };
@@ -138,6 +142,24 @@ class BookingService {
     } catch (e: unknown) {
       const msg = getMsg(e, "Không thể lấy danh sách ghế đã đặt.");
       console.error("Get booked seats error:", e);
+      throw new Error(msg);
+    }
+  }
+
+  /**
+   * PATCH /bookings/:id/status
+   * Cập nhật trạng thái booking
+   */
+  async updateBookingStatus(id: string, status: string, paymentMethod?: string): Promise<Booking> {
+    try {
+      const { data } = await api.put<{ data: Booking }>(`/bookings/update-status/${id}`, {
+        status,
+        paymentMethod,
+      });
+      return data.data;
+    } catch (e: unknown) {
+      const msg = getMsg(e, "Không thể cập nhật trạng thái đơn hàng.");
+      console.error("Update booking status error:", e);
       throw new Error(msg);
     }
   }

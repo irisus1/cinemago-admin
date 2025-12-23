@@ -11,6 +11,7 @@ import {
   Cinema,
   SeatCell,
 } from "@/services";
+import { useAuth } from "@/context/AuthContext";
 
 const makeBaseLayout10x10 = () => {
   const rows = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"];
@@ -38,9 +39,15 @@ type CinemaOption = {
 };
 
 export function useRoomLogic(initialCinemaId?: string) {
+  const { user } = useAuth();
+  const isManager = user?.role === "MANAGER";
+
   // --- CINEMA SELECT (bắt buộc theo rạp) ---
   const [cinemaOptions, setCinemaOptions] = useState<CinemaOption[]>([]);
-  const [cinemaId, setCinemaId] = useState<string>(initialCinemaId ?? "");
+  // Use user.cinemaId if manager, otherwise fall back to initial or let logic decide
+  const [cinemaId, setCinemaId] = useState<string>(
+    (isManager ? user?.cinemaId : initialCinemaId) ?? ""
+  );
   const [cinemaSearch, setCinemaSearch] = useState<string>("");
   const [cinemaSearchInput, setCinemaSearchInput] = useState("");
 
@@ -73,7 +80,7 @@ export function useRoomLogic(initialCinemaId?: string) {
   const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
   const [dialogTitle, setDialogTitle] = useState("");
   const [dialogMessage, setDialogMessage] = useState<React.ReactNode>("");
-  const [onConfirm, setOnConfirm] = useState<() => void>(() => () => {});
+  const [onConfirm, setOnConfirm] = useState<() => void>(() => () => { });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -87,6 +94,9 @@ export function useRoomLogic(initialCinemaId?: string) {
 
         if (cancelled) return;
 
+        // If Manager, options should ideally be only their cinema, or just visual.
+        // But logic below enforces selection.
+
         const opts: CinemaOption[] = data.map((c) => ({
           id: String(c.id),
           name: c.name,
@@ -94,7 +104,9 @@ export function useRoomLogic(initialCinemaId?: string) {
         }));
         setCinemaOptions(opts);
 
-        if (!cinemaId && (initialCinemaId || opts.length > 0)) {
+        if (isManager && user?.cinemaId) {
+          setCinemaId(user.cinemaId);
+        } else if (!cinemaId && (initialCinemaId || opts.length > 0)) {
           setCinemaId(initialCinemaId ?? opts[0].id);
         }
       } catch (e) {
@@ -105,7 +117,7 @@ export function useRoomLogic(initialCinemaId?: string) {
     return () => {
       cancelled = true;
     };
-  }, [initialCinemaId, cinemaId]);
+  }, [initialCinemaId, cinemaId, isManager, user?.cinemaId]);
 
   useEffect(() => {
     const t = setTimeout(() => setCinemaSearch(cinemaSearchInput), 300);
@@ -421,5 +433,8 @@ export function useRoomLogic(initialCinemaId?: string) {
     // submit
     isSubmitting,
     handleSubmitRoom,
+
+    // Auth info
+    isManager,
   };
 }
