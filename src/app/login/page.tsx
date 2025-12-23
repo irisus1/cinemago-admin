@@ -57,6 +57,8 @@ export default function LoginPage() {
 
       if (user?.role === "EMPLOYEE") {
         router.replace("/admin/ticket");
+      } else if (user.role === "MANAGER") {
+        router.replace("/admin/manager-dashboard");
       } else {
         router.replace("/admin/dashboard");
       }
@@ -127,11 +129,10 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className={`w-full py-2 text-white rounded-md flex items-center justify-center transition-all ${
-              loading
-                ? "bg-indigo-400 cursor-not-allowed"
-                : "bg-indigo-600 hover:bg-indigo-700"
-            }`}
+            className={`w-full py-2 text-white rounded-md flex items-center justify-center transition-all ${loading
+              ? "bg-indigo-400 cursor-not-allowed"
+              : "bg-indigo-600 hover:bg-indigo-700"
+              }`}
           >
             {loading ? (
               <>

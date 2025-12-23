@@ -20,6 +20,13 @@ import {
 } from "@/components/ui/select";
 import RefreshLoader from "@/components/Loading";
 import { useAuth } from "@/context/AuthContext";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
+import { bookingService } from "@/services/booking.service";
+import { toast } from "sonner";
+import { useState } from "react";
 
 export default function BookingsListPage() {
   const {
@@ -49,7 +56,68 @@ export default function BookingsListPage() {
     setTypeFilter,
     clearFilters,
     canClearFilters,
+    statusFilter,
+    setStatusFilter,
+    refresh,
+    // Two-step filters
+    filterMovies,
+    filterShowtimes,
+    selectedMovieFilter,
+    setSelectedMovieFilter,
   } = useBookingLogic();
+
+  // Selected for Bulk Update
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // Eligible bookings for bulk selection (COD & Pending)
+  const eligibleBookings = useMemo(() => {
+    return bookings.filter(b => b.paymentMethod === "COD" && b.status === "Chưa thanh toán");
+  }, [bookings]);
+
+  // Check state for "Select All"
+  const isAllSelected = eligibleBookings.length > 0 && eligibleBookings.every(b => selectedIds.has(b.id));
+  const isIndeterminate = !isAllSelected && eligibleBookings.some(b => selectedIds.has(b.id));
+
+  // Toggle selection
+  const handleToggleSelect = (id: string, checked: boolean) => {
+    const next = new Set(selectedIds);
+    if (checked) next.add(id);
+    else next.delete(id);
+    setSelectedIds(next);
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    const next = new Set(selectedIds);
+    if (checked) {
+      eligibleBookings.forEach(b => next.add(b.id));
+    } else {
+      eligibleBookings.forEach(b => next.delete(b.id));
+    }
+    setSelectedIds(next);
+  };
+
+  // Bulk update
+  const handleBulkUpdate = async (targetStatus: string) => {
+    if (selectedIds.size === 0) return;
+    setIsUpdating(true);
+    try {
+      // Loop update (simple version)
+      for (const id of Array.from(selectedIds)) {
+        await bookingService.updateBookingStatus(id, targetStatus);
+      }
+      toast.success(`Đã cập nhật ${selectedIds.size} đơn hàng sang "${targetStatus}"`);
+      await refresh();
+      setSelectedIds(new Set());
+    } catch (e) {
+      console.error(e);
+      toast.error("Có lỗi khi cập nhật hàng loạt");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+
 
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat("vi-VN", {
@@ -57,37 +125,70 @@ export default function BookingsListPage() {
       currency: "VND",
     }).format(val);
 
-  const showtimeOptions: SelectOption[] = useMemo(() => {
-    const ids = Array.from(new Set(bookings.map((b) => b.showtimeId)));
+  const movieOptions: SelectOption[] = useMemo(() => {
+    return filterMovies.map((m) => ({
+      value: m.id,
+      label: m.title,
+    }));
+  }, [filterMovies]);
 
-    return ids
-      .map((id) => showTimeMap[id])
-      .filter(Boolean)
-      .map((st) => {
-        const movie = movieMap[st.movieId];
-        const timeLabel = new Date(st.startTime).toLocaleString("vi-VN", {
-          day: "2-digit",
-          month: "2-digit",
+  const filteredShowtimeOptions: SelectOption[] = useMemo(() => {
+    return filterShowtimes.map((st) => {
+      const room = roomMap[st.roomId];
+
+      return {
+        value: st.id,
+        label: `${new Date(st.startTime).toLocaleTimeString("vi-VN", {
           hour: "2-digit",
           minute: "2-digit",
-        });
+        })} - ${room ? room.name : "Phòng ?"}`,
+        meta: new Date(st.startTime).toLocaleDateString("vi-VN", {
+          day: "2-digit",
+          month: "2-digit",
+        }),
+      };
+    });
+  }, [filterShowtimes, roomMap]);
 
-        return {
-          value: st.id,
-          label: movie ? movie.title : "Phim ?",
-          meta: timeLabel,
-        };
-      });
-  }, [bookings, showTimeMap, movieMap]);
 
   const { user: currentUser } = useAuth();
 
   const columns: Column<Booking>[] = [
     {
+      header: (
+        <div className="flex items-center justify-center">
+          <Checkbox
+            checked={isAllSelected || (isIndeterminate ? "indeterminate" : false)}
+            onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
+            disabled={eligibleBookings.length === 0}
+          />
+        </div>
+      ),
+      key: "select",
+      headerClassName: "w-[50px] px-2",
+      className: "px-2",
+      render: (_, r) => {
+        // Check if eligible
+        const isEligible = r.paymentMethod === "COD" && (r.status === "Chờ thanh toán" || r.status === "Chưa thanh toán");
+        return (
+          <div className="flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+            {isEligible && (
+              <Checkbox
+                checked={selectedIds.has(r.id)}
+                onCheckedChange={(checked) => handleToggleSelect(r.id, checked as boolean)}
+              />
+            )}
+          </div>
+        )
+      }
+    },
+    {
       header: "Mã đơn",
       key: "id",
       render: (_, r) => (
-        <span className="font-mono text-xs">{r.id.slice(0, 8)}...</span>
+        <div className="flex flex-col gap-2">
+          <span className="font-mono text-xs">{r.id.slice(0, 8)}...</span>
+        </div>
       ),
     },
     {
@@ -185,6 +286,34 @@ export default function BookingsListPage() {
       ),
     },
     {
+      header: "PT Thanh toán",
+      key: "paymentMethod",
+      render: (_, r) => (
+        <Badge variant="outline" className="whitespace-nowrap">
+          {r.paymentMethod || "UNKNOWN"}
+        </Badge>
+      )
+    },
+    {
+      header: "Trạng thái",
+      key: "status",
+      render: (_, r) => {
+        let color = "bg-gray-100 text-gray-800";
+        if (r.status === "Đã thanh toán") {
+          color = "bg-green-100 text-green-800 border-green-200";
+        } else if (r.status === "Chưa thanh toán") {
+          color = "bg-yellow-100 text-yellow-800 border-yellow-200";
+        } else if (r.status === "Thanh toán thất bại") {
+          color = "bg-red-100 text-red-800 border-red-200";
+        }
+        return (
+          <span className={`px-2 py-1 rounded-full text-xs font-semibold border ${color} whitespace-nowrap`}>
+            {r.status || "Chưa thanh toán"}
+          </span>
+        )
+      }
+    },
+    {
       header: "Ngày đặt",
       key: "createdAt",
       render: (v) => (
@@ -219,13 +348,33 @@ export default function BookingsListPage() {
 
       <div className="flex items-center justify-between mb-4 gap-4">
         <div className="flex flex-wrap items-center gap-4">
+          {/* 1. Select Movie */}
           <SearchableCombobox
-            value={showtimeFilter}
-            onChange={setShowtimeFilter}
-            options={showtimeOptions}
-            placeholder="Tất cả suất chiếu"
-            searchPlaceholder="Tìm theo phim / thời gian..."
+            value={selectedMovieFilter || ""}
+            onChange={(val) => setSelectedMovieFilter(val)}
+            options={movieOptions}
+            placeholder="Chọn phim..."
+            searchPlaceholder="Tìm tên phim..."
           />
+
+          {/* 2. Select Showtime (Dependent) */}
+          <Select
+            value={showtimeFilter}
+            onValueChange={(val) => setShowtimeFilter(val)}
+            disabled={!selectedMovieFilter}
+          >
+            <SelectTrigger className="h-10 w-[220px] rounded-lg border border-gray-300 bg-gray-50">
+              <SelectValue placeholder={!selectedMovieFilter ? "Chọn phim trước..." : "Chọn suất chiếu"} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__ALL__">Tất cả suất chiếu</SelectItem>
+              {filteredShowtimeOptions.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label} <span className="text-xs text-gray-400 ml-2">({opt.meta})</span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Select
             value={typeFilter}
             onValueChange={(val) =>
@@ -241,7 +390,44 @@ export default function BookingsListPage() {
               <SelectItem value="offline">Đặt tại quầy</SelectItem>
             </SelectContent>
           </Select>
+
+          {/* Status Filter */}
+          <Select
+            value={statusFilter}
+            onValueChange={(val) => setStatusFilter(val as any)}
+          >
+            <SelectTrigger className="h-10 w-[180px] rounded-lg border border-gray-300 bg-gray-50">
+              <SelectValue placeholder="Trạng thái" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__ALL__">Tất cả trạng thái</SelectItem>
+              <SelectItem value="Chưa thanh toán">Chưa thanh toán</SelectItem>
+              <SelectItem value="Đã thanh toán">Đã thanh toán</SelectItem>
+              <SelectItem value="Thanh toán thất bại">Thanh toán thất bại</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
+
+        {/* Bulk Action Bar */}
+        {selectedIds.size > 0 && (
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-white shadow-xl border border-gray-200 p-4 rounded-xl flex items-center gap-4 animate-in slide-in-from-bottom-4 fade-in">
+            <span className="text-sm font-semibold">{selectedIds.size} đơn hàng đã chọn</span>
+            <div className="h-4 w-px bg-gray-300"></div>
+            <Button
+              size="sm" variant="default" className="bg-green-600 hover:bg-green-700 cursor-pointer"
+              onClick={() => handleBulkUpdate("Đã thanh toán")}
+            >
+              "Đã thanh toán"
+            </Button>
+            <Button
+              size="sm" variant="destructive" className="cursor-pointer hover:bg-red-800"
+              onClick={() => handleBulkUpdate("Thanh toán thất bại")}
+            >
+              "Thất bại"
+            </Button>
+            <Button size="sm" variant="ghost" className="cursor-pointer hover:bg-gray-200" onClick={() => setSelectedIds(new Set())}>Hủy</Button>
+          </div>
+        )}
 
         <div className="flex items-center gap-3">
           <button
@@ -301,7 +487,7 @@ export default function BookingsListPage() {
         showTimeMap={showTimeMap}
       />
 
-      <RefreshLoader isOpen={loading} />
+      <RefreshLoader isOpen={loading || isUpdating} />
     </div>
   );
 }

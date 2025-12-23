@@ -13,6 +13,33 @@ export type DateRangeParams = {
   startDate: string;
   endDate: string;
   type?: string; // nếu sau này bạn muốn filter theo loại booking
+  cinemaId?: string;
+};
+
+export type PeakHourParam = {
+  month: number;
+  year: number;
+  cinemaId?: string;
+  type?: string;
+};
+
+export type PeakHourItem = {
+  hour: number;
+  formattedHour: string;
+  ticketCount: number;
+};
+
+export type PeakHourResponse = {
+  period: any;
+  filters: any;
+  summary: {
+    totalTickets: number;
+    totalBookings: number;
+  };
+  topPeakHour: PeakHourItem | null;
+  top5PeakHours: PeakHourItem[];
+  peakHours: PeakHourItem[];
+  allHours: PeakHourItem[];
 };
 
 // Doanh thu theo giai đoạn
@@ -30,6 +57,12 @@ export type CinemaRevenueItem = {
     address?: string;
   } | null;
   totalRevenue: number;
+  // Extra fields from backend logic
+  ticketRevenue?: number;
+  foodDrinkRevenue?: number;
+  bookedSeats?: number;
+  totalSeats?: number;
+  occupancyRate?: number;
 };
 
 export type CinemaRevenueResponse = {
@@ -45,6 +78,12 @@ export type MovieRevenueItem = {
     title?: string;
   } | null;
   totalRevenue: number;
+  // Extra fields from backend logic  
+  ticketRevenue?: number;
+  foodDrinkRevenue?: number;
+  bookedSeats?: number;
+  totalSeats?: number;
+  occupancyRate?: number;
 };
 
 export type MovieRevenueResponse = {
@@ -150,6 +189,21 @@ class DashboardService {
     } catch (e: unknown) {
       const msg = getMsg(e, "Không thể lấy doanh thu theo phim.");
       console.error("Lỗi getRevenueByPeriodAndMovie:", e);
+      throw new Error(msg);
+    }
+  }
+
+  // GET /bookings/dashboard/peak-hours?month=&year=&cinemaId=&type=
+  async getPeakHoursInMonth(params: PeakHourParam): Promise<PeakHourResponse> {
+    try {
+      const { data } = await api.get<{ data: PeakHourResponse }>(
+        "/bookings/dashboard/peak-hours",
+        { params }
+      );
+      return data.data;
+    } catch (e: unknown) {
+      const msg = getMsg(e, "Không thể lấy dữ liệu giờ cao điểm.");
+      console.error("Lỗi getPeakHoursInMonth:", e);
       throw new Error(msg);
     }
   }

@@ -11,20 +11,30 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { formatVND } from "../ticket/seat-helper";
-import { Loader2, Check } from "lucide-react"; // Thêm icon Check
+import { Loader2, Check, Banknote } from "lucide-react"; // Thêm icon Check, Banknote
 import { cn } from "@/lib/utils"; // Import hàm cn để xử lý classnames (nếu project bạn có)
 
 interface PaymentMethodModalProps {
   isOpen: boolean;
   onClose: () => void;
   totalPrice: number;
-  onConfirm: (method: "MOMO" | "VNPAY" | "ZALOPAY") => void;
+  onConfirm: (method: "MOMO" | "VNPAY" | "ZALOPAY" | "COD") => void;
   isProcessing: boolean;
   isPaymentStarted: boolean;
 }
 
 // Định nghĩa data bên ngoài component để tránh render lại
 const PAYMENT_METHODS = [
+  {
+    id: "COD",
+    name: "Thanh toán tại quầy",
+    description: "Thanh toán tiền mặt và in vé trực tiếp",
+    icon: <Banknote className="w-6 h-6 text-green-600" />,
+    bgColor: "bg-green-500/10",
+    textColor: "text-green-600",
+    borderColor: "border-green-600",
+    hoverBorder: "hover:border-green-600/50",
+  },
   {
     id: "MOMO",
     name: "Ví MoMo",
@@ -78,7 +88,7 @@ export default function PaymentMethodModal({
 
   const handleConfirm = () => {
     if (selectedMethod) {
-      onConfirm(selectedMethod as "MOMO" | "VNPAY" | "ZALOPAY");
+      onConfirm(selectedMethod as "MOMO" | "VNPAY" | "ZALOPAY" | "COD");
     }
   };
 
@@ -127,13 +137,17 @@ export default function PaymentMethodModal({
                 >
                   {/* Logo */}
                   <div className="relative w-12 h-12 flex-shrink-0 mr-4 p-1 bg-white rounded-lg border border-gray-100 flex items-center justify-center">
-                    <Image
-                      src={m.logo}
-                      alt={m.name}
-                      width={36}
-                      height={36}
-                      className="object-contain"
-                    />
+                    {"icon" in m ? (
+                      m.icon
+                    ) : (
+                      <Image
+                        src={m.logo}
+                        alt={m.name}
+                        width={36}
+                        height={36}
+                        className="object-contain"
+                      />
+                    )}
                   </div>
 
                   {/* Tên & Mô tả */}
@@ -157,9 +171,9 @@ export default function PaymentMethodModal({
                       "w-6 h-6 rounded-full flex items-center justify-center ml-2 transition-all duration-200",
                       isSelected
                         ? `${m.textColor.replace(
-                            "text",
-                            "bg"
-                          )} text-white scale-100 opacity-100`
+                          "text",
+                          "bg"
+                        )} text-white scale-100 opacity-100`
                         : "bg-gray-100 text-transparent scale-90 opacity-0"
                     )}
                   >

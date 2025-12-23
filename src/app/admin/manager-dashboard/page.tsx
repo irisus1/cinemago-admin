@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,9 +12,10 @@ import {
     Building2,
     RefreshCw,
     BarChart3,
-    PieChart as PieChartIcon,
     CalendarDays,
     Utensils,
+    Ticket,
+    Clock,
 } from "lucide-react";
 import {
     ResponsiveContainer,
@@ -25,289 +26,39 @@ import {
     CartesianGrid,
     Tooltip,
     Legend,
-    PieChart,
-    Pie,
-    Cell,
+    AreaChart,
+    Area,
+    ReferenceLine,
 } from "recharts";
 
 import {
     dashboardService,
-    type MovieRevenueResponse,
-    MovieRevenueItem,
+    type MovieRevenueItem,
+    dashboardService as ds, // Alias for easier usage if needed
 } from "@/services";
 import { DateNativeVN } from "@/components/DateNativeVN";
 
-type ChartItem = { name: string; revenue: number };
-const PIE_COLORS: string[] = ["#4f46e5", "#22c55e"];
+// --- Types ---
+type ChartItem = { name: string; revenue: number; occupancy: number };
+type PeakHourData = { hour: string; count: number };
 
 const truncateText = (text: string, maxLength: number = 15) => {
     return text.length > maxLength ? `${text.substring(0, maxLength)}...` : text;
 };
 
-export default function ManagerDashboard() {
-    const { user } = useAuth();
-    const todayISO = new Date().toISOString().slice(0, 10);
-    const sevenDaysAfterISO = new Date(Date.now() + 7 * 86400000)
-        .toISOString()
-        .slice(0, 10);
-
-    const [startDate, setStartDate] = useState<string>(todayISO);
-    const [endDate, setEndDate] = useState<string>(sevenDaysAfterISO);
-
-    const [loading, setLoading] = useState<boolean>(true);
-    const [error, setError] = useState<string>("");
-
-    const [counts, setCounts] = useState<{
-        users: number; // Có thể ẩn nếu không cần thiết
-        cinemas: number; // Ẩn với manager?
-        movies: number;
-    }>({ users: 0, cinemas: 0, movies: 0 });
-
-    const [revenue, setRevenue] = useState<{
-        total: number;
-        fnb: number;
-        ticket: number;
-    }>({ total: 0, fnb: 0, ticket: 0 });
-
-    const [byMovie, setByMovie] = useState<ChartItem[]>([]);
-
-    // Helpers
-    const fmtNumber = (n: number | string): string =>
-        new Intl.NumberFormat().format(Number(n) || 0);
-
-    const fmtVND = (n: number | string): string =>
-        new Intl.NumberFormat("vi-VN", {
-            style: "currency",
-            currency: "VND",
-            maximumFractionDigits: 0,
-        }).format(Math.max(0, Math.round(Number(n) || 0)));
-
-    const mapMovieRevenue = (
-        rbm: MovieRevenueResponse | MovieRevenueItem[] | null | undefined
-    ): ChartItem[] => {
-        if (!rbm) return [];
-        if (Array.isArray(rbm)) return [];
-
-        const source =
-            rbm.sortedMovies.length > 0 ? rbm.sortedMovies : rbm.moviesRevenue;
-
-        const mapped: ChartItem[] = source.map((item) => {
-            const name = item.movie?.name ?? item.movie?.title ?? "(Không xác định)";
-            return {
-                name,
-                revenue: Number(item.totalRevenue ?? 0),
-            };
-        });
-
-        return mapped.sort((a, b) => b.revenue - a.revenue).slice(0, 12);
-    };
-
-    const refresh = useCallback(async () => {
-        if (!user) return;
-        setLoading(true);
-        setError("");
-
-        try {
-            // Manager thường chỉ quan tâm đến rạp của mình.
-            // Tuy nhiên dashboardService hiện tại có thể gọi API chung.
-            // Cần kiểm tra BE có hỗ trợ filter theo CinemaID ở dashboard hay không.
-            // Nếu không, API có thể sẽ trả về toàn bộ.
-            // GIẢ ĐỊNH: BE tự filter theo user role hoặc API dashboardService cần update.
-            // Hiện tại ta cứ gọi như Admin dashboard nhưng Logic hiển thị sẽ hạn chế hơn.
-
-            const [moviesCount, rev] = await Promise.all([
-                dashboardService.getMovieCount(), // Số lượng phim đang chiếu (chung)
-                dashboardService.getRevenueByPeriod({ startDate, endDate }), // Cần confirm xem API này có filter cinemaId user đang login ko?
-            ]);
-
-            const total = Number(rev.totalRevenue ?? 0);
-            const fnb = Number(rev.totalRevenueFromFoodDrink ?? 0);
-            const ticket = Math.max(0, total - fnb);
-            setRevenue({ total, fnb, ticket });
-            setCounts((prev) => ({ ...prev, movies: moviesCount }));
-
-            // Revenue by Movie
-            try {
-                const rbm = await dashboardService.getRevenueByPeriodAndMovie({
-                    startDate,
-                    endDate,
-                });
-                setByMovie(mapMovieRevenue(rbm));
-            } catch (e) {
-                console.error("Lỗi getRevenueByPeriodAndMovie", e);
-                setByMovie([]);
-            }
-        } catch (e: unknown) {
-            const msg =
-                e instanceof Error ? e.message : "Có lỗi xảy ra khi tải dữ liệu.";
-            setError(msg);
-        } finally {
-            setLoading(false);
-        }
-    }, [startDate, endDate, user]);
-
-    useEffect(() => {
-        void refresh();
-    }, [refresh]);
-
-    return (
-        <div className="min-h-screen w-full p-6 md:p-10 space-y-6">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">
-                        Quản lý rạp - Trang chủ
-                    </h1>
-                    <p className="text-gray-500">
-                        Dành cho quản lý rạp: {user?.cinemaName ?? "Rạp chi nhánh"}
-                    </p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                    <div className="flex items-center gap-2">
-                        <DateNativeVN
-                            valueISO={startDate}
-                            onChangeISO={setStartDate}
-                            widthClass="w-[140px]"
-                        />
-                        <span className="text-muted-foreground">→</span>
-                        <DateNativeVN
-                            valueISO={endDate}
-                            onChangeISO={setEndDate}
-                            widthClass="w-[140px]"
-                        />
-                    </div>
-                    <Button onClick={refresh} className="gap-2">
-                        <RefreshCw className="h-4 w-4" />
-                        Làm mới
-                    </Button>
-                </div>
-            </div>
-
-            {/* KPI Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-                <MetricCard
-                    title="Tổng doanh thu"
-                    value={fmtVND(revenue.total)}
-                    icon={<DollarSign className="h-5 w-5" />}
-                    loading={loading}
-                />
-                <MetricCard
-                    title="Doanh thu vé"
-                    value={fmtVND(revenue.ticket)}
-                    icon={<PieChartIcon className="h-5 w-5" />}
-                    loading={loading}
-                />
-                <MetricCard
-                    title="Doanh thu F&B"
-                    value={fmtVND(revenue.fnb)}
-                    icon={<Utensils className="h-5 w-5" />}
-                    loading={loading}
-                />
-                <MetricCard
-                    title="Phim đang chiếu"
-                    value={fmtNumber(counts.movies)}
-                    icon={<Building2 className="h-5 w-5" />}
-                    loading={loading}
-                />
-            </div>
-
-            {/* Charts */}
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-                {/* Pie Chart */}
-                <Card className="h-[380px] xl:col-span-1">
-                    <CardHeader>
-                        <CardTitle>Cơ cấu doanh thu</CardTitle>
-                    </CardHeader>
-                    <CardContent className="h-[300px]">
-                        {loading ? (
-                            <div className="h-full w-full animate-pulse rounded-xl bg-muted/40" />
-                        ) : (
-                            <ResponsiveContainer width="100%" height="100%">
-                                <PieChart>
-                                    <Pie
-                                        dataKey="value"
-                                        data={[
-                                            { name: "Vé", value: revenue.ticket },
-                                            { name: "F&B", value: revenue.fnb },
-                                        ]}
-                                        innerRadius={60}
-                                        outerRadius={100}
-                                    >
-                                        <Cell fill={PIE_COLORS[0]} />
-                                        <Cell fill={PIE_COLORS[1]} />
-                                    </Pie>
-                                    <Tooltip
-                                        formatter={(value: number | string) => fmtVND(value)}
-                                    />
-                                    <Legend />
-                                </PieChart>
-                            </ResponsiveContainer>
-                        )}
-                    </CardContent>
-                </Card>
-
-                {/* Bar Chart - Top Movies */}
-                <Card className="h-[380px] xl:col-span-2">
-                    <CardHeader>
-                        <div className="flex items-center gap-2">
-                            <BarChart3 className="h-5 w-5" />
-                            <CardTitle>Top phim theo doanh thu</CardTitle>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="h-[300px]">
-                        {loading ? (
-                            <div className="h-full w-full animate-pulse rounded-xl bg-muted/40" />
-                        ) : (
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={byMovie}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                    <XAxis
-                                        dataKey="name"
-                                        tickFormatter={(v) => truncateText(v)}
-                                        tickLine={false}
-                                        axisLine={false}
-                                        interval={0}
-                                        angle={-15}
-                                        textAnchor="end"
-                                        height={60}
-                                        tick={{ fontSize: 12 }}
-                                    />
-                                    <YAxis
-                                        tickFormatter={fmtNumber}
-                                        tickLine={false}
-                                        axisLine={false}
-                                        tick={{ fontSize: 12 }}
-                                    />
-                                    <Tooltip
-                                        formatter={(val: number | string) => fmtVND(val)}
-                                    />
-                                    <Bar
-                                        dataKey="revenue"
-                                        fill="#4f46e5"
-                                        radius={[4, 4, 0, 0]}
-                                        maxBarSize={50}
-                                    />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        )}
-                    </CardContent>
-                </Card>
-            </div>
-        </div>
-    );
-}
-
-// Reused Component
+// --- Helper Components ---
 function MetricCard({
     title,
     value,
     icon,
     loading,
+    subtext,
 }: {
     title: string;
     value: string | number;
     icon: React.ReactNode;
     loading: boolean;
+    subtext?: string;
 }) {
     return (
         <motion.div
@@ -315,9 +66,9 @@ function MetricCard({
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25 }}
         >
-            <Card className="h-[140px]">
+            <Card className="h-[140px] shadow-sm hover:shadow-md transition-shadow">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
                         {icon}
                         {title}
                     </CardTitle>
@@ -326,10 +77,302 @@ function MetricCard({
                     {loading ? (
                         <div className="h-8 w-32 rounded bg-muted/40 animate-pulse" />
                     ) : (
-                        <div className="text-xl md:text-2xl font-semibold">{value}</div>
+                        <div className="flex flex-col gap-1">
+                            <div className="text-2xl font-bold tracking-tight text-primary">
+                                {value}
+                            </div>
+                            {subtext && <p className="text-xs text-muted-foreground">{subtext}</p>}
+                        </div>
                     )}
                 </CardContent>
             </Card>
         </motion.div>
+    );
+}
+
+// --- Main Page ---
+export default function ManagerDashboard() {
+    const { user } = useAuth();
+
+    // Date Logic
+    const todayISO = useMemo(() => new Date().toISOString().slice(0, 10), []);
+    const startOfMonthISO = useMemo(() => {
+        const d = new Date();
+        d.setDate(1);
+        return d.toISOString().slice(0, 10);
+    }, []);
+
+    const [startDate, setStartDate] = useState<string>(startOfMonthISO);
+    const [endDate, setEndDate] = useState<string>(todayISO);
+
+    // State
+    const [loading, setLoading] = useState<boolean>(true);
+    const [summary, setSummary] = useState({
+        totalRevenue: 0,
+        ticketRevenue: 0,
+        fnbRevenue: 0,
+        avgOccupancy: 0,
+    });
+
+    const [topMovies, setTopMovies] = useState<MovieRevenueItem[]>([]);
+    const [peakHours, setPeakHours] = useState<PeakHourData[]>([]);
+    const [maxPeak, setMaxPeak] = useState<number>(0);
+
+    const [movieTableData, setMovieTableData] = useState<MovieRevenueItem[]>([]);
+
+    // Helpers
+    const fmtVND = (n: number | string) =>
+        new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(Number(n) || 0);
+
+    const fmtPercent = (rate?: number) =>
+        `${(rate || 0).toFixed(1)}%`;
+
+    // Fetch Data
+    const refresh = useCallback(async () => {
+        if (!user?.cinemaId) return;
+        setLoading(true);
+
+        try {
+            const cinemaId = user.cinemaId;
+
+            // 1. Revenue & Occupancy (By Movie is enough to calculate summary for specific cinema?? 
+            // Actually backend provided `getRevenueAndOccupancyByCinema`, let's use that to get precise "Average Occupancy" for THIS cinema)
+
+            const [revCinemaRes, revMovieRes, peakRes] = await Promise.all([
+                dashboardService.getRevenueByPeriodAndCinema({ startDate, endDate, cinemaId }),
+                dashboardService.getRevenueByPeriodAndMovie({ startDate, endDate, cinemaId }),
+                dashboardService.getPeakHoursInMonth({
+                    month: new Date(startDate).getMonth() + 1, // Only 1 month supported by Peak API logic? Or we use start date's month
+                    year: new Date(startDate).getFullYear(),
+                    cinemaId
+                })
+            ]);
+
+            // Process Cinema Data (Should contain 1 item for current cinema)
+            const myCinemaStats = revCinemaRes.cinemasRevenue.find(c => String(c.cinema?.id) === String(cinemaId)) || {
+                totalRevenue: 0, ticketRevenue: 0, foodDrinkRevenue: 0, occupancyRate: 0
+            };
+
+            setSummary({
+                totalRevenue: myCinemaStats.totalRevenue,
+                ticketRevenue: myCinemaStats.ticketRevenue || 0,
+                fnbRevenue: myCinemaStats.foodDrinkRevenue || 0,
+                avgOccupancy: myCinemaStats.occupancyRate || 0,
+            });
+
+            // Process Top Movies
+            setTopMovies(revMovieRes.sortedMovies.slice(0, 5)); // Top 5 for Chart
+            setMovieTableData(revMovieRes.sortedMovies); // All for Table
+
+            // Process Peak Hours
+            const phData = peakRes.allHours.map(h => ({
+                hour: `${h.hour}h`,
+                count: h.ticketCount
+            }));
+            setPeakHours(phData);
+            setMaxPeak(peakRes.topPeakHour?.ticketCount || 0);
+
+        } catch (error) {
+            console.error("Failed to load dashboard data", error);
+        } finally {
+            setLoading(false);
+        }
+    }, [user, startDate, endDate]);
+
+    useEffect(() => {
+        if (user?.role === "MANAGER" && user.cinemaId) {
+            void refresh();
+        }
+    }, [user, refresh]);
+
+    if (!user || user.role !== "MANAGER") {
+        return <div className="p-10 text-center">Bạn không có quyền truy cập trang này.</div>;
+    }
+
+    return (
+        <div className="min-h-screen w-full p-4 md:p-8 space-y-8 bg-gray-50/50">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white p-6 rounded-xl shadow-sm border">
+                <div>
+                    <h1 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">
+                        Dashboard Quản lý
+                    </h1>
+                    <div className="flex items-center gap-2 mt-2 text-gray-500">
+                        <Building2 className="w-5 h-5 text-indigo-600" />
+                        <span className="font-medium text-indigo-900 bg-indigo-50 px-3 py-1 rounded-full">
+                            {user.cinemaName || "Rạp hiện tại"}
+                        </span>
+                    </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg">
+                        <DateNativeVN valueISO={startDate} onChangeISO={setStartDate} className="w-[130px] border-none shadow-none bg-transparent" />
+                        <span className="text-gray-400">→</span>
+                        <DateNativeVN valueISO={endDate} onChangeISO={setEndDate} className="w-[130px] border-none shadow-none bg-transparent" />
+                    </div>
+                    <Button onClick={refresh} size="icon" variant="outline" className="rounded-lg shadow-sm hover:bg-gray-50">
+                        <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                    </Button>
+                </div>
+            </div>
+
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <MetricCard
+                    title="Tổng doanh thu"
+                    value={fmtVND(summary.totalRevenue)}
+                    icon={<DollarSign className="w-5 h-5 text-green-600" />}
+                    loading={loading}
+                />
+                <MetricCard
+                    title="Doanh thu Vé"
+                    value={fmtVND(summary.ticketRevenue)}
+                    icon={<Ticket className="w-5 h-5 text-blue-600" />}
+                    loading={loading}
+                />
+                <MetricCard
+                    title="Doanh thu F&B"
+                    value={fmtVND(summary.fnbRevenue)}
+                    icon={<Utensils className="w-5 h-5 text-orange-600" />}
+                    loading={loading}
+                />
+                <MetricCard
+                    title="Tỷ lệ lấp đầy TB"
+                    value={fmtPercent(summary.avgOccupancy)}
+                    icon={<Users className="w-5 h-5 text-purple-600" />}
+                    loading={loading}
+                    subtext="Trên tổng số ghế rạp"
+                />
+            </div>
+
+            {/* Charts Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Peak Hours Chart */}
+                <Card className="shadow-sm border-0 ring-1 ring-gray-200">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-lg">
+                            <Clock className="w-5 h-5 text-indigo-500" />
+                            Khung giờ cao điểm (Trong tháng)
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="h-[320px]">
+                        {loading ? (
+                            <div className="w-full h-full bg-muted/20 animate-pulse rounded-lg" />
+                        ) : (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={peakHours}>
+                                    <defs>
+                                        <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
+                                            <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                                    <XAxis dataKey="hour" axisLine={false} tickLine={false} tick={{ fill: '#6B7280', fontSize: 12 }} />
+                                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6B7280', fontSize: 12 }} />
+                                    <Tooltip
+                                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                    />
+                                    <Area type="monotone" dataKey="count" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorCount)" name="Vé bán ra" />
+                                    {maxPeak > 0 && (
+                                        <ReferenceLine y={maxPeak} stroke="#EF4444" strokeDasharray="3 3" label={{ position: 'top', value: 'Cao nhất', fill: '#EF4444', fontSize: 12 }} />
+                                    )}
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        )}
+                    </CardContent>
+                </Card>
+
+                {/* Top Movies Chart */}
+                <Card className="shadow-sm border-0 ring-1 ring-gray-200">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-lg">
+                            <BarChart3 className="w-5 h-5 text-emerald-500" />
+                            Top 5 Phim Doanh Thu Cao
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="h-[320px]">
+                        {loading ? (
+                            <div className="w-full h-full bg-muted/20 animate-pulse rounded-lg" />
+                        ) : (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={topMovies} layout="vertical" margin={{ left: 40, right: 40 }}>
+                                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E5E7EB" />
+                                    <XAxis type="number" hide />
+                                    <YAxis dataKey="movie.name" type="category" width={100} tickFormatter={(val) => truncateText(val, 10)} tick={{ fontSize: 12 }} />
+                                    <Tooltip
+                                        cursor={{ fill: 'transparent' }}
+                                        content={({ active, payload }) => {
+                                            if (active && payload && payload.length) {
+                                                const data = payload[0].payload as MovieRevenueItem;
+                                                return (
+                                                    <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-100 text-sm">
+                                                        <p className="font-bold mb-1">{data.movie?.name}</p>
+                                                        <p>Doanh thu: <span className="font-semibold text-emerald-600">{fmtVND(data.totalRevenue)}</span></p>
+                                                        <p>Lấp đầy: <span className="font-semibold text-indigo-600">{fmtPercent(data.occupancyRate)}</span></p>
+                                                        <p className="text-xs text-gray-500 mt-1">({data.bookedSeats}/{data.totalSeats} ghế)</p>
+                                                    </div>
+                                                )
+                                            }
+                                            return null;
+                                        }}
+                                    />
+                                    <Bar dataKey="totalRevenue" fill="#10B981" radius={[0, 4, 4, 0]} barSize={32} background={{ fill: '#F3F4F6' }} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        )}
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Detailed Data Table */}
+            <Card className="shadow-sm border-0 ring-1 ring-gray-200 overflow-hidden">
+                <CardHeader className="bg-gray-50/50 border-b">
+                    <CardTitle className="text-lg">Chi tiết hiệu suất phim</CardTitle>
+                </CardHeader>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                        <thead className="bg-gray-50 text-gray-500 font-medium border-b">
+                            <tr>
+                                <th className="px-6 py-4">Phim</th>
+                                <th className="px-6 py-4 text-right">Doanh thu Vé</th>
+                                <th className="px-6 py-4 text-right">F&B</th>
+                                <th className="px-6 py-4 text-right">Tổng thu</th>
+                                <th className="px-6 py-4 text-center">% Lấp đầy</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {loading ? (
+                                [...Array(3)].map((_, i) => (
+                                    <tr key={i}><td colSpan={5} className="px-6 py-4"><div className="h-6 w-full bg-muted/20 animate-pulse rounded" /></td></tr>
+                                ))
+                            ) : movieTableData.length === 0 ? (
+                                <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-500">Không có dữ liệu trong khoảng thời gian này.</td></tr>
+                            ) : (
+                                movieTableData.map((item, idx) => (
+                                    <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
+                                        <td className="px-6 py-4 font-medium text-gray-900 border-l-4 border-transparent hover:border-indigo-500">
+                                            {item.movie?.name || item.movie?.title}
+                                        </td>
+                                        <td className="px-6 py-4 text-right text-gray-600">{fmtVND(item.ticketRevenue || 0)}</td>
+                                        <td className="px-6 py-4 text-right text-gray-600">{fmtVND(item.foodDrinkRevenue || 0)}</td>
+                                        <td className="px-6 py-4 text-right font-bold text-emerald-600">{fmtVND(item.totalRevenue)}</td>
+                                        <td className="px-6 py-4 text-center">
+                                            <Badge variant="outline" className={`
+                                          ${(item.occupancyRate || 0) > 50 ? 'bg-green-50 text-green-700 border-green-200' :
+                                                    (item.occupancyRate || 0) > 20 ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : 'bg-gray-50 text-gray-600'}
+                                      `}>
+                                                {fmtPercent(item.occupancyRate)}
+                                            </Badge>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </Card>
+        </div>
     );
 }

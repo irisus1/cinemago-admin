@@ -765,7 +765,7 @@ export const useBookingLogic = ({
     setIsPaymentModalOpen(true);
   };
 
-  const handleProcessPayment = async (method: "MOMO" | "VNPAY" | "ZALOPAY") => {
+  const handleProcessPayment = async (method: "MOMO" | "VNPAY" | "ZALOPAY" | "COD") => {
     if (!selectedShowtime) return;
     setIsSubmitting(true);
 
@@ -791,6 +791,23 @@ export const useBookingLogic = ({
       const bookingRes = await bookingService.createBooking(bookingData);
       const { id: bookingId, totalPrice } = bookingRes;
 
+      // --- LOGIC COD: Chuyển thẳng trang hoàn tất ---
+      if (method === "COD") {
+        // Xóa session storage để khi quay lại không bị dính ghế cũ
+        if (selectedShowtimeRef.current) {
+          sessionStorage.removeItem(getStorageKey(String(selectedShowtimeRef.current.id)));
+        }
+        // Clear timer
+        expiresAtRef.current = null;
+        if (timerRef.current) clearInterval(timerRef.current);
+
+        // Save ID for checkout page fallback (consistency)
+        window.localStorage.setItem("cinemago_lastBookingId", bookingId);
+
+        router.push(`/payment/checkout-completed?bookingId=${bookingId}&status=success&method=COD`);
+        return;
+      }
+
       let paymentRes;
       const paymentPayload = { bookingId, amount: totalPrice };
 
@@ -808,6 +825,13 @@ export const useBookingLogic = ({
       }
 
       if (paymentRes) {
+        // Clear session storage & timers for online payments too
+        if (selectedShowtimeRef.current) {
+          sessionStorage.removeItem(getStorageKey(String(selectedShowtimeRef.current.id)));
+        }
+        expiresAtRef.current = null;
+        if (timerRef.current) clearInterval(timerRef.current);
+
         try {
           window.localStorage.setItem("cinemago_lastBookingId", bookingId);
         } catch (e) {
