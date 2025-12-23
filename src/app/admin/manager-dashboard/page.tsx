@@ -7,6 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/context/AuthContext";
 import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import {
     DollarSign,
     Users,
     Building2,
@@ -157,7 +164,12 @@ export default function ManagerDashboard() {
         fetchCinemaInfo();
     }, [user?.cinemaId]);
 
-    // Fetch Data
+    // Peak Data State
+    const currentYear = new Date().getFullYear();
+    const [selectedMonth, setSelectedMonth] = useState<string>((new Date().getMonth() + 1).toString());
+    const [selectedYear, setSelectedYear] = useState<string>(currentYear.toString());
+
+    // Fetch Data (Global Revenue)
     const refresh = useCallback(async () => {
         if (!user?.cinemaId) return;
         setLoading(true);
@@ -165,10 +177,7 @@ export default function ManagerDashboard() {
         try {
             const cinemaId = user.cinemaId;
 
-            // 1. Revenue & Occupancy (By Movie is enough to calculate summary for specific cinema??
-            // Actually backend provided `getRevenueAndOccupancyByCinema`, let's use that to get precise "Average Occupancy" for THIS cinema)
-
-            const [summaryRes, revMovieRes, peakRes] = await Promise.all([
+            const [summaryRes, revMovieRes] = await Promise.all([
                 dashboardService.getRevenueByPeriod({
                     startDate,
                     endDate,
@@ -177,11 +186,6 @@ export default function ManagerDashboard() {
                 dashboardService.getRevenueByPeriodAndMovie({
                     startDate,
                     endDate,
-                    cinemaId,
-                }),
-                dashboardService.getPeakHoursInMonth({
-                    month: new Date(startDate).getMonth() + 1, // Only 1 month supported by Peak API logic? Or we use start date's month
-                    year: new Date(startDate).getFullYear(),
                     cinemaId,
                 }),
             ]);
@@ -193,29 +197,44 @@ export default function ManagerDashboard() {
                 avgOccupancy: summaryRes.occupancyRate || 0,
             });
 
-            console.log(peakRes);
-
-
             // Process Top Movies
             setTopMovies(revMovieRes.sortedMovies.slice(0, 5)); // Top 5 for Chart
             setMovieTableData(revMovieRes.sortedMovies); // All for Table
 
-            const phData = peakRes.allHours.map((h) => ({
-                hour: `${h.hour}h`,
-                count: h.ticketCount,
-            }));
-            setPeakHours(phData);
-            setMaxPeak(peakRes.topPeakHour?.ticketCount || 0);
-            setPeakSummary({
-                totalTickets: peakRes.summary?.totalTickets || 0,
-                totalBookings: peakRes.summary?.totalBookings || 0
-            });
         } catch (error) {
             console.error("Failed to load dashboard data", error);
         } finally {
             setLoading(false);
         }
     }, [user, startDate, endDate]);
+
+    // Fetch Peak Data (Decoupled)
+    useEffect(() => {
+        const fetchPeakData = async () => {
+            if (!user?.cinemaId) return;
+            try {
+                const peakRes = await dashboardService.getPeakHoursInMonth({
+                    month: Number(selectedMonth),
+                    year: Number(selectedYear),
+                    cinemaId: user.cinemaId
+                });
+
+                const phData = peakRes.allHours.map((h) => ({
+                    hour: `${h.hour}h`,
+                    count: h.ticketCount,
+                }));
+                setPeakHours(phData);
+                setMaxPeak(peakRes.topPeakHour?.ticketCount || 0);
+                setPeakSummary({
+                    totalTickets: peakRes.summary?.totalTickets || 0,
+                    totalBookings: peakRes.summary?.totalBookings || 0
+                });
+            } catch (error) {
+                console.error("Failed to fetch peak data", error);
+            }
+        };
+        fetchPeakData();
+    }, [user?.cinemaId, selectedMonth, selectedYear]);
 
     useEffect(() => {
         if (user?.role === "MANAGER" && user.cinemaId) {
@@ -306,14 +325,40 @@ export default function ManagerDashboard() {
                 {/* Peak Hours Chart */}
                 <Card className="shadow-sm border-0 ring-1 ring-gray-200">
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-lg">
-                            <Clock className="w-5 h-5 text-indigo-500" />
-                            Khung giờ cao điểm (Trong tháng)
-                        </CardTitle>
-                        <div className="flex items-center gap-4 text-sm text-gray-500 mt-1">
-                            <span>Tổng vé: <b className="text-gray-900">{peakSummary.totalTickets}</b></span>
-                            <span>•</span>
-                            <span>Tổng đơn: <b className="text-gray-900">{peakSummary.totalBookings}</b></span>
+                        <div className="flex items-start justify-between">
+                            <div>
+                                <CardTitle className="flex items-center gap-2 text-lg">
+                                    <Clock className="w-5 h-5 text-indigo-500" />
+                                    Khung giờ cao điểm
+                                </CardTitle>
+                                <div className="flex items-center gap-4 text-sm text-gray-500 mt-1">
+                                    <span>Tổng vé: <b className="text-gray-900">{peakSummary.totalTickets}</b></span>
+                                    <span>•</span>
+                                    <span>Tổng đơn: <b className="text-gray-900">{peakSummary.totalBookings}</b></span>
+                                </div>
+                            </div>
+                            <div className="flex gap-2">
+                                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                                    <SelectTrigger className="w-[100px] h-8 text-xs">
+                                        <SelectValue placeholder="Tháng" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                                            <SelectItem key={m} value={m.toString()}>Tháng {m}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <Select value={selectedYear} onValueChange={setSelectedYear}>
+                                    <SelectTrigger className="w-[80px] h-8 text-xs">
+                                        <SelectValue placeholder="Năm" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value={(currentYear - 1).toString()}>{currentYear - 1}</SelectItem>
+                                        <SelectItem value={currentYear.toString()}>{currentYear}</SelectItem>
+                                        <SelectItem value={(currentYear + 1).toString()}>{currentYear + 1}</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
                     </CardHeader>
                     <CardContent className="h-[320px]">
