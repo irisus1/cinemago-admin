@@ -359,7 +359,7 @@ export function useShowtimeFormLogic({
       const list: ShowTime[] = res.data ?? [];
 
       for (const slot of bucket.slots) {
-        const conflict = list.some((st) => {
+        const conflictShowtime = list.find((st) => {
           if (st.roomId !== roomId) return false;
 
           if (
@@ -375,9 +375,13 @@ export function useShowtimeFormLogic({
           return slot.startMs < stEnd && slot.endMs > stStart;
         });
 
-        if (conflict) {
-          errors[slot.originalIndex] =
-            "Giờ này trùng với 1 suất chiếu khác trong phòng.";
+        if (conflictShowtime) {
+          const s = new Date(conflictShowtime.startTime);
+          const e = new Date(conflictShowtime.endTime);
+          const timeRange = `${pad(s.getHours())}:${pad(s.getMinutes())} - ${pad(
+            e.getHours()
+          )}:${pad(e.getMinutes())}`;
+          errors[slot.originalIndex] = `Trùng với suất: ${timeRange}`;
         }
       }
     }

@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 
 import { RoomLayoutModal } from "@/components/modal/RoomLayoutModal";
+import LocationPicker from "@/components/LocationPicker";
 
 // Định nghĩa lại Type SeatLayout cho khớp (nếu cần)
 type SeatLayout = SeatCell[];
@@ -59,8 +60,8 @@ export default function CinemaModal({
   const [city, setCity] = useState("");
   const [cityId, setCityId] = useState<string>("");
   const [address, setAddress] = useState("");
-  const [longitude, setLongitude] = useState<string>("");
-  const [latitude, setLatitude] = useState<string>("");
+  const [longitude, setLongitude] = useState<number | null>(null);
+  const [latitude, setLatitude] = useState<number | null>(null);
 
   // --- STATE BƯỚC 2: DANH SÁCH PHÒNG ---
   const [rooms, setRooms] = useState<RoomCreate[]>([]);
@@ -85,8 +86,8 @@ export default function CinemaModal({
     setCity("");
     setCityId("");
     setAddress("");
-    setLongitude("");
-    setLatitude("");
+    setLongitude(null);
+    setLatitude(null);
     setRooms([]);
     setOpenRoomIndices(new Set());
   }, [open]);
@@ -189,12 +190,7 @@ export default function CinemaModal({
   }, [currentStep, isStep1Valid, isStep2Valid]);
 
   // --- SUBMIT ---
-  const toNumOrNull = (s: string) => {
-    const t = s.trim();
-    if (!t) return null;
-    const n = Number(t);
-    return Number.isFinite(n) ? n : null;
-  };
+
 
   async function handleSubmit() {
     if (!onSubmit) return;
@@ -203,8 +199,8 @@ export default function CinemaModal({
       name: name.trim(),
       city: city.trim(),
       address: address.trim(),
-      longitude: toNumOrNull(longitude),
-      latitude: toNumOrNull(latitude),
+      longitude: longitude,
+      latitude: latitude,
       rooms: rooms,
     };
     await onSubmit(payload, mode, cinema);
@@ -255,19 +251,17 @@ export default function CinemaModal({
                     <div
                       className="absolute left-10 top-1/2 h-0.5 bg-slate-900 -z-10 transition-all duration-300"
                       style={{
-                        width: `calc(${
-                          (currentStep - 1) / (TOTAL_STEPS - 1)
-                        } * (100% - 80px))`,
+                        width: `calc(${(currentStep - 1) / (TOTAL_STEPS - 1)
+                          } * (100% - 80px))`,
                       }}
                     />
                     {[1, 2, 3].map((step) => (
                       <div
                         key={step}
                         className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm border-2 transition-colors duration-300 z-10
-                          ${
-                            currentStep >= step
-                              ? "bg-slate-900 border-slate-900 text-white"
-                              : "bg-white border-gray-300 text-gray-400"
+                          ${currentStep >= step
+                            ? "bg-slate-900 border-slate-900 text-white"
+                            : "bg-white border-gray-300 text-gray-400"
                           }`}
                       >
                         {step}
@@ -312,42 +306,18 @@ export default function CinemaModal({
                           />
                         </div>
                       </div>
-                      <div>
-                        <label className="block text-sm font-semibold mb-1.5 text-gray-800">
-                          Địa chỉ <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          value={address}
-                          onChange={(e) => setAddress(e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-900 outline-none transition-all"
-                          placeholder="Nhập địa chỉ chi tiết"
+
+                      <div className="pt-2">
+                        <LocationPicker
+                          address={address}
+                          latitude={latitude}
+                          longitude={longitude}
+                          onLocationChange={({ address, latitude, longitude }) => {
+                            setAddress(address);
+                            setLatitude(latitude);
+                            setLongitude(longitude);
+                          }}
                         />
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-semibold mb-1.5 text-gray-800">
-                            Kinh độ (Tùy chọn)
-                          </label>
-                          <input
-                            type="number"
-                            value={longitude}
-                            onChange={(e) => setLongitude(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-900 outline-none transition-all"
-                            placeholder="Ví dụ: 40.7128"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-semibold mb-1.5 text-gray-800">
-                            Vĩ độ (Tùy chọn)
-                          </label>
-                          <input
-                            type="number"
-                            value={latitude}
-                            onChange={(e) => setLatitude(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-900 outline-none transition-all"
-                            placeholder="Ví dụ: -74.0060"
-                          />
-                        </div>
                       </div>
                     </div>
                   )}
@@ -484,11 +454,10 @@ export default function CinemaModal({
                                           handleOpenLayoutModal(index)
                                         }
                                         className={`w-full py-2.5 border rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors
-                                        ${
-                                          room.seatLayout
+                                        ${room.seatLayout
                                             ? "border-green-200 bg-green-50 text-green-700 hover:bg-green-100"
                                             : "border-gray-300 text-gray-700 hover:bg-white bg-white shadow-sm"
-                                        }`}
+                                          }`}
                                       >
                                         {room.seatLayout ? (
                                           <Edit size={14} />
@@ -565,11 +534,10 @@ export default function CinemaModal({
                                   </p>
                                 </div>
                                 <span
-                                  className={`text-xs font-medium ${
-                                    room.seatLayout
+                                  className={`text-xs font-medium ${room.seatLayout
                                       ? "text-green-600"
                                       : "text-gray-400"
-                                  }`}
+                                    }`}
                                 >
                                   {room.seatLayout
                                     ? "Bố cục đã cấu hình"
@@ -605,11 +573,10 @@ export default function CinemaModal({
                     <button
                       onClick={() => setCurrentStep((p) => p + 1)}
                       disabled={!canNext}
-                      className={`px-6 py-2.5 rounded-lg text-white font-medium transition-all shadow-sm flex items-center gap-2 ${
-                        canNext
+                      className={`px-6 py-2.5 rounded-lg text-white font-medium transition-all shadow-sm flex items-center gap-2 ${canNext
                           ? "bg-slate-900 hover:bg-slate-800"
                           : "bg-gray-300 cursor-not-allowed"
-                      }`}
+                        }`}
                     >
                       Tiếp
                     </button>

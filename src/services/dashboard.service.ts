@@ -211,6 +211,23 @@ class DashboardService {
       throw new Error(msg);
     }
   }
+  // GET /bookings/dashboard/export?startDate=&endDate=&type=&cinemaId=
+  async exportRevenue(params: DateRangeParams): Promise<Blob> {
+    try {
+      const response = await api.get(
+        "/bookings/dashboard/export",
+        {
+          params,
+          responseType: "blob", // Quan trọng để nhận file binary
+        }
+      );
+      return response.data;
+    } catch (e: unknown) {
+      const msg = getMsg(e, "Không thể xuất file báo cáo.");
+      console.error("Lỗi exportRevenue:", e);
+      throw new Error(msg);
+    }
+  }
 }
 
 export const dashboardService = new DashboardService();
