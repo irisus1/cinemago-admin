@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-// @ts-ignore
+// @ts-expect-error - goong-js does not have typescript definitions
 import goongjs from "@goongmaps/goong-js";
 import "@goongmaps/goong-js/dist/goong-js.css";
 import {
@@ -27,6 +27,50 @@ type LocationPickerProps = {
   }) => void;
 };
 
+// --- INTERFACES ---
+interface GoongSuggestion {
+  place_id: string;
+  description: string;
+  structured_formatting: {
+    main_text: string;
+    secondary_text: string;
+  };
+}
+
+interface GoongGeocodeResult {
+  formatted_address: string;
+  geometry: {
+    location: {
+      lat: number;
+      lng: number;
+    };
+  };
+  place_id: string;
+  name: string;
+}
+
+// Minimal interface for Map/Marker interactions since we lack full types
+interface GoongMap {
+  addControl: (control: unknown) => void;
+  on: (event: string, callback: (e: GoongMapEvent) => void) => void;
+  remove: () => void;
+  flyTo: (options: { center: [number, number]; zoom: number; essential: boolean }) => void;
+}
+
+interface GoongMarker {
+  setLngLat: (lnglat: [number, number]) => GoongMarker;
+  addTo: (map: GoongMap) => GoongMarker;
+  on: (event: string, callback: () => void) => void;
+  getLngLat: () => { lng: number; lat: number };
+}
+
+interface GoongMapEvent {
+  lngLat: {
+    lng: number;
+    lat: number;
+  };
+}
+
 export default function LocationPickerGoong({
   address,
   latitude,
@@ -34,13 +78,13 @@ export default function LocationPickerGoong({
   onLocationChange,
 }: LocationPickerProps) {
   const [query, setQuery] = useState(address);
-  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [suggestions, setSuggestions] = useState<GoongSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<any>(null);
-  const markerRef = useRef<any>(null);
+  const mapRef = useRef<GoongMap | null>(null);
+  const markerRef = useRef<GoongMarker | null>(null);
 
   // Initialize Map
   useEffect(() => {
@@ -56,7 +100,7 @@ export default function LocationPickerGoong({
       style: "https://tiles.goong.io/assets/goong_map_web.json",
       center: [defaultLng, defaultLat],
       zoom: 12,
-    });
+    }) as GoongMap;
 
     // Add navigation controls
     map.addControl(new goongjs.NavigationControl());
@@ -67,14 +111,14 @@ export default function LocationPickerGoong({
     if (longitude && latitude) {
       const marker = new goongjs.Marker({ draggable: true })
         .setLngLat([longitude, latitude])
-        .addTo(map);
+        .addTo(map) as GoongMarker;
 
       marker.on("dragend", onDragEnd);
       markerRef.current = marker;
     }
 
     // Handle Map Click
-    map.on("click", (e: any) => {
+    map.on("click", (e: GoongMapEvent) => {
       const { lng, lat } = e.lngLat;
       updateMarker(lng, lat);
       handleMapAction(lat, lng);
@@ -97,10 +141,12 @@ export default function LocationPickerGoong({
 
   // Update marker position when clicking or dragging
   const updateMarker = (lng: number, lat: number) => {
+    if (!mapRef.current) return;
+
     if (!markerRef.current) {
       const marker = new goongjs.Marker({ draggable: true })
         .setLngLat([lng, lat])
-        .addTo(mapRef.current);
+        .addTo(mapRef.current) as GoongMarker;
       marker.on("dragend", onDragEnd);
       markerRef.current = marker;
     } else {
@@ -109,8 +155,10 @@ export default function LocationPickerGoong({
   };
 
   const onDragEnd = () => {
-    const lngLat = markerRef.current.getLngLat();
-    handleMapAction(lngLat.lat, lngLat.lng);
+    if (markerRef.current) {
+      const lngLat = markerRef.current.getLngLat();
+      handleMapAction(lngLat.lat, lngLat.lng);
+    }
   };
 
   // --- 1. HÀM TÌM KIẾM (AUTOCOMPLETE) ---
@@ -148,7 +196,8 @@ export default function LocationPickerGoong({
   };
 
   // --- 2. HÀM LẤY CHI TIẾT TỪ GỢI Ý (PLACE DETAIL) ---
-  const handleSelect = async (suggestion: any) => {
+  const handleSelect = async (suggestion: GoongSuggestion | null) => {
+    if (!suggestion) return;
     setQuery(suggestion.description);
     setSuggestions([]);
     setLoading(true);
@@ -160,8 +209,9 @@ export default function LocationPickerGoong({
       const data = await res.json();
 
       if (data.status === "OK" && data.result) {
-        const { lat, lng } = data.result.geometry.location;
-        const fullAddress = data.result.formatted_address || data.result.name;
+        const result = data.result as GoongGeocodeResult;
+        const { lat, lng } = result.geometry.location;
+        const fullAddress = result.formatted_address || result.name;
 
         onLocationChange({
           address: fullAddress,
@@ -230,7 +280,7 @@ export default function LocationPickerGoong({
         <label className="block text-sm font-semibold mb-1.5 text-gray-800">
           Địa chỉ <span className="text-red-500">*</span>
         </label>
-        <Combobox value={null} onChange={handleSelect}>
+        <Combobox value={null as GoongSuggestion | null} onChange={handleSelect}>
           <div className="relative">
             <div className="relative w-full overflow-hidden rounded-lg border border-gray-300 bg-white flex items-center">
               <Search className="ml-3 h-4 w-4 text-gray-400" />
