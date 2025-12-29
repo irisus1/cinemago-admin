@@ -11,13 +11,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
-
-const ROLE_REDIRECTS = {
-  EMPLOYEE: "/admin/ticket",
-  MANAGER: "/admin/manager-dashboard",
-  ADMIN: "/admin/dashboard",
-  // Bạn có thể thêm role mới dễ dàng ở đây mà không cần sửa logic code
-};
+import { ROLE_REDIRECTS } from "@/config/permissions";
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({
@@ -132,11 +126,10 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className={`w-full py-2 text-white rounded-md flex items-center justify-center transition-all ${
-              loading
+            className={`w-full py-2 text-white rounded-md flex items-center justify-center transition-all ${loading
                 ? "bg-indigo-400 cursor-not-allowed"
                 : "bg-indigo-600 hover:bg-indigo-700"
-            }`}
+              }`}
           >
             {loading ? (
               <>

@@ -16,6 +16,7 @@ import type { SidebarTab } from "@/constants/constants";
 import { useAuth } from "@/context/AuthContext";
 import { useCinemaStore } from "@/store/useCinemaStore";
 import { cinemaService, type Cinema, type CinemaPublic } from "@/services";
+import { PERMISSIONS, hasPermission } from "@/config/permissions";
 
 interface SidebarProps {
   isSidebarOpen: boolean;
@@ -104,11 +105,7 @@ export default function Sidebar({
   const renderCinemaSelector = () => {
     if (!user) return null;
 
-    if (
-      user.role === "MANAGER" ||
-      user.role === "EMPLOYEE"
-
-    ) {
+    if (hasPermission(user.role, PERMISSIONS.VIEW_CINEMA_SELECTOR)) {
       if (!currentCinema) {
         if (!selectedCinemaId) return null;
 
