@@ -804,7 +804,7 @@ export const useBookingLogic = ({
         // Save ID for checkout page fallback (consistency)
         window.localStorage.setItem("cinemago_lastBookingId", bookingId);
 
-        router.push(`/payment/checkout-completed?bookingId=${bookingId}&status=success&method=COD`);
+        router.push(`/booking-completed?bookingId=${bookingId}&status=success&method=COD`);
         return;
       }
 

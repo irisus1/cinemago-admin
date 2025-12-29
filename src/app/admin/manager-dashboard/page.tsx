@@ -23,6 +23,7 @@ import {
     Utensils,
     Ticket,
     Clock,
+    Download,
 } from "lucide-react";
 import {
     ResponsiveContainer,
@@ -46,6 +47,7 @@ import {
     dashboardService as ds, // Alias for easier usage if needed
 } from "@/services";
 import { DateNativeVN } from "@/components/DateNativeVN";
+import ExportExcelModal from "@/components/modal/ExportExcelModal";
 
 // --- Types ---
 type ChartItem = { name: string; revenue: number; occupancy: number };
@@ -117,6 +119,9 @@ export default function ManagerDashboard() {
 
     const [startDate, setStartDate] = useState<string>(startOfMonthISO);
     const [endDate, setEndDate] = useState<string>(todayISO);
+
+    // State Export
+    const [showExportModal, setShowExportModal] = useState(false);
 
     // State
     const [loading, setLoading] = useState<boolean>(true);
@@ -280,16 +285,36 @@ export default function ManagerDashboard() {
                             className="w-[130px] border-none shadow-none bg-transparent"
                         />
                     </div>
-                    <Button
-                        onClick={refresh}
-                        size="icon"
-                        variant="outline"
-                        className="rounded-lg shadow-sm hover:bg-gray-50"
-                    >
-                        <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-                    </Button>
+
+                    <div className="flex gap-2">
+                        <Button
+                            onClick={() => setShowExportModal(true)}
+                            size="sm"
+                            variant="outline"
+                            className="h-10 gap-2 border-dashed"
+                        >
+                            <Download className="h-4 w-4" />
+                            Xuất báo cáo
+                        </Button>
+                        <Button
+                            onClick={refresh}
+                            size="icon"
+                            variant="outline"
+                            className="rounded-lg shadow-sm hover:bg-gray-50 h-10 w-10"
+                        >
+                            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+                        </Button>
+                    </div>
                 </div>
             </div>
+
+            <ExportExcelModal
+                open={showExportModal}
+                onClose={() => setShowExportModal(false)}
+                initialStartDate={startDate}
+                initialEndDate={endDate}
+                fixedCinemaId={user?.cinemaId}
+            />
 
             {/* Summary Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -572,6 +597,6 @@ export default function ManagerDashboard() {
                     </table>
                 </div>
             </Card>
-        </div>
+        </div >
     );
 }

@@ -46,7 +46,7 @@ export const adminTabs: SidebarTab[] = [
     allowedRoles: ["MANAGER"],
   },
   {
-    name: "Đặt vé trực tiếp",
+    name: "POS",
     path: "/admin/ticket",
     icon: <LucideTicket className="w-6 h-6" />,
     allowedRoles: ["ADMIN", "MANAGER", "EMPLOYEE"],
@@ -108,7 +108,7 @@ export const adminTabs: SidebarTab[] = [
     allowedRoles: ["ADMIN"],
   },
   {
-    name: "Quản lý đồ ăn/uống",
+    name: "Quản lý đồ ăn & thức uống",
     path: "/admin/food-drink",
     icon: <BiFoodMenu className="w-6 h-6" />,
     allowedRoles: ["ADMIN", "MANAGER"],

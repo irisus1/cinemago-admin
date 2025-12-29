@@ -4,6 +4,13 @@ import { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { LabelList } from "recharts";
@@ -17,6 +24,7 @@ import {
   PieChart as PieChartIcon,
   CalendarDays,
   Utensils,
+  Download,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -40,6 +48,7 @@ import {
   CinemaRevenueItem,
 } from "@/services";
 import { DateNativeVN } from "@/components/DateNativeVN";
+import ExportExcelModal from "@/components/modal/ExportExcelModal";
 
 type ChartItem = { name: string; revenue: number };
 const PIE_COLORS: string[] = ["#4f46e5", "#22c55e"];
@@ -58,6 +67,10 @@ export default function Dashboard() {
 
   const [startDate, setStartDate] = useState<string>(todayISO);
   const [endDate, setEndDate] = useState<string>(sevenDaysAfterISO);
+  const [type, setType] = useState<string>("all");
+
+  // ===== State Export
+  const [showExportModal, setShowExportModal] = useState(false);
 
   // ===== State dữ liệu
   const [loading, setLoading] = useState<boolean>(true);
@@ -147,11 +160,16 @@ export default function Dashboard() {
 
     try {
       // 1) Call các API "core" trước: user/cinema/movie count + tổng doanh thu
+      const apiType = type === "all" ? undefined : type;
       const [usersCount, cinemasCount, moviesCount, rev] = await Promise.all([
         dashboardService.getUserCount(),
         dashboardService.getCinemaCount(),
         dashboardService.getMovieCount(),
-        dashboardService.getRevenueByPeriod({ startDate, endDate }),
+        dashboardService.getRevenueByPeriod({
+          startDate,
+          endDate,
+          type: apiType,
+        }),
       ]);
 
       // ---- Counts
@@ -172,6 +190,7 @@ export default function Dashboard() {
         const rbm = await dashboardService.getRevenueByPeriodAndMovie({
           startDate,
           endDate,
+          type: apiType,
         });
         setByMovie(mapMovieRevenue(rbm));
       } catch (e: unknown) {
@@ -184,6 +203,7 @@ export default function Dashboard() {
         const rbc = await dashboardService.getRevenueByPeriodAndCinema({
           startDate,
           endDate,
+          type: apiType,
         });
         setByCinema(mapCinemaRevenue(rbc));
       } catch (e: unknown) {
@@ -201,7 +221,7 @@ export default function Dashboard() {
     } finally {
       setLoading(false);
     }
-  }, [startDate, endDate]);
+  }, [startDate, endDate, type]);
 
   useEffect(() => {
     void refresh();
@@ -233,15 +253,43 @@ export default function Dashboard() {
               onChangeISO={(iso) => setEndDate(iso)}
               className="relative"
               // minISO={todayISO}
+              // minISO={todayISO}
               widthClass="w-[140px]"
             />
+
+            <Select value={type} onValueChange={setType}>
+              <SelectTrigger className="w-[120px] border bg-white">
+                <SelectValue placeholder="Loại đơn" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả</SelectItem>
+                <SelectItem value="online">Online</SelectItem>
+                <SelectItem value="offline">Offline</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <Button onClick={refresh} className="gap-2">
             <RefreshCw className="h-4 w-4" />
             Làm mới
           </Button>
+          <Button
+            variant="outline"
+            onClick={() => setShowExportModal(true)}
+            className="gap-2"
+          >
+            <Download className="h-4 w-4" />
+            Xuất Excel
+          </Button>
         </div>
       </div>
+
+      <ExportExcelModal
+        open={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        initialStartDate={startDate}
+        initialEndDate={endDate}
+        initialType={type}
+      />
 
       {/* Thẻ KPI */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">

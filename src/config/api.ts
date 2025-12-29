@@ -83,6 +83,10 @@ api.interceptors.response.use(
       try {
         const newAccessToken = await refreshAccessTokenAction();
 
+        if (!newAccessToken) {
+          throw new Error("Failed to refresh token");
+        }
+
         // Lưu Access Token mới vào LocalStorage
         localStorage.setItem(ACCESS_TOKEN_KEY, newAccessToken);
         api.defaults.headers.common.Authorization = `Bearer ${newAccessToken}`;
