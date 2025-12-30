@@ -14,6 +14,11 @@ export interface Payment {
 export interface CreatePaymentRequest {
   amount: number;
   bookingId: string;
+  urlCompleted: string;
+}
+
+interface CreateVNPayPaymentRequest extends CreatePaymentRequest {
+  ipAddr: string;
 }
 
 interface PaymentResponse {
@@ -59,7 +64,7 @@ export const paymentService = {
     return res.data;
   },
 
-  async checkoutWithVnPay(payload: CreatePaymentRequest) {
+  async checkoutWithVnPay(payload: CreateVNPayPaymentRequest) {
     const res = await api.post("/payments/vnpay/checkout", payload);
     return res.data.URL as string; // redirect URL
   },
