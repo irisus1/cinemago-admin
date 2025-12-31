@@ -107,7 +107,7 @@ export default function ShowtimeModal(props: Props) {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="md:col-span-2 min-w-0 flex flex-col gap-1.5">
-            <Label className="font-semibold">Phim</Label>
+            <Label className="font-semibold">Phim <span className="text-red-500">*</span></Label>
             <SearchableCombobox
               options={movieOptions}
               value={selectedMovieId}
@@ -119,7 +119,7 @@ export default function ShowtimeModal(props: Props) {
           </div>
 
           <div className="md:col-span-2 min-w-0">
-            <Label>Rạp</Label>
+            <Label>Rạp <span className="text-red-500">*</span></Label>
             <Select
               value={cinemaId}
               onValueChange={handleCinemaChange}
@@ -146,7 +146,7 @@ export default function ShowtimeModal(props: Props) {
           </div>
 
           <div className="min-w-0 md:col-span-2">
-            <Label>Phòng</Label>
+            <Label>Phòng <span className="text-red-500">*</span></Label>
             <Select
               value={roomId}
               onValueChange={setRoomId}
@@ -169,7 +169,7 @@ export default function ShowtimeModal(props: Props) {
           </div>
 
           <div className="min-w-0">
-            <Label>Giá (₫)</Label>
+            <Label>Giá (₫) <span className="text-red-500">*</span></Label>
             <Input
               className="mt-1 h-10 w-full"
               inputMode="numeric"
@@ -181,7 +181,7 @@ export default function ShowtimeModal(props: Props) {
 
           {/* 3) NGÀY + GIỜ */}
           <div className="min-w-0">
-            <Label>Ngày chiếu</Label>
+            <Label>Ngày chiếu <span className="text-red-500">*</span></Label>
             <div className="mt-1 flex gap-2">
               <DateNativeVN
                 valueISO={startDate}
@@ -205,7 +205,7 @@ export default function ShowtimeModal(props: Props) {
           </div>
 
           <div className="md:col-span-2 min-w-0">
-            <Label>Giờ bắt đầu</Label>
+            <Label>Giờ bắt đầu <span className="text-red-500">*</span></Label>
             <div className="mt-1 grid grid-cols-1 md:grid-cols-2 gap-2">
               {timeSlots.map((t, idx) => {
                 const endInfo = getEndFor(t);

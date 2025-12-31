@@ -38,6 +38,8 @@ import {
   PieChart,
   Pie,
   Cell,
+  ComposedChart,
+  Line,
 } from "recharts";
 
 import {
@@ -50,7 +52,13 @@ import {
 import { DateNativeVN } from "@/components/DateNativeVN";
 import ExportExcelModal from "@/components/modal/ExportExcelModal";
 
-type ChartItem = { name: string; revenue: number };
+type ChartItem = {
+  name: string;
+  revenue: number;
+  ticketRevenue: number;
+  fnbRevenue: number;
+  occupancyRate: number;
+};
 const PIE_COLORS: string[] = ["#4f46e5", "#22c55e"];
 
 const truncateText = (text: string, maxLength: number = 15) => {
@@ -123,6 +131,9 @@ export default function Dashboard() {
       return {
         name,
         revenue: Number(item.totalRevenue ?? 0),
+        ticketRevenue: Number(item.ticketRevenue ?? 0),
+        fnbRevenue: Number(item.foodDrinkRevenue ?? 0),
+        occupancyRate: Number(item.occupancyRate ?? 0),
       };
     });
 
@@ -148,6 +159,9 @@ export default function Dashboard() {
       return {
         name,
         revenue: Number(item.totalRevenue ?? 0),
+        ticketRevenue: Number(item.ticketRevenue ?? 0),
+        fnbRevenue: Number(item.foodDrinkRevenue ?? 0),
+        occupancyRate: Number(item.occupancyRate ?? 0),
       };
     });
 
@@ -159,7 +173,6 @@ export default function Dashboard() {
     setError("");
 
     try {
-      // 1) Call các API "core" trước: user/cinema/movie count + tổng doanh thu
       const apiType = type === "all" ? undefined : type;
       const [usersCount, cinemasCount, moviesCount, rev] = await Promise.all([
         dashboardService.getUserCount(),
@@ -172,20 +185,17 @@ export default function Dashboard() {
         }),
       ]);
 
-      // ---- Counts
       setCounts({
         users: usersCount,
         cinemas: cinemasCount,
         movies: moviesCount,
       });
 
-      // ---- Revenue period
       const total = Number(rev.totalRevenue ?? 0);
       const fnb = Number(rev.totalFoodDrinkRevenue ?? 0);
       const ticket = Math.max(0, total - fnb);
       setRevenue({ total, fnb, ticket });
 
-      // 2) Gọi API doanh thu theo phim – nếu lỗi thì chỉ log và để chart rỗng
       try {
         const rbm = await dashboardService.getRevenueByPeriodAndMovie({
           startDate,
@@ -195,10 +205,9 @@ export default function Dashboard() {
         setByMovie(mapMovieRevenue(rbm));
       } catch (e: unknown) {
         console.error("Lỗi getRevenueByPeriodAndMovie:", e);
-        setByMovie([]); // tránh giữ data cũ
+        setByMovie([]);
       }
 
-      // 3) Gọi API doanh thu theo rạp – nếu lỗi thì chỉ log và để chart rỗng
       try {
         const rbc = await dashboardService.getRevenueByPeriodAndCinema({
           startDate,
@@ -211,11 +220,9 @@ export default function Dashboard() {
         setByCinema([]);
       }
     } catch (e: unknown) {
-      // Chỉ khi các API "core" lỗi mới show lỗi lớn trên dashboard
       const msg =
         e instanceof Error ? e.message : "Có lỗi xảy ra khi tải dữ liệu.";
       setError(msg);
-      // Nếu muốn, có thể reset luôn chart:
       setByMovie([]);
       setByCinema([]);
     } finally {
@@ -227,7 +234,6 @@ export default function Dashboard() {
     void refresh();
   }, [refresh]);
 
-  // ===== UI
   return (
     <div className="min-h-screen w-full p-6 md:p-10 space-y-6">
       {/* Header */}
@@ -243,8 +249,8 @@ export default function Dashboard() {
               valueISO={startDate}
               onChangeISO={(iso) => setStartDate(iso)}
               className="relative"
-              // minISO={todayISO}
               widthClass="w-[140px]"
+              maxISO={endDate}
             />
             <span className="text-muted-foreground">→</span>
 
@@ -252,9 +258,8 @@ export default function Dashboard() {
               valueISO={endDate}
               onChangeISO={(iso) => setEndDate(iso)}
               className="relative"
-              // minISO={todayISO}
-              // minISO={todayISO}
               widthClass="w-[140px]"
+              minISO={startDate}
             />
 
             <Select value={type} onValueChange={setType}>
@@ -379,36 +384,11 @@ export default function Dashboard() {
               {loading ? (
                 <div className="h-full w-full animate-pulse rounded-xl bg-muted/40" />
               ) : (
-                // Only show chart if NOT Manager (Admin sees it). 
-                // Wait, if I am Manager, valid `byCinema` might be just my cinema or global? 
-                // Requirement says: "Admin sees Cinema Comparison Chart. Manager hides this chart".
-                // I need to useAuth() hook here to check role.
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
+                  <ComposedChart
                     data={byCinema}
                     margin={{ top: 12, right: 12, left: 4, bottom: 0 }}
                   >
-                    <defs>
-                      <linearGradient
-                        id="revenueGradient"
-                        x1="0"
-                        y1="0"
-                        x2="0"
-                        y2="1"
-                      >
-                        <stop
-                          offset="0%"
-                          stopColor="hsl(var(--primary))"
-                          stopOpacity={0.9}
-                        />
-                        <stop
-                          offset="100%"
-                          stopColor="hsl(var(--primary))"
-                          stopOpacity={0.4}
-                        />
-                      </linearGradient>
-                    </defs>
-
                     <CartesianGrid
                       strokeDasharray="3 3"
                       vertical={false}
@@ -419,21 +399,47 @@ export default function Dashboard() {
                       tickLine={false}
                       axisLine={false}
                       tick={{
-                        fontSize: 15,
+                        fontSize: 12,
                         fill: "hsl(var(--muted-foreground))",
                       }}
+                      interval={0}
+                      angle={-15}
+                      textAnchor="end"
+                      height={60}
                     />
+                    {/* Left Y-Axis for Revenue */}
                     <YAxis
-                      tickFormatter={fmtNumber}
+                      yAxisId="left"
+                      tickFormatter={(val) =>
+                        new Intl.NumberFormat("en", {
+                          notation: "compact",
+                        }).format(val)
+                      }
                       tickLine={false}
                       axisLine={false}
                       tick={{
-                        fontSize: 13,
+                        fontSize: 12,
                         fill: "hsl(var(--muted-foreground))",
                       }}
                     />
+                    {/* Right Y-Axis for Occupancy Rate */}
+                    <YAxis
+                      yAxisId="right"
+                      orientation="right"
+                      unit="%"
+                      tickLine={false}
+                      axisLine={false}
+                      tick={{
+                        fontSize: 12,
+                        fill: "#f97316", // orange-500
+                      }}
+                    />
+
                     <Tooltip
-                      formatter={(value: number | string) => fmtVND(value)}
+                      formatter={(value: number, name: string) => {
+                        if (name === "Tỉ lệ lấp đầy") return `${value}%`;
+                        return fmtVND(value);
+                      }}
                       cursor={{ fill: "rgba(148, 163, 184, 0.18)" }}
                     />
                     <Legend
@@ -442,14 +448,38 @@ export default function Dashboard() {
                       iconType="circle"
                       wrapperStyle={{ fontSize: 12 }}
                     />
+
+                    {/* Stacked Bars for Revenue */}
                     <Bar
-                      dataKey="revenue"
-                      name="Doanh thu"
-                      fill="url(#revenueGradient)"
-                      radius={[8, 8, 0, 0]}
+                      yAxisId="left"
+                      dataKey="ticketRevenue"
+                      name="Vé"
+                      stackId="a"
+                      fill="#4f46e5" // indigo-600
+                      radius={[0, 0, 4, 4]} // top-rounded only if top? No, stacked.
                       maxBarSize={48}
                     />
-                  </BarChart>
+                    <Bar
+                      yAxisId="left"
+                      dataKey="fnbRevenue"
+                      name="Đồ ăn & nước"
+                      stackId="a"
+                      fill="#22c55e" // green-500
+                      radius={[4, 4, 0, 0]} // Round top of the stack
+                      maxBarSize={48}
+                    />
+
+                    {/* Line for Occupancy Rate */}
+                    <Line
+                      yAxisId="right"
+                      type="monotone"
+                      dataKey="occupancyRate"
+                      name="Tỉ lệ lấp đầy"
+                      stroke="#f97316" // orange-500
+                      strokeWidth={2}
+                      dot={{ r: 4, fill: "#f97316" }}
+                    />
+                  </ComposedChart>
                 </ResponsiveContainer>
               )}
             </CardContent>
@@ -458,7 +488,7 @@ export default function Dashboard() {
       </div>
 
       {/* Hàng biểu đồ 2 */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+      < div className="grid grid-cols-1 xl:grid-cols-2 gap-4" >
         <Card className="h-[420px] xl:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between">
             <div className="flex items-center gap-2">

@@ -161,7 +161,7 @@ export default function MovieForm({
 
   // ======== validation ========
   const baseValid =
-    !!title && !!description && !!duration && !!releaseDate && !!genres;
+    !!title && !!description && !!duration && !!releaseDate && genres.length > 0;
 
   const hasTrailer =
     trailerMode === "file"
@@ -221,8 +221,8 @@ export default function MovieForm({
             {mode === "edit"
               ? "Chỉnh sửa phim"
               : mode === "create"
-              ? "Thêm phim"
-              : "Xem chi tiết phim"}
+                ? "Thêm phim"
+                : "Xem chi tiết phim"}
           </h1>
         </div>
       </div>
@@ -243,7 +243,7 @@ export default function MovieForm({
         <div className="lg:col-span-4 space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Thumbnail</CardTitle>
+              <CardTitle>Thumbnail <span className="text-red-500">*</span></CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {/* 1) Ẩn input file */}
@@ -322,7 +322,7 @@ export default function MovieForm({
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xl">
               <div className="md:col-span-3 space-y-2">
-                <Label>Tiêu đề</Label>
+                <Label>Tiêu đề <span className="text-red-500">*</span></Label>
                 <Input
                   value={title}
                   disabled={readOnly}
@@ -331,7 +331,7 @@ export default function MovieForm({
               </div>
 
               <div className="md:col-span-3 space-y-2">
-                <Label>Mô tả</Label>
+                <Label>Mô tả <span className="text-red-500">*</span></Label>
                 <Textarea
                   rows={5}
                   disabled={readOnly}
@@ -341,7 +341,7 @@ export default function MovieForm({
               </div>
 
               <div className="space-y-2">
-                <Label>Thời lượng (phút)</Label>
+                <Label>Thời lượng (phút) <span className="text-red-500">*</span></Label>
                 <Input
                   type="number"
                   inputMode="numeric"
@@ -353,7 +353,7 @@ export default function MovieForm({
               </div>
 
               <div className="space-y-2">
-                <Label>Ngày phát hành</Label>
+                <Label>Ngày phát hành <span className="text-red-500">*</span></Label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
@@ -382,7 +382,7 @@ export default function MovieForm({
               </div>
 
               <div className="space-y-2">
-                <Label>Trạng thái phim</Label>
+                <Label>Trạng thái phim </Label>
                 <Popover open={openStatusBox} onOpenChange={setOpenStatusBox}>
                   <PopoverTrigger asChild>
                     <Button
@@ -395,8 +395,8 @@ export default function MovieForm({
                       {status === "COMING_SOON"
                         ? "Sắp chiếu"
                         : status === "NOW_SHOWING"
-                        ? "Đang chiếu"
-                        : "Đã kết thúc"}
+                          ? "Đang chiếu"
+                          : "Đã kết thúc"}
                       <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
                     </Button>
                   </PopoverTrigger>
@@ -463,7 +463,7 @@ export default function MovieForm({
               </div>
 
               <div className="md:col-span-3">
-                <Label className="mb-2 inline-block">Thể loại</Label>
+                <Label className="mb-2 inline-block">Thể loại <span className="text-red-500">*</span></Label>
 
                 {/* các tag đã chọn */}
                 <div className="flex flex-wrap gap-2 mb-2">
@@ -548,7 +548,7 @@ export default function MovieForm({
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle>Trailer </CardTitle>
+              <CardTitle>Trailer <span className="text-red-500">*</span></CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="rounded-2xl overflow-hidden border bg-black">

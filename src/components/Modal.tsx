@@ -1,5 +1,8 @@
+"use client";
+
 import { CheckCircle2, AlertCircle, X } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 interface ModalProps {
   isOpen: boolean;
@@ -7,10 +10,10 @@ interface ModalProps {
   type?: "success" | "error" | "warning" | "info";
   title: string;
   message?: React.ReactNode;
-  onConfirm?: () => void; // đổi thành optional
+  onConfirm?: () => void;
   confirmText?: string;
-  onCancel?: () => void; // NEW
-  cancelText?: string; // NEW
+  onCancel?: () => void;
+  cancelText?: string;
 }
 
 export const Modal = ({
@@ -21,17 +24,23 @@ export const Modal = ({
   message,
   onConfirm,
   confirmText = "Đóng",
-  onCancel, // NEW
-  cancelText = "Hủy", // NEW
+  onCancel,
+  cancelText = "Hủy",
 }: ModalProps) => {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   useEffect(() => {
     document.body.style.overflow = isOpen ? "hidden" : "unset";
     return () => {
-      document.body.style.overflow = "unset"; // hoặc ""
+      document.body.style.overflow = "unset";
     };
   }, [isOpen]);
 
-  if (!isOpen) return null;
+  if (!mounted || !isOpen) return null;
 
   const config = {
     success: {
@@ -72,17 +81,16 @@ export const Modal = ({
     buttonColor,
   } = config[type];
 
-  // Có onCancel => modal confirm (2 nút). Không có => modal thông báo (1 nút).
   const isConfirm = typeof onCancel === "function";
 
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
       <div
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={onClose}
       />
 
-      <div className="relative z[70] bg-white rounded-3xl shadow-2xl max-w-md w-full animate-in zoom-in-95 duration-200">
+      <div className="relative z-[10000] bg-white rounded-3xl shadow-2xl max-w-md w-full animate-in zoom-in-95 duration-200">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 transition-colors"
@@ -101,7 +109,7 @@ export const Modal = ({
           <h2 className="text-2xl font-bold text-gray-900 mb-3">{title}</h2>
 
           {message && (
-            <p className="text-gray-600 mb-6 leading-relaxed">{message}</p>
+            <div className="text-gray-600 mb-6 leading-relaxed">{message}</div>
           )}
 
           {isConfirm ? (
@@ -129,6 +137,7 @@ export const Modal = ({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

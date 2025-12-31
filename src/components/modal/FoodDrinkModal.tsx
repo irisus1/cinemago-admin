@@ -118,6 +118,12 @@ export default function FoodDrinkModal({
     );
   };
 
+  const isValid = React.useMemo(() => {
+    const basicValid = name.trim() !== "" && desc.trim() !== "" && price.trim() !== "" && preview !== null;
+    if (hideCinemaSelect) return basicValid;
+    return basicValid && cinemaId !== "";
+  }, [name, desc, price, preview, hideCinemaSelect, cinemaId]);
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[850px] p-8 rounded-xl shadow-2xl">
@@ -148,7 +154,9 @@ export default function FoodDrinkModal({
                 />
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center text-gray-500">
-                  <p className="text-lg font-medium">Chọn ảnh</p>
+                  <p className="text-lg font-medium">
+                    Chọn ảnh <span className="text-red-500">*</span>
+                  </p>
                   <p className="text-xs text-gray-400 mt-1">
                     (Nhấn để tải lên)
                   </p>
@@ -179,7 +187,9 @@ export default function FoodDrinkModal({
 
           <div className="space-y-6">
             <div>
-              <Label className="text-base font-medium">Tên món</Label>
+              <Label className="text-base font-medium">
+                Tên món <span className="text-red-500">*</span>
+              </Label>
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -189,7 +199,9 @@ export default function FoodDrinkModal({
             </div>
 
             <div>
-              <Label className="text-base font-medium">Mô tả</Label>
+              <Label className="text-base font-medium">
+                Mô tả <span className="text-red-500">*</span>
+              </Label>
               <Input
                 value={desc}
                 onChange={(e) => setDesc(e.target.value)}
@@ -200,7 +212,9 @@ export default function FoodDrinkModal({
 
             <div className="grid grid-cols-2 gap-6">
               <div>
-                <Label className="text-base font-medium">Giá (VNĐ)</Label>
+                <Label className="text-base font-medium">
+                  Giá (VNĐ) <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   type="number"
                   min={0}
@@ -210,7 +224,9 @@ export default function FoodDrinkModal({
                 />
               </div>
               <div>
-                <Label className="text-base font-medium">Loại</Label>
+                <Label className="text-base font-medium">
+                  Loại
+                </Label>
                 <select
                   value={type}
                   onChange={(e) =>
@@ -226,7 +242,9 @@ export default function FoodDrinkModal({
             </div>
             {!hideCinemaSelect && cinemaOptions && (
               <div>
-                <Label className="text-base font-medium">Rạp chiếu</Label>
+                <Label className="text-base font-medium">
+                  Rạp chiếu <span className="text-red-500">*</span>
+                </Label>
                 <div className="mt-3">
                   <SearchableCombobox
                     options={cinemaOptions}
@@ -250,7 +268,11 @@ export default function FoodDrinkModal({
           >
             Hủy
           </Button>
-          <Button onClick={handleSubmit} className="text-base px-6 py-2">
+          <Button
+            onClick={handleSubmit}
+            className="text-base px-6 py-2"
+            disabled={!isValid}
+          >
             Lưu
           </Button>
         </DialogFooter>

@@ -69,14 +69,23 @@ export default function UserModal({
     fetchCinemas();
   }, [hideCinemaSelect]);
 
+  function validatePassword(pw: string) {
+    const minLength = pw.length >= 8;
+    const hasNumber = /\d/.test(pw);
+    const hasSpecial = /[@#$%^&*]/.test(pw);
+    return {
+      minLength,
+      hasNumber,
+      hasSpecial,
+      valid: minLength && hasNumber && hasSpecial,
+    };
+  }
+
+  const pwCheck = validatePassword(password);
+
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z]).{8,}$/;
-
   const isEmailValid = emailRegex.test(email);
-  const isPasswordValid = passwordRegex.test(password);
-
   const showEmailError = email.length > 0 && !isEmailValid;
-  const showPasswordError = password.length > 0 && !isPasswordValid;
 
   const baseValid = fullname.trim().length > 0 && isEmailValid;
 
@@ -89,9 +98,9 @@ export default function UserModal({
 
   const valid =
     mode === "create"
-      ? baseValid && isPasswordValid && isCinemaValid
+      ? baseValid && pwCheck.valid && isCinemaValid
       : baseValid &&
-      (password.length === 0 || isPasswordValid) &&
+      (password.length === 0 || pwCheck.valid) &&
       isCinemaValid;
 
   useEffect(() => {
@@ -139,7 +148,6 @@ export default function UserModal({
           delete payload.cinemaId;
         }
       }
-      // If hidden, allow parent to inject (payload will lack cinemaId here)
 
       if (mode === "create") {
         payload.password = password.trim();
@@ -227,9 +235,9 @@ export default function UserModal({
                   <input
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 ${showPasswordError
-                      ? "border-red-500 focus:ring-red-500"
-                      : "focus:ring-blue-500"
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 ${(password.length > 0 && !pwCheck.valid)
+                        ? "border-red-500 focus:ring-red-500"
+                        : "focus:ring-blue-500"
                       }`}
                     type="password"
                     placeholder={
@@ -238,16 +246,20 @@ export default function UserModal({
                         : "Để trống nếu không đổi mật khẩu"
                     }
                   />
-                  {showPasswordError && (
-                    <p className="text-red-500 text-xs mt-1">
-                      Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa và chữ
-                      thường.
-                    </p>
-                  )}
-                  {mode === "create" && password.length === 0 && (
-                    <p className="text-gray-500 text-xs mt-1">
-                      Yêu cầu: 8+ ký tự, 1 chữ hoa, 1 chữ thường.
-                    </p>
+                  {/* Password Requirements UI */}
+                  {(mode === "create" || password.length > 0) && (
+                    <div className="bg-gray-50 text-gray-700 text-xs p-3 rounded-lg space-y-1 mt-2 border border-gray-100">
+                      <p className="font-semibold mb-1">Yêu cầu:</p>
+                      <div className={`flex items-center gap-2 ${pwCheck.minLength ? "text-green-600" : "text-gray-500"}`}>
+                        <span>{pwCheck.minLength ? "✔" : "•"}</span> Ít nhất 8 ký tự
+                      </div>
+                      <div className={`flex items-center gap-2 ${pwCheck.hasNumber ? "text-green-600" : "text-gray-500"}`}>
+                        <span>{pwCheck.hasNumber ? "✔" : "•"}</span> Chứa ít nhất một số
+                      </div>
+                      <div className={`flex items-center gap-2 ${pwCheck.hasSpecial ? "text-green-600" : "text-gray-500"}`}>
+                        <span>{pwCheck.hasSpecial ? "✔" : "•"}</span> Chứa ký tự đặc biệt (@#$%^&*)
+                      </div>
+                    </div>
                   )}
                 </div>
 
@@ -285,26 +297,28 @@ export default function UserModal({
                   </div>
                 </div>
 
-                {!hideCinemaSelect && isCinemaRequired && (
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      Rạp chiếu phim <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      value={selectedCinemaId}
-                      onChange={(e) => setSelectedCinemaId(e.target.value)}
-                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">-- Chọn rạp --</option>
-                      {cinemas.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-              </div>
+                {
+                  !hideCinemaSelect && isCinemaRequired && (
+                    <div>
+                      <label className="block text-sm font-medium mb-1">
+                        Rạp chiếu phim <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={selectedCinemaId}
+                        onChange={(e) => setSelectedCinemaId(e.target.value)}
+                        className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">-- Chọn rạp --</option>
+                        {cinemas.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )
+                }
+              </div >
 
               <div className="mt-5 flex justify-end gap-2">
                 <button
@@ -330,10 +344,10 @@ export default function UserModal({
                       : "Lưu"}
                 </button>
               </div>
-            </DialogPanel>
-          </TransitionChild>
-        </div>
-      </Dialog>
-    </Transition>
+            </DialogPanel >
+          </TransitionChild >
+        </div >
+      </Dialog >
+    </Transition >
   );
 }

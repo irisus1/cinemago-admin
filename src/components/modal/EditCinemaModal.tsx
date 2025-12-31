@@ -14,6 +14,7 @@ import {
   SearchableCombobox,
   type SelectOption,
 } from "@/components/SearchableCombobox";
+import LocationPicker from "@/components/LocationPicker";
 
 type CinemaModalProps = {
   open: boolean;
@@ -39,11 +40,13 @@ export default function EditCinemaModal({
   const [city, setCity] = useState(cinema?.city ?? "");
   const [cityId, setCityId] = useState<string>(""); // id tỉnh/thành được chọn
   const [address, setAddress] = useState(cinema?.address ?? "");
-  const [longitude, setLongitude] = useState<string>(
-    cinema?.longitude != null ? String(cinema.longitude) : ""
+
+  // Changed to number | null to match LocationPicker and Cinema type
+  const [longitude, setLongitude] = useState<number | null>(
+    cinema?.longitude ?? null
   );
-  const [latitude, setLatitude] = useState<string>(
-    cinema?.latitude != null ? String(cinema.latitude) : ""
+  const [latitude, setLatitude] = useState<number | null>(
+    cinema?.latitude ?? null
   );
   const [isActive, setIsActive] = useState<boolean>(cinema?.isActive ?? true);
 
@@ -59,8 +62,9 @@ export default function EditCinemaModal({
       setName(cinema.name ?? "");
       setCity(cinema.city ?? "");
       setAddress(cinema.address ?? "");
-      setLongitude(cinema.longitude != null ? String(cinema.longitude) : "");
-      setLatitude(cinema.latitude != null ? String(cinema.latitude) : "");
+      // Preserve original numeric values
+      setLongitude(cinema.longitude ?? null);
+      setLatitude(cinema.latitude ?? null);
       setIsActive(cinema.isActive ?? true);
 
       // map city hiện tại -> option trong VIETNAM_PROVINCES
@@ -75,18 +79,11 @@ export default function EditCinemaModal({
       setCity("");
       setCityId("");
       setAddress("");
-      setLongitude("");
-      setLatitude("");
+      setLongitude(null);
+      setLatitude(null);
       setIsActive(true);
     }
   }, [open, mode, cinema]);
-
-  const toNumOrNull = (s: string) => {
-    const t = s.trim();
-    if (!t) return null;
-    const n = Number(t);
-    return Number.isFinite(n) ? n : null;
-  };
 
   async function handleSubmit() {
     if (!valid || !onSubmit) return;
@@ -95,16 +92,13 @@ export default function EditCinemaModal({
       name: name.trim(),
       city: city.trim(),
       address: address.trim(),
-      longitude: toNumOrNull(longitude),
-      latitude: toNumOrNull(latitude),
+      longitude: longitude,
+      latitude: latitude,
       rooms: [],
     };
 
     await onSubmit(payload, mode, cinema);
   }
-
-  const disableLongitude = mode === "edit" && cinema?.longitude != null;
-  const disableLatitude = mode === "edit" && cinema?.latitude != null;
 
   return (
     <Transition show={open} as={Fragment}>
@@ -133,7 +127,7 @@ export default function EditCinemaModal({
             leaveFrom="opacity-100 scale-100"
             leaveTo="opacity-0 scale-95"
           >
-            <DialogPanel className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl">
+            <DialogPanel className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl max-h-[90vh] overflow-y-auto">
               <DialogTitle className="text-lg font-semibold mb-3">
                 {mode === "create" ? "Thêm rạp" : "Chỉnh sửa rạp"}
               </DialogTitle>
@@ -172,53 +166,18 @@ export default function EditCinemaModal({
                   />
                 </div>
 
+                {/* Location Picker replaces Address & Coords inputs */}
                 <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Địa chỉ <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-lg"
-                    placeholder="VD: 123 Đường ABC, Phường XYZ"
+                  <LocationPicker
+                    address={address}
+                    latitude={latitude}
+                    longitude={longitude}
+                    onLocationChange={({ address, latitude, longitude }) => {
+                      setAddress(address);
+                      setLatitude(latitude);
+                      setLongitude(longitude);
+                    }}
                   />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      Kinh độ (longitude)
-                    </label>
-                    <input
-                      type="number"
-                      step="any"
-                      value={longitude}
-                      disabled={disableLongitude}
-                      onChange={(e) => setLongitude(e.target.value)}
-                      className="w-full px-3 py-2 border rounded-lg
-                        disabled:bg-gray-50 disabled:text-gray-500
-                        disabled:placeholder:text-gray-400
-                        disabled:opacity-70 disabled:cursor-not-allowed"
-                      placeholder="VD: 106.70098"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      Vĩ độ (latitude)
-                    </label>
-                    <input
-                      type="number"
-                      step="any"
-                      disabled={disableLatitude}
-                      value={latitude}
-                      onChange={(e) => setLatitude(e.target.value)}
-                      className="w-full px-3 py-2 border rounded-lg
-                        disabled:bg-gray-50 disabled:text-gray-500
-                        disabled:placeholder:text-gray-400
-                        disabled:opacity-70 disabled:cursor-not-allowed"
-                      placeholder="VD: 10.77689"
-                    />
-                  </div>
                 </div>
               </div>
 
@@ -232,9 +191,8 @@ export default function EditCinemaModal({
                 <button
                   disabled={!valid}
                   onClick={handleSubmit}
-                  className={`px-4 py-2 rounded-lg text-white ${
-                    valid ? "bg-blue-600 hover:bg-blue-700" : "bg-gray-400"
-                  }`}
+                  className={`px-4 py-2 rounded-lg text-white ${valid ? "bg-blue-600 hover:bg-blue-700" : "bg-gray-400"
+                    }`}
                 >
                   {mode === "create" ? "Thêm" : "Lưu"}
                 </button>

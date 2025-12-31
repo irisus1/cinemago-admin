@@ -43,7 +43,7 @@ export function useCinemaLogic() {
   const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
   const [dialogTitle, setDialogTitle] = useState("");
   const [dialogMessage, setDialogMessage] = useState<React.ReactNode>("");
-  const [onConfirm, setOnConfirm] = useState<() => void>(() => () => {});
+  const [onConfirm, setOnConfirm] = useState<() => void>(() => () => { });
 
   // --- DATA FETCHING ---
 
@@ -269,6 +269,9 @@ export function useCinemaLogic() {
           setIsSuccessDialogOpen(true);
 
           setEditCinema(null);
+          if (isCreate) {
+            setCreateCinema(false);
+          }
           await fetchPage(1); // Load lại bảng dữ liệu
         } catch (e) {
           // --- THẤT BẠI ---
