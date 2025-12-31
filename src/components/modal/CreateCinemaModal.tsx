@@ -159,9 +159,14 @@ export default function CinemaModal({
     if (selectedRoomIndex !== null) {
       setRooms((prev) => {
         const newRooms = [...prev];
+        const hasVip = layout.some((s) => s.type === "VIP");
+        const hasCouple = layout.some((s) => s.type === "COUPLE");
+
         newRooms[selectedRoomIndex] = {
           ...newRooms[selectedRoomIndex],
           seatLayout: layout,
+          vipPrice: hasVip ? newRooms[selectedRoomIndex].vipPrice : 0,
+          couplePrice: hasCouple ? newRooms[selectedRoomIndex].couplePrice : 0,
         };
         return newRooms;
       });
@@ -345,6 +350,9 @@ export default function CinemaModal({
                         ) : (
                           rooms.map((room, index) => {
                             const isOpen = openRoomIndices.has(index);
+                            const hasVip = !room.seatLayout || room.seatLayout.some(s => s.type === "VIP");
+                            const hasCouple = !room.seatLayout || room.seatLayout.some(s => s.type === "COUPLE");
+
                             return (
                               <div
                                 key={index}
@@ -396,7 +404,7 @@ export default function CinemaModal({
                                     <div className="space-y-4 mt-4">
                                       <div>
                                         <label className="block text-xs font-medium text-gray-500 mb-1">
-                                          Tên phòng
+                                          Tên phòng <span className="text-red-500">*</span>
                                         </label>
                                         <input
                                           value={room.name}
@@ -419,6 +427,7 @@ export default function CinemaModal({
                                           <input
                                             type="number"
                                             value={room.vipPrice}
+                                            disabled={!hasVip}
                                             onChange={(e) =>
                                               handleUpdateRoom(
                                                 index,
@@ -426,7 +435,10 @@ export default function CinemaModal({
                                                 Number(e.target.value)
                                               )
                                             }
-                                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-slate-900 outline-none bg-white"
+                                            className={`w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-slate-900 outline-none bg-white ${!hasVip
+                                              ? "opacity-50 cursor-not-allowed bg-gray-100"
+                                              : ""
+                                              }`}
                                           />
                                         </div>
                                         <div>
@@ -436,6 +448,7 @@ export default function CinemaModal({
                                           <input
                                             type="number"
                                             value={room.couplePrice}
+                                            disabled={!hasCouple}
                                             onChange={(e) =>
                                               handleUpdateRoom(
                                                 index,
@@ -443,7 +456,10 @@ export default function CinemaModal({
                                                 Number(e.target.value)
                                               )
                                             }
-                                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-slate-900 outline-none bg-white"
+                                            className={`w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-slate-900 outline-none bg-white ${!hasCouple
+                                              ? "opacity-50 cursor-not-allowed bg-gray-100"
+                                              : ""
+                                              }`}
                                           />
                                         </div>
                                       </div>
@@ -535,8 +551,8 @@ export default function CinemaModal({
                                 </div>
                                 <span
                                   className={`text-xs font-medium ${room.seatLayout
-                                      ? "text-green-600"
-                                      : "text-gray-400"
+                                    ? "text-green-600"
+                                    : "text-gray-400"
                                     }`}
                                 >
                                   {room.seatLayout
@@ -574,8 +590,8 @@ export default function CinemaModal({
                       onClick={() => setCurrentStep((p) => p + 1)}
                       disabled={!canNext}
                       className={`px-6 py-2.5 rounded-lg text-white font-medium transition-all shadow-sm flex items-center gap-2 ${canNext
-                          ? "bg-slate-900 hover:bg-slate-800"
-                          : "bg-gray-300 cursor-not-allowed"
+                        ? "bg-slate-900 hover:bg-slate-800"
+                        : "bg-gray-300 cursor-not-allowed"
                         }`}
                     >
                       Tiếp

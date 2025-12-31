@@ -300,16 +300,28 @@ export function useSeatLayoutLogic({
 
   const unpairIfNeeded = (grid: LayoutGrid, rIdx: number, cIdx: number) => {
     const cell = grid[rIdx][cIdx];
-    if (!cell?.pairId) return;
-    const left = cIdx > 0 ? grid[rIdx][cIdx - 1] : null;
-    const right = cIdx < grid[rIdx].length - 1 ? grid[rIdx][cIdx + 1] : null;
-    if (left && left.pairId === cell.pairId) {
-      left.pairId = undefined;
-      if (left.type === "couple") left.type = "normal";
-    } else if (right && right.pairId === cell.pairId) {
-      right.pairId = undefined;
-      if (right.type === "couple") right.type = "normal";
+    const pid = cell.pairId;
+    if (!pid) return;
+
+    // Check Left
+    if (cIdx > 0) {
+      const left = grid[rIdx]?.[cIdx - 1];
+      if (left && left.pairId === pid) {
+        left.pairId = undefined;
+        if (left.type === "couple") left.type = "normal";
+      }
     }
+
+    // Check Right
+    if (cIdx < grid[rIdx].length - 1) {
+      const right = grid[rIdx]?.[cIdx + 1];
+      if (right && right.pairId === pid) {
+        right.pairId = undefined;
+        if (right.type === "couple") right.type = "normal";
+      }
+    }
+
+    // Clear self
     cell.pairId = undefined;
     if (cell.type === "couple") cell.type = "normal";
   };

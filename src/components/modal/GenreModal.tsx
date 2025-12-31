@@ -37,7 +37,7 @@ export default function GenreModal({
   const [name, setName] = useState(genre?.name ?? "");
   const [description, setDescription] = useState(genre?.description ?? "");
 
-  const valid = name.trim().length > 0;
+  const valid = name.trim().length > 0 && description.trim().length > 0;
 
   useEffect(() => {
     if (!open) return;
@@ -106,14 +106,14 @@ export default function GenreModal({
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">
-                    Mô tả
+                    Mô tả <span className="text-red-500">*</span>
                   </label>
                   <textarea
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     rows={3}
                     className="w-full px-3 py-2 border rounded-lg"
-                    placeholder="Mô tả ngắn (tuỳ chọn)"
+                    placeholder="Mô tả ngắn"
                   />
                 </div>
               </div>
@@ -128,9 +128,8 @@ export default function GenreModal({
                 <button
                   disabled={!valid}
                   onClick={handleSubmit}
-                  className={`px-4 py-2 rounded-lg text-white ${
-                    valid ? "bg-blue-600 hover:bg-blue-700" : "bg-gray-400"
-                  }`}
+                  className={`px-4 py-2 rounded-lg text-white ${valid ? "bg-blue-600 hover:bg-blue-700" : "bg-gray-400"
+                    }`}
                 >
                   {mode === "create" ? "Thêm" : "Lưu"}
                 </button>

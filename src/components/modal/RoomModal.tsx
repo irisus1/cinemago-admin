@@ -131,7 +131,7 @@ export default function RoomModal({
 
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Tên phòng</Label>
+              <Label>Tên phòng <span className="text-red-500">*</span></Label>
               <Input
                 autoFocus
                 placeholder="Ví dụ: Phòng 01"
@@ -222,8 +222,8 @@ export default function RoomModal({
               {isSubmitting
                 ? "Đang lưu..."
                 : mode === "create"
-                ? "Tạo phòng"
-                : "Cập nhật"}
+                  ? "Tạo phòng"
+                  : "Cập nhật"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -92,6 +92,10 @@ export function useFoodDrinkLogic() {
           label: c.name,
           meta: c.city,
         }));
+
+        // Removed "All" option
+        // opts.unshift({ value: "", label: "Tất cả rạp", meta: "" });
+
         setCinemaOptions(opts);
 
         // Logic chọn rạp mặc định cho Admin nếu chưa chọn
@@ -110,7 +114,8 @@ export function useFoodDrinkLogic() {
   // --- DATA FETCHING ---
   const fetchPage = useCallback(
     async (p: number) => {
-      if (isManager && !cinemaId) {
+      // Backend requires cinemaId. If not set (e.g. loading), return empty.
+      if (!cinemaId) {
         return {
           data: [],
           pagination: {
@@ -137,7 +142,7 @@ export function useFoodDrinkLogic() {
             : isAvailable === "true"
               ? true
               : false,
-        cinemaId: cinemaId || undefined,
+        cinemaId: cinemaId,
       });
 
       pageCache.current.set(p, res);
@@ -213,7 +218,7 @@ export function useFoodDrinkLogic() {
   }, [page, search, type, isAvailable, loadPage]);
 
   const handleCinemaChange = useCallback((id: string) => {
-    if (!id) return;
+    if (!id) return; // Prevent clearing cinema
     setCinemaId(id);
     setPage(1);
     clearCache();
@@ -331,12 +336,23 @@ export function useFoodDrinkLogic() {
 
           if (isCreate) {
             const created = await foodDrinkService.addFoodDrink(fd);
-            if (allCache.current) {
-              allCache.current = [created, ...(allCache.current || [])];
-            } else {
-              allCache.current = [created];
+
+            // Logic OPTIMISTIC UPDATE: 
+            // Chỉ thêm vào cache hiển thị nếu đang view đúng rạp mà món này vừa được thêm vào.
+            // "Tất cả" không còn tồn tại.
+            const isVisibleInCurrentFilter = cinemaId === data.cinemaId;
+
+            if (isVisibleInCurrentFilter) {
+              if (allCache.current) {
+                allCache.current = [created, ...(allCache.current || [])];
+              } else {
+                allCache.current = [created];
+              }
+              pageCache.current.delete(1);
             }
-            pageCache.current.delete(1);
+            // Nếu không match filter thì không cần update cache client, 
+            // người dùng sẽ không thấy nó ngay lập tức (đúng logic).
+
             setDialogTitle("Thành công");
             setDialogMsg(
               <>
@@ -441,7 +457,7 @@ export function useFoodDrinkLogic() {
     setSearch("");
     setType("");
     setIsAvailable("");
-    if (!isManager) setCinemaId(""); // Only clear if admin
+    // Do not clear cinemaId
     setPage(1);
   };
 
@@ -449,9 +465,8 @@ export function useFoodDrinkLogic() {
     () =>
       q.trim() !== "" ||
       type.trim() !== "" ||
-      isAvailable.trim() !== "" ||
-      (!isManager && cinemaId !== ""),
-    [q, type, isAvailable, cinemaId, isManager]
+      isAvailable.trim() !== "",
+    [q, type, isAvailable]
   );
 
   return {
