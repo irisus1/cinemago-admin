@@ -149,7 +149,8 @@ function PaymentResultContent() {
         // Lưu ý: Chuỗi status này phải khớp với chuỗi Backend bạn lưu (ví dụ: "Đã thanh toán")
         if (
           booking.status === "Đã thanh toán" ||
-          booking.status === "SUCCESS"
+          booking.status === "SUCCESS" ||
+          booking.paymentMethod === "COD"
         ) {
           setStatus("success");
           await fetchOrderDetailData(booking); // Tải chi tiết vé để in

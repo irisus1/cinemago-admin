@@ -20,6 +20,8 @@ export function DateNativeVN({
   showClearButton = false,
   minISO,
   minDate,
+  maxISO,
+  maxDate,
 }: {
   valueISO?: string; // "YYYY-MM-DD"
   onChangeISO?: (iso: string) => void; // trả về ISO
@@ -29,10 +31,13 @@ export function DateNativeVN({
   showClearButton?: boolean;
   minISO?: string; // "YYYY-MM-DD"
   minDate?: Date;
+  maxISO?: string;
+  maxDate?: Date;
 }) {
   // const hiddenRef = React.useRef<HTMLInputElement>(null)
 
   const effectiveMinDate = minDate || (minISO ? new Date(minISO) : undefined);
+  const effectiveMaxDate = maxDate || (maxISO ? new Date(maxISO) : undefined);
 
   // const openPicker = () => {
   //   const el = hiddenRef.current
@@ -90,6 +95,7 @@ export function DateNativeVN({
         dateFormat="dd/MM/yyyy"
         todayButton="Hôm nay"
         minDate={effectiveMinDate}
+        maxDate={effectiveMaxDate}
         showPopperArrow={false}
         customInput={
           <div className="relative">
