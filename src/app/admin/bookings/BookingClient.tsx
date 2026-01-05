@@ -136,6 +136,8 @@ export default function BookingsListPage() {
     return filterShowtimes.map((st) => {
       const room = roomMap[st.roomId];
 
+      console.log(room);
+
       return {
         value: st.id,
         label: `${new Date(st.startTime).toLocaleTimeString("vi-VN", {
