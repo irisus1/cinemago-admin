@@ -43,11 +43,35 @@ export type PeakHourResponse = {
 };
 
 // Doanh thu theo giai đoạn
-export type RevenueByPeriod = {
+// Doanh thu theo giai đoạn
+export type DailyRevenueGlobal = {
+  date: string;
   totalRevenue: number;
   totalFoodDrinkRevenue: number;
   totalTicketRevenue: number;
+  bookedSeats?: number;
+  totalSeats?: number;
   occupancyRate?: number;
+};
+
+export type DailyRevenueBreakdown = {
+  date: string;
+  totalRevenue: number;
+  foodDrinkRevenue: number;
+  ticketRevenue: number;
+  bookedSeats?: number;
+  totalSeats?: number;
+  occupancyRate?: number;
+};
+
+export type RevenueByPeriod = {
+  summary: {
+    totalRevenue: number;
+    totalFoodDrinkRevenue: number;
+    totalTicketRevenue: number;
+    occupancyRate?: number;
+  };
+  daily: DailyRevenueGlobal[];
 };
 
 export type CinemaRevenueItem = {
@@ -58,17 +82,12 @@ export type CinemaRevenueItem = {
     address?: string;
   } | null;
   totalRevenue: number;
-  // Extra fields from backend logic
   ticketRevenue?: number;
   foodDrinkRevenue?: number;
   bookedSeats?: number;
   totalSeats?: number;
   occupancyRate?: number;
-};
-
-export type CinemaRevenueResponse = {
-  sortedCinemas: CinemaRevenueItem[];
-  cinemasRevenue: CinemaRevenueItem[];
+  dailyBreakdown?: DailyRevenueBreakdown[];
 };
 
 // Item doanh thu theo phim
@@ -79,17 +98,12 @@ export type MovieRevenueItem = {
     title?: string;
   } | null;
   totalRevenue: number;
-  // Extra fields from backend logic  
   ticketRevenue?: number;
   foodDrinkRevenue?: number;
   bookedSeats?: number;
   totalSeats?: number;
   occupancyRate?: number;
-};
-
-export type MovieRevenueResponse = {
-  sortedMovies: MovieRevenueItem[];
-  moviesRevenue: MovieRevenueItem[];
+  dailyBreakdown?: DailyRevenueBreakdown[];
 };
 
 
@@ -145,13 +159,7 @@ class DashboardService {
       );
 
       const body = data.data;
-
-      return {
-        totalRevenue: Number(body.totalRevenue ?? 0),
-        totalFoodDrinkRevenue: Number(body.totalFoodDrinkRevenue ?? 0),
-        totalTicketRevenue: Number(body.totalTicketRevenue ?? 0),
-        occupancyRate: Number(body.occupancyRate ?? 0),
-      };
+      return body; // Return full structure (summary + daily)
     } catch (e: unknown) {
       const msg = getMsg(e, "Không thể lấy doanh thu theo giai đoạn.");
       console.error("Lỗi getRevenueByPeriod:", e);
@@ -161,16 +169,15 @@ class DashboardService {
   // GET /bookings/dashboard/revenue/cinema?startDate=&endDate=&type=
   async getRevenueByPeriodAndCinema(
     params: DateRangeParams
-  ): Promise<CinemaRevenueResponse> {
+  ): Promise<CinemaRevenueItem[]> {
     try {
-      const { data } = await api.get<{ data: CinemaRevenueResponse }>(
+      // API now returns { data: CinemaRevenueItem[] }
+      const { data } = await api.get<{ data: CinemaRevenueItem[] }>(
         "/bookings/dashboard/revenue/cinema",
         { params }
       );
       console.log("cinema dashboard", data);
-
-      // data = { data: { cinemasRevenue, sortedCinemas } }
-      return data.data;
+      return data.data || [];
     } catch (e: unknown) {
       const msg = getMsg(e, "Không thể lấy doanh thu theo rạp chiếu.");
       console.error("Lỗi getRevenueByPeriodAndCinema:", e);
@@ -181,15 +188,15 @@ class DashboardService {
   // GET /bookings/dashboard/revenue/movie?startDate=&endDate=&type=
   async getRevenueByPeriodAndMovie(
     params: DateRangeParams
-  ): Promise<MovieRevenueResponse> {
+  ): Promise<MovieRevenueItem[]> {
     try {
-      const { data } = await api.get<{ data: MovieRevenueResponse }>(
+      // API now returns { data: MovieRevenueItem[] }
+      const { data } = await api.get<{ data: MovieRevenueItem[] }>(
         "/bookings/dashboard/revenue/movie",
         { params }
       );
       console.log("movie dashboard", data);
-
-      return data.data;
+      return data.data || [];
     } catch (e: unknown) {
       const msg = getMsg(e, "Không thể lấy doanh thu theo phim.");
       console.error("Lỗi getRevenueByPeriodAndMovie:", e);

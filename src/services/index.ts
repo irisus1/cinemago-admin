@@ -77,6 +77,7 @@ export type {
   RevenueByPeriod,
   MovieRevenueItem,
   CinemaRevenueItem,
-  MovieRevenueResponse,
-  CinemaRevenueResponse,
+
+  DailyRevenueGlobal,
+  DailyRevenueBreakdown,
 } from "./dashboard.service";
