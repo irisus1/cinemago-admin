@@ -276,7 +276,7 @@ export default function AdminWalkupBookingPage() {
   return (
     <div className="max-w-7xl mx-auto">
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <h1 className="text-3xl font-bold">Đặt vé tại rạp cho ngày hôm nay</h1>
+        <h1 className="text-3xl font-bold">Đặt vé trực tiếp</h1>
 
         <div className="flex items-center gap-3">
           <div className="flex flex-col gap-1">
@@ -324,7 +324,7 @@ export default function AdminWalkupBookingPage() {
 
         {!loading && movies.length === 0 ? (
           <div className="text-sm text-gray-600 border rounded-md p-4">
-            Không có suất chiếu trong khung giờ đã chọn.
+            Không có suất chiếu trong ngày đã chọn.
           </div>
         ) : (
           <MovieGrid
