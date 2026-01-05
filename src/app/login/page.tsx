@@ -127,8 +127,8 @@ export default function LoginPage() {
             type="submit"
             disabled={loading}
             className={`w-full py-2 text-white rounded-md flex items-center justify-center transition-all ${loading
-                ? "bg-indigo-400 cursor-not-allowed"
-                : "bg-indigo-600 hover:bg-indigo-700"
+              ? "bg-[#F25019] cursor-not-allowed"
+              : "bg-[#F25019] hover:bg-[#C24014] cursor-pointer"
               }`}
           >
             {loading ? (
