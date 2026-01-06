@@ -25,6 +25,7 @@ export interface Booking {
   bookingFoodDrinks: BookingFoodDrink[];
   paymentMethod?: string;
   status?: string;
+  isUsed?: boolean;
 }
 
 export interface CreateBookingRequest {
