@@ -9,8 +9,12 @@ import {
   Cinema,
   ShowTime,
   SeatModal,
+  Movie,
 } from "@/services";
 import { useAuth } from "@/context/AuthContext";
+import QRCode from "react-qr-code";
+import { FiPrinter, FiX } from "react-icons/fi";
+import { LuQrCode } from "react-icons/lu";
 
 // 1. Cập nhật Interface Props để nhận các Map
 interface Props {
@@ -21,6 +25,7 @@ interface Props {
   roomMap: Record<string, Room>;
   cinemaMap: Record<string, Cinema>;
   showTimeMap: Record<string, ShowTime>;
+  movieMap: Record<string, Movie>;
 }
 
 interface DisplaySeat {
@@ -46,9 +51,11 @@ const BookingDetailModal: React.FC<Props> = ({
   roomMap,
   cinemaMap,
   showTimeMap,
+  movieMap,
 }) => {
   const [details, setDetails] = useState<BookingDetails | null>(null);
   const [loadingFood, setLoadingFood] = useState(false);
+  const [showQR, setShowQR] = useState(false);
   const { user: currentUser } = useAuth(); // <--- Get current user
 
   const formatCurrency = (val: number) =>
@@ -397,7 +404,7 @@ const BookingDetailModal: React.FC<Props> = ({
         </div>
 
         {/* Footer */}
-        <div className="bg-gray-50 px-6 py-4 border-t flex justify-between items-center">
+        <div className="bg-gray-50 px-6 py-4 border-t flex justify-between items-center print:hidden">
           <div>
             <p className="text-xs text-gray-500 uppercase font-semibold">
               Tổng thanh toán
@@ -406,14 +413,102 @@ const BookingDetailModal: React.FC<Props> = ({
               {formatCurrency(booking.totalPrice)}
             </p>
           </div>
-          <button
-            onClick={onClose}
-            className="px-6 py-2 bg-gray-800 text-white rounded hover:bg-black"
-          >
-            Đóng
-          </button>
+
+          <div className="flex gap-3">
+            {/* Print & QR Buttons */}
+            {booking.status === "Đã thanh toán" && (
+              <>
+                <button
+                  onClick={() => window.print()}
+                  disabled={booking.isUsed}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${booking.isUsed
+                      ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                      : "bg-blue-50 text-blue-700 hover:bg-blue-100"
+                    }`}
+                >
+                  <FiPrinter size={18} />
+                  <span>In vé</span>
+                </button>
+                <button
+                  onClick={() => setShowQR(true)}
+                  disabled={booking.isUsed}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${booking.isUsed
+                      ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                      : "bg-gray-900 text-white hover:bg-black shadow-lg shadow-gray-200"
+                    }`}
+                >
+                  <LuQrCode size={18} />
+                  <span>Mã QR</span>
+                </button>
+              </>
+            )}
+
+            <button
+              onClick={onClose}
+              className="px-6 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 flex items-center gap-2 font-medium"
+            >
+              Đóng
+            </button>
+          </div>
         </div>
+
+        {/* Hidden Print Section with QR */}
+        <div className="hidden print:block p-8">
+          <div className="text-center mb-6">
+            <h1 className="text-2xl font-bold uppercase mb-2">Vé Xem Phim</h1>
+            <p className="text-sm text-gray-500">{details?.cinemaName}</p>
+            <p className="text-sm text-gray-500">{details?.roomName}</p>
+          </div>
+          <div className="mb-6 border-b pb-4">
+            <p className="flex justify-between"><span>Mã vé:</span> <span className="font-mono font-bold">{booking.id.slice(0, 8).toUpperCase()}</span></p>
+            <p className="flex justify-between"><span>Phim:</span> <span className="font-bold">{movieMap[showTimeMap[booking.showtimeId]?.movieId]?.title || "Unknown"}</span></p>
+            <p className="flex justify-between"><span>Suất chiếu:</span> <span>{new Date(showTimeMap[booking.showtimeId]?.startTime).toLocaleString("vi-VN")}</span></p>
+          </div>
+
+          <div className="flex justify-center mb-6">
+            <QRCode
+              value={JSON.stringify({
+                id: booking.id,
+                showtimeId: booking.showtimeId
+              })}
+              size={150}
+            />
+          </div>
+          <p className="text-center text-xs italic">Vui lòng đưa mã này cho nhân viên soát vé.</p>
+        </div>
+
       </div>
+
+      {/* QR Code Overlay (Screen only) */}
+      {showQR && (
+        <div className="absolute inset-0 z-50 bg-white/95 flex flex-col items-center justify-center animate-in fade-in zoom-in duration-200 print:hidden">
+          <button
+            onClick={() => setShowQR(false)}
+            className="absolute top-4 right-4 p-2 bg-gray-100 hover:bg-red-100 text-gray-600 hover:text-red-600 rounded-full transition-colors"
+          >
+            <FiX size={24} />
+          </button>
+
+          <div className="bg-white p-8 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-gray-100 text-center">
+            <h3 className="text-xl font-bold text-gray-800 mb-6">Mã Vé Vào Rạp</h3>
+            <div className="p-4 bg-white border-2 border-gray-900 rounded-xl inline-block mb-6">
+              <QRCode
+                value={JSON.stringify({
+                  id: booking.id,
+                  showtimeId: booking.showtimeId
+                })}
+                size={220}
+                style={{ height: "auto", maxWidth: "100%", width: "100%" }}
+                viewBox={`0 0 256 256`}
+              />
+            </div>
+            <p className="font-mono text-lg font-bold text-gray-600 tracking-wider">
+              {booking.id.slice(0, 8).toUpperCase()}
+            </p>
+            <p className="text-sm text-gray-400 mt-2">Quét mã này tại quầy soát vé</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

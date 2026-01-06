@@ -288,6 +288,20 @@ export default function BookingsListPage() {
       ),
     },
     {
+      header: "Đã sử dụng",
+      key: "isUsed",
+      render: (_, r) => (
+        <span
+          className={`px-2 py-1 rounded-full text-xs font-semibold border ${r.isUsed
+            ? "bg-blue-100 text-blue-800 border-blue-200"
+            : "bg-gray-100 text-gray-500 border-gray-200"
+            }`}
+        >
+          {r.isUsed ? "Đã sử dụng" : "Chưa sử dụng"}
+        </span>
+      ),
+    },
+    {
       header: "PT Thanh toán",
       key: "paymentMethod",
       render: (_, r) => (
@@ -487,6 +501,7 @@ export default function BookingsListPage() {
         roomMap={roomMap}
         cinemaMap={cinemaMap}
         showTimeMap={showTimeMap}
+        movieMap={movieMap}
       />
 
       <RefreshLoader isOpen={loading || isUpdating} />
