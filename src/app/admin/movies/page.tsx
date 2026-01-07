@@ -129,7 +129,13 @@ const MoviesListPage: React.FC = () => {
         return list?.map((g) => g.name).join(", ") ?? "—";
       },
     },
-    { header: "Đánh giá", key: "rating" },
+    {
+      header: "Đánh giá",
+      key: "rating",
+      render: (_, row) => {
+        return row.rating === 0 ? "-" : row.rating;
+      },
+    },
     {
       header: "Trạng thái",
       key: "status",
