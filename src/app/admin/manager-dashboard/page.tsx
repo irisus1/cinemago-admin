@@ -48,7 +48,12 @@ import {
 } from "@/services";
 import { DateNativeVN } from "@/components/DateNativeVN";
 import ExportExcelModal from "@/components/modal/ExportExcelModal";
-import { getVnStartDayInUtc, getVnEndDayInUtc } from "../../../components/dashboard/utils";
+import {
+    DATE_RANGE_OPTIONS,
+    calculateDateRange,
+    getVnStartDayInUtc,
+    getVnEndDayInUtc,
+} from "../../../components/dashboard/utils";
 
 // --- Types ---
 type ChartItem = { name: string; revenue: number; occupancy: number };
@@ -111,15 +116,10 @@ export default function ManagerDashboard() {
     const [cinemaName, setCinemaName] = useState<string>("Rạp của bạn");
 
     // Date Logic
-    const todayISO = useMemo(() => new Date().toISOString().slice(0, 10), []);
-    const startOfMonthISO = useMemo(() => {
-        const d = new Date();
-        d.setDate(1);
-        return d.toISOString().slice(0, 10);
-    }, []);
-
-    const [startDate, setStartDate] = useState<string>(startOfMonthISO);
-    const [endDate, setEndDate] = useState<string>(todayISO);
+    // --- STATE ---
+    const [rangeType, setRangeType] = useState<string>("month");
+    const [startDate, setStartDate] = useState(() => calculateDateRange("month").start);
+    const [endDate, setEndDate] = useState(() => calculateDateRange("month").end);
 
     // State Export
     const [showExportModal, setShowExportModal] = useState(false);
@@ -281,27 +281,65 @@ export default function ManagerDashboard() {
                     </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3">
-                    <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg">
-                        <DateNativeVN
-                            valueISO={startDate}
-                            onChangeISO={setStartDate}
-                            className="w-[130px] border-none shadow-none bg-transparent"
-                        />
-                        <span className="text-gray-400">→</span>
-                        <DateNativeVN
-                            valueISO={endDate}
-                            onChangeISO={setEndDate}
-                            className="w-[130px] border-none shadow-none bg-transparent"
-                        />
+                <div className="flex flex-wrap items-end gap-3">
+                    <div className="flex flex-col gap-1">
+                        <label className="text-xs font-medium text-gray-500">
+                            Khoảng thời gian
+                        </label>
+                        <Select
+                            value={rangeType}
+                            onValueChange={(val) => {
+                                setRangeType(val);
+                                const { start, end } = calculateDateRange(val);
+                                setStartDate(start);
+                                setEndDate(end);
+                            }}
+                        >
+                            <SelectTrigger className="w-[160px] h-9 bg-white">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {DATE_RANGE_OPTIONS.map((opt) => (
+                                    <SelectItem key={opt.value} value={opt.value}>
+                                        {opt.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
 
+                    <div className="flex flex-col gap-1">
+                        <label className="text-xs font-medium text-gray-500">
+                            Từ ngày
+                        </label>
+                        <DateNativeVN
+                            valueISO={startDate}
+                            onChangeISO={(val) => {
+                                setStartDate(val);
+                                setRangeType("custom");
+                            }}
+                            className="h-9"
+                        />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                        <label className="text-xs font-medium text-gray-500">
+                            Đến ngày
+                        </label>
+                        <DateNativeVN
+                            valueISO={endDate}
+                            onChangeISO={(val) => {
+                                setEndDate(val);
+                                setRangeType("custom");
+                            }}
+                            className="h-9"
+                        />
+                    </div>
                     <div className="flex gap-2">
                         <Button
                             onClick={() => setShowExportModal(true)}
                             size="sm"
                             variant="outline"
-                            className="h-10 gap-2 border-dashed"
+                            className="h-9 gap-2 border-dashed"
                         >
                             <Download className="h-4 w-4" />
                             Xuất báo cáo
@@ -310,7 +348,7 @@ export default function ManagerDashboard() {
                             onClick={refresh}
                             size="icon"
                             variant="outline"
-                            className="rounded-lg shadow-sm hover:bg-gray-50 h-10 w-10"
+                            className="rounded-lg shadow-sm hover:bg-gray-50 h-9 w-9"
                         >
                             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
                         </Button>
@@ -323,6 +361,7 @@ export default function ManagerDashboard() {
                 onClose={() => setShowExportModal(false)}
                 initialStartDate={startDate}
                 initialEndDate={endDate}
+                initialRangeType={rangeType}
                 fixedCinemaId={user?.cinemaId}
             />
 
