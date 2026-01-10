@@ -306,6 +306,7 @@ export default function AdminWalkupBookingPage() {
 
             <DateNativeVN
               valueISO={dateStr}
+              minISO={todayLocalISODate()}
               onChangeISO={handleDateChange}
               className="relative "
               widthClass="w-full "
