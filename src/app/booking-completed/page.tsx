@@ -320,7 +320,11 @@ function PaymentResultContent() {
   };
 
   // RENDER LOADING / PENDING
-  if (status === "loading" || status === "pending") {
+  if (
+    status === "loading" ||
+    status === "pending" ||
+    (status === "success" && !orderDetail)
+  ) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh]">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mb-4"></div>

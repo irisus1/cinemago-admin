@@ -48,6 +48,7 @@ import {
 } from "@/services";
 import { DateNativeVN } from "@/components/DateNativeVN";
 import ExportExcelModal from "@/components/modal/ExportExcelModal";
+import { getVnStartDayInUtc, getVnEndDayInUtc } from "../../../components/dashboard/utils";
 
 // --- Types ---
 type ChartItem = { name: string; revenue: number; occupancy: number };
@@ -174,6 +175,10 @@ export default function ManagerDashboard() {
     const [selectedMonth, setSelectedMonth] = useState<string>((new Date().getMonth() + 1).toString());
     const [selectedYear, setSelectedYear] = useState<string>(currentYear.toString());
 
+    // Helpers (Date utils)
+
+    // ... (keep existing imports)
+
     // Fetch Data (Global Revenue)
     const refresh = useCallback(async () => {
         if (!user?.cinemaId) return;
@@ -181,30 +186,35 @@ export default function ManagerDashboard() {
 
         try {
             const cinemaId = user.cinemaId;
+            const formattedStartDate = getVnStartDayInUtc(startDate);
+            const formattedEndDate = getVnEndDayInUtc(endDate);
 
             const [summaryRes, revMovieRes] = await Promise.all([
                 dashboardService.getRevenueByPeriod({
-                    startDate,
-                    endDate,
+                    startDate: formattedStartDate,
+                    endDate: formattedEndDate,
                     cinemaId,
                 }),
                 dashboardService.getRevenueByPeriodAndMovie({
-                    startDate,
-                    endDate,
+                    startDate: formattedStartDate,
+                    endDate: formattedEndDate,
                     cinemaId,
                 }),
             ]);
 
+            // summaryRes is now RevenueByPeriod { summary: {...}, daily: [...] }
             setSummary({
-                totalRevenue: summaryRes.totalRevenue,
-                ticketRevenue: summaryRes.totalTicketRevenue,
-                fnbRevenue: summaryRes.totalFoodDrinkRevenue,
-                avgOccupancy: summaryRes.occupancyRate || 0,
+                totalRevenue: summaryRes.summary.totalRevenue,
+                ticketRevenue: summaryRes.summary.totalTicketRevenue,
+                fnbRevenue: summaryRes.summary.totalFoodDrinkRevenue,
+                avgOccupancy: summaryRes.summary.occupancyRate || 0,
             });
 
-            // Process Top Movies
-            setTopMovies(revMovieRes.sortedMovies.slice(0, 5)); // Top 5 for Chart
-            setMovieTableData(revMovieRes.sortedMovies); // All for Table
+            // revMovieRes is MovieRevenueItem[]
+            const sortedMovies = [...revMovieRes].sort((a, b) => b.totalRevenue - a.totalRevenue);
+
+            setTopMovies(sortedMovies.slice(0, 5)); // Top 5 for Chart
+            setMovieTableData(sortedMovies); // All for Table
 
         } catch (error) {
             console.error("Failed to load dashboard data", error);
