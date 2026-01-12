@@ -42,9 +42,9 @@ export function useShowtimeLogic() {
 
   const [movieId, setMovieId] = useState<string>("__ALL__");
   const [cinemaId, setCinemaId] = useState<string>("__ALL__");
-  const [isActive, setIsActive] = useState<"all" | "active" | "inactive">(
-    "all"
-  );
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | "showing" | "ended" | "stopped"
+  >("all");
   const [startTime, setStartTime] = useState<string>("");
   const [endTime, setEndTime] = useState<string>("");
 
@@ -173,8 +173,17 @@ export function useShowtimeLogic() {
         if (cinemaId && cinemaId !== "__ALL__") {
           params.cinemaId = cinemaId;
         }
-        if (isActive === "active") params.isActive = true;
-        else if (isActive === "inactive") params.isActive = false;
+
+
+        if (statusFilter === "stopped") {
+          params.isActive = false;
+        } else if (statusFilter === "showing") {
+          params.isActive = true;
+
+        } else if (statusFilter === "ended") {
+          params.isActive = true;
+        }
+
         if (startTime) params.startTime = startTime;
         if (endTime) params.endTime = endTime;
 
@@ -234,7 +243,7 @@ export function useShowtimeLogic() {
   }, [
     movieId,
     cinemaId,
-    isActive,
+    statusFilter,
     startTime,
     endTime,
     page,
@@ -257,15 +266,32 @@ export function useShowtimeLogic() {
   }, [showtimes]);
 
   const filteredShowtimes = useMemo(() => {
-    if (!filterLang) return showtimes;
-    return showtimes.filter(
-      (s) => ((s.language && s.language.trim()) || "Unknown") === filterLang
-    );
-  }, [showtimes, filterLang]);
+    let result = showtimes;
+
+    // Filter by Language
+    if (filterLang) {
+      result = result.filter(
+        (s) => ((s.language && s.language.trim()) || "Unknown") === filterLang
+      );
+    }
+
+    // Filter by Status (Client-side refinement for Showing/Ended)
+    // Note: 'stopped' is handled by API (isActive=false)
+    if (statusFilter === "showing") {
+      const now = Date.now();
+      result = result.filter((s) => new Date(s.endTime).getTime() > now);
+    } else if (statusFilter === "ended") {
+      const now = Date.now();
+      result = result.filter((s) => new Date(s.endTime).getTime() <= now);
+    }
+
+    return result;
+  }, [showtimes, filterLang, statusFilter]);
 
   useEffect(() => {
     setPage(1);
-  }, [movieId, cinemaId, isActive, startTime, endTime, filterLang]);
+    setPage(1);
+  }, [movieId, cinemaId, statusFilter, startTime, endTime, filterLang]);
 
   const handleRefresh = () => setReloadTick((x) => x + 1);
 
@@ -351,8 +377,12 @@ export function useShowtimeLogic() {
   const clearFilters = () => {
     setMovieId("__ALL__");
 
-    setCinemaId("__ALL__");
-    setIsActive("all");
+    if (isManager && user?.cinemaId) {
+      setCinemaId(user.cinemaId);
+    } else {
+      setCinemaId("__ALL__");
+    }
+    setStatusFilter("all");
     setStartTime("");
     setEndTime("");
     setFilterLang(undefined);
@@ -362,8 +392,11 @@ export function useShowtimeLogic() {
   const canClearFilters = useMemo(() => {
     const isDefaultMovie = movieId === "__ALL__" || !movieId;
 
-    const isDefaultCinema = cinemaId === "__ALL__";
-    const isDefaultStatus = isActive === "all";
+    const isDefaultCinema = isManager && user?.cinemaId
+      ? cinemaId === user.cinemaId
+      : cinemaId === "__ALL__";
+
+    const isDefaultStatus = statusFilter === "all";
     const isDefaultStart = !startTime;
     const isDefaultEnd = !endTime;
     const isDefaultLang = !filterLang;
@@ -376,7 +409,7 @@ export function useShowtimeLogic() {
       isDefaultEnd &&
       isDefaultLang
     );
-  }, [movieId, cinemaId, isActive, startTime, endTime, filterLang]);
+  }, [movieId, cinemaId, statusFilter, startTime, endTime, filterLang]);
 
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
 
@@ -403,8 +436,8 @@ export function useShowtimeLogic() {
     setCinemaId,
 
     // filters
-    isActive,
-    setIsActive,
+    statusFilter,
+    setStatusFilter,
     startTime,
     setStartTime,
     endTime,

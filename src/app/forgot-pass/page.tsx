@@ -59,7 +59,7 @@ export default function ForgotPasswordPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+            className="w-full py-2 bg-[#F25019] text-white rounded-md hover:bg-[#C24014]"
           >
             {loading ? "Đang gửi..." : "Gửi link đặt lại mật khẩu"}
           </button>

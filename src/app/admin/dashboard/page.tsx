@@ -7,6 +7,7 @@ import {
   type MovieRevenueItem,
   type CinemaRevenueItem,
   type DailyRevenueGlobal,
+  type DailyRevenueBreakdown,
   type Cinema,
 } from "@/services";
 import ExportExcelModal from "@/components/modal/ExportExcelModal";
@@ -22,59 +23,13 @@ import {
   getVnStartDayInUtc,
   getVnEndDayInUtc,
   ChartItem,
+  aggregateByMonth,
 } from "../../../components/dashboard/utils";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import OverviewTab from "@/components/dashboard/OverviewTab";
 import CinemaTab from "@/components/dashboard/CinemaTab";
 import RevenueDetailDialog from "@/components/dashboard/RevenueDetailDialog";
 
-// ===== Helper Aggregate Function (Keep internal logic helper not shared)
-// Actually this can be moved to utils too if generic enough.
-// Moving to page scope or keeping here is fine. Let's keep here for now as data logic.
-
-const aggregateByMonth = (data: any[]) => {
-  if (!data || data.length === 0) return [];
-
-  const groups: Record<string, any> = {};
-
-  data.forEach((item) => {
-    // Cắt chuỗi ngày để lấy YYYY-MM (ví dụ: 2025-12-29 -> 2025-12)
-    const monthKey = item.date.substring(0, 7);
-
-    if (!groups[monthKey]) {
-      groups[monthKey] = {
-        date: monthKey,
-        totalRevenue: 0,
-        ticketRevenue: 0,
-        totalTicketRevenue: 0,
-        foodDrinkRevenue: 0,
-        totalFoodDrinkRevenue: 0,
-        occupancyRateSum: 0,
-        count: 0,
-      };
-    }
-
-    groups[monthKey].totalRevenue += Number(item.totalRevenue || 0);
-
-    const tRev = Number(item.ticketRevenue || item.totalTicketRevenue || 0);
-    groups[monthKey].ticketRevenue += tRev;
-    groups[monthKey].totalTicketRevenue += tRev;
-
-    const fRev = Number(item.foodDrinkRevenue || item.totalFoodDrinkRevenue || 0);
-    groups[monthKey].foodDrinkRevenue += fRev;
-    groups[monthKey].totalFoodDrinkRevenue += fRev;
-
-    groups[monthKey].occupancyRateSum += Number(item.occupancyRate || 0);
-    groups[monthKey].count += 1;
-  });
-
-  return Object.values(groups).map((g) => ({
-    ...g,
-    occupancyRate: g.count > 0 ? Number((g.occupancyRateSum / g.count).toFixed(2)) : 0,
-    occupancyRateSum: undefined,
-    count: undefined,
-  }));
-};
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -139,9 +94,8 @@ export default function Dashboard() {
 
     const mapped: ChartItem[] = rbm.map((item) => {
       const name = item.movie?.name ?? item.movie?.title ?? "(Không xác định)";
-      const anyItem = item as any;
 
-      let breakdown = item.dailyBreakdown || [];
+      let breakdown: (DailyRevenueBreakdown | DailyRevenueGlobal)[] = item.dailyBreakdown || [];
       if (shouldAggregate) {
         breakdown = aggregateByMonth(breakdown);
       }
@@ -149,8 +103,8 @@ export default function Dashboard() {
       return {
         name,
         revenue: Number(item.totalRevenue ?? 0),
-        ticketRevenue: Number(item.ticketRevenue ?? anyItem.totalTicketRevenue ?? 0),
-        fnbRevenue: Number(item.foodDrinkRevenue ?? anyItem.totalFoodDrinkRevenue ?? 0),
+        ticketRevenue: Number(item.ticketRevenue ?? item.totalTicketRevenue ?? 0),
+        fnbRevenue: Number(item.foodDrinkRevenue ?? item.totalFoodDrinkRevenue ?? 0),
         occupancyRate: Number(item.occupancyRate ?? 0),
         dailyBreakdown: breakdown,
       };
@@ -167,9 +121,8 @@ export default function Dashboard() {
 
     const mapped: ChartItem[] = rbc.map((item) => {
       const name = item.cinema?.name ?? "(Không xác định)";
-      const anyItem = item as any;
 
-      let breakdown = item.dailyBreakdown || [];
+      let breakdown: (DailyRevenueBreakdown | DailyRevenueGlobal)[] = item.dailyBreakdown || [];
       if (shouldAggregate) {
         breakdown = aggregateByMonth(breakdown);
       }
@@ -177,8 +130,8 @@ export default function Dashboard() {
       return {
         name,
         revenue: Number(item.totalRevenue ?? 0),
-        ticketRevenue: Number(item.ticketRevenue ?? anyItem.totalTicketRevenue ?? 0),
-        fnbRevenue: Number(item.foodDrinkRevenue ?? anyItem.totalFoodDrinkRevenue ?? 0),
+        ticketRevenue: Number(item.ticketRevenue ?? item.totalTicketRevenue ?? 0),
+        fnbRevenue: Number(item.foodDrinkRevenue ?? item.totalFoodDrinkRevenue ?? 0),
         occupancyRate: Number(item.occupancyRate ?? 0),
         dailyBreakdown: breakdown,
       };
