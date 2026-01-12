@@ -133,11 +133,10 @@ export default function VerifyOTPAndResetPage() {
                 className="flex-1 px-4 py-2 border rounded-md border-gray-300 focus:ring-indigo-500 focus:border-indigo-500"
               />
               <div
-                className={`flex items-center justify-center px-4 py-2 rounded-md font-mono font-bold border ${
-                  timeLeft > 0
+                className={`flex items-center justify-center px-4 py-2 rounded-md font-mono font-bold border ${timeLeft > 0
                     ? "bg-gray-100 text-indigo-600 border-gray-300"
                     : "bg-red-50 text-red-600 border-red-200"
-                }`}
+                  }`}
                 style={{ minWidth: "80px" }}
               >
                 {timeLeft > 0 ? formatTime(timeLeft) : "00:00"}
@@ -178,11 +177,10 @@ export default function VerifyOTPAndResetPage() {
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
-              className={`w-full px-4 py-2 border rounded-md focus:ring-indigo-500 focus:border-indigo-500 ${
-                confirmPassword && password !== confirmPassword
+              className={`w-full px-4 py-2 border rounded-md focus:ring-indigo-500 focus:border-indigo-500 ${confirmPassword && password !== confirmPassword
                   ? "border-red-500 focus:border-red-500"
                   : "border-gray-300"
-              }`}
+                }`}
             />
           </div>
 
@@ -190,7 +188,7 @@ export default function VerifyOTPAndResetPage() {
           <button
             type="submit"
             disabled={loading || timeLeft === 0}
-            className="w-full py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            className="w-full py-2 bg-[#F25019] text-white rounded-md hover:bg-[#C24014] transition duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
             {loading ? "Đang xử lý..." : "Xác nhận & Đổi mật khẩu"}
           </button>
@@ -202,11 +200,10 @@ export default function VerifyOTPAndResetPage() {
             type="button" // Quan trọng: type button để không kích hoạt submit form
             onClick={handleResendOtp}
             disabled={isResending}
-            className={`text-sm underline ${
-              isResending
+            className={`text-sm underline ${isResending
                 ? "text-gray-400 cursor-wait"
                 : "text-gray-500 hover:text-indigo-600 cursor-pointer"
-            }`}
+              }`}
           >
             {isResending
               ? "Đang gửi lại..."

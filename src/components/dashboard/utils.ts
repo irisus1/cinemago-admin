@@ -1,4 +1,4 @@
-import { DailyRevenueBreakdown } from "@/services";
+import { DailyRevenueBreakdown, DailyRevenueGlobal } from "@/services";
 
 export type ChartItem = {
     name: string;
@@ -6,7 +6,11 @@ export type ChartItem = {
     ticketRevenue: number;
     fnbRevenue: number;
     occupancyRate: number;
-    dailyBreakdown?: DailyRevenueBreakdown[];
+    dailyBreakdown?: (DailyRevenueBreakdown | DailyRevenueGlobal)[];
+    image?: string;
+    rating?: number;
+    bookedSeats?: number;
+    totalSeats?: number;
 };
 
 export const PIE_COLORS: string[] = ["#4f46e5", "#22c55e"];
@@ -31,6 +35,8 @@ export const fmtVND = (n: number | string): string =>
         currency: "VND",
         maximumFractionDigits: 0,
     }).format(Math.max(0, Math.round(Number(n) || 0)));
+
+export const fmtPercent = (n: number | undefined | null) => `${(Number(n) || 0).toFixed(1)}%`;
 
 export const truncateText = (text: string, maxLength: number = 15) => {
     return text.length > maxLength ? `${text.substring(0, maxLength)}...` : text;
@@ -93,4 +99,55 @@ export const getVnEndDayInUtc = (dateStr: string) => {
     const [y, m, d] = dateStr.split("-").map(Number);
     const utcMidnightNextDay = Date.UTC(y, m - 1, d + 1);
     return new Date(utcMidnightNextDay - 7 * 3600 * 1000 - 1).toISOString();
+};
+
+export const aggregateByMonth = (data: (DailyRevenueBreakdown | DailyRevenueGlobal)[]): DailyRevenueGlobal[] => {
+    if (!data || data.length === 0) return [];
+
+    const groups: Record<string, DailyRevenueGlobal & { occupancyRateSum: number; count: number }> = {};
+
+    data.forEach((item) => {
+        const monthKey = item.date.substring(0, 7);
+
+        if (!groups[monthKey]) {
+            groups[monthKey] = {
+                date: monthKey,
+                totalRevenue: 0,
+                totalFoodDrinkRevenue: 0,
+                totalTicketRevenue: 0,
+                occupancyRateSum: 0,
+                count: 0,
+            };
+        }
+
+        // Handle both breakdown (ticketRevenue) and global (totalTicketRevenue) naming conventions
+        // and safely cast to unknown then any if needed, or better, access safely.
+        // Since we typed input as union, we have to check properties or cast.
+        // But to be clean:
+        const tRev = 'ticketRevenue' in item
+            ? Number(item.ticketRevenue || 0)
+            : Number((item as DailyRevenueGlobal).totalTicketRevenue || 0);
+
+        const fRev = 'foodDrinkRevenue' in item
+            ? Number(item.foodDrinkRevenue || 0)
+            : Number((item as DailyRevenueGlobal).totalFoodDrinkRevenue || 0);
+
+        groups[monthKey].totalRevenue += Number(item.totalRevenue || 0);
+        groups[monthKey].totalTicketRevenue += tRev;
+        groups[monthKey].totalFoodDrinkRevenue += fRev;
+
+        groups[monthKey].occupancyRateSum += Number(item.occupancyRate || 0);
+        groups[monthKey].count += 1;
+    });
+
+    return Object.values(groups).map((g) => {
+        const { occupancyRateSum, count, ...rest } = g;
+        return {
+            ...rest,
+            // Aliases for compatibility with DailyRevenueBreakdown consumers (like RevenueDetailDialog)
+            ticketRevenue: rest.totalTicketRevenue,
+            foodDrinkRevenue: rest.totalFoodDrinkRevenue,
+            occupancyRate: count > 0 ? Number((occupancyRateSum / count).toFixed(2)) : 0,
+        };
+    });
 };
