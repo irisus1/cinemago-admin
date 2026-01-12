@@ -37,6 +37,7 @@ export default function ShowtimesListPage() {
   const {
     // data
     showtimes,
+    filteredShowtimes,
     loadingShow,
     page,
     setPage,
@@ -47,8 +48,8 @@ export default function ShowtimesListPage() {
     setMovieId,
     cinemaId,
     setCinemaId,
-    isActive,
-    setIsActive,
+    statusFilter,
+    setStatusFilter,
     startTime,
     setStartTime,
 
@@ -99,6 +100,27 @@ export default function ShowtimesListPage() {
     }
   };
 
+  const getShowtimeStatus = (st: ShowTime) => {
+    if (!st.isActive) {
+      return {
+        label: "Dừng chiếu",
+        className: "bg-gray-100 text-gray-500 hover:bg-gray-200 border-0",
+      };
+    }
+    const isEnded = new Date(st.endTime).getTime() < Date.now();
+    if (isEnded) {
+      return {
+        label: "Đã kết thúc",
+        className: "bg-slate-100 text-slate-500 hover:bg-slate-200 border-0",
+      };
+    }
+    return {
+      label: "Đang chiếu",
+      className:
+        "bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border-0",
+    };
+  };
+
   const movieTitle = movieOptions.find((m) => m.id === movieId)?.title ?? "—";
 
   const canPrev = page > 1;
@@ -124,7 +146,7 @@ export default function ShowtimesListPage() {
       Record<string, Record<string, ShowTime[]>>
     > = {};
 
-    showtimes.forEach((item) => {
+    filteredShowtimes.forEach((item) => {
       const movieKey =
         movieOptions.find((m) => m.id === item.movieId)?.title ||
         "Unknown Movie";
@@ -142,7 +164,7 @@ export default function ShowtimesListPage() {
     });
 
     return groups;
-  }, [showtimes, movieOptions]);
+  }, [filteredShowtimes, movieOptions]);
 
   return (
     <div>
@@ -187,9 +209,9 @@ export default function ShowtimesListPage() {
             {/* Lọc theo trạng thái active */}
             <div className="min-w-0 w-[200px] border border-gray-400 rounded-lg">
               <Select
-                value={isActive}
+                value={statusFilter}
                 onValueChange={(v) => {
-                  setIsActive(v as "all" | "active" | "inactive");
+                  setStatusFilter(v as "all" | "showing" | "ended" | "stopped");
                   setPage(1);
                 }}
               >
@@ -198,8 +220,9 @@ export default function ShowtimesListPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tất cả trạng thái</SelectItem>
-                  <SelectItem value="active">Đang hoạt động</SelectItem>
-                  <SelectItem value="inactive">Đã xóa</SelectItem>
+                  <SelectItem value="showing">Đang chiếu</SelectItem>
+                  <SelectItem value="ended">Đã kết thúc</SelectItem>
+                  <SelectItem value="stopped">Đã dừng</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -386,13 +409,9 @@ export default function ShowtimesListPage() {
                               <td className="px-6 py-4">
                                 <Badge
                                   variant="secondary"
-                                  className={
-                                    showtime.isActive
-                                      ? "bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border-0"
-                                      : "bg-gray-100 text-gray-500 hover:bg-gray-200 border-0"
-                                  }
+                                  className={getShowtimeStatus(showtime).className}
                                 >
-                                  {showtime.isActive ? "Đang chiếu" : "Dừng"}
+                                  {getShowtimeStatus(showtime).label}
                                 </Badge>
                               </td>
 
@@ -594,14 +613,10 @@ export default function ShowtimesListPage() {
               <div>
                 <span className="font-semibold">Trạng thái: </span>
                 <Badge
-                  variant={viewShowtime.isActive ? "default" : "secondary"}
-                  className={
-                    viewShowtime.isActive
-                      ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                      : "bg-slate-100 text-slate-600 border border-slate-200"
-                  }
+                  variant="secondary"
+                  className={getShowtimeStatus(viewShowtime).className}
                 >
-                  {viewShowtime.isActive ? "Đang chiếu" : "Hết suất chiếu"}
+                  {getShowtimeStatus(viewShowtime).label}
                 </Badge>
               </div>
             </div>
