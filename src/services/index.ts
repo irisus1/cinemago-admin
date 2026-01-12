@@ -80,4 +80,5 @@ export type {
 
   DailyRevenueGlobal,
   DailyRevenueBreakdown,
+  PeakHourItem,
 } from "./dashboard.service";

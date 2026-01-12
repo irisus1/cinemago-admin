@@ -49,6 +49,8 @@ export type DailyRevenueGlobal = {
   totalRevenue: number;
   totalFoodDrinkRevenue: number;
   totalTicketRevenue: number;
+  ticketRevenue?: number;
+  foodDrinkRevenue?: number;
   bookedSeats?: number;
   totalSeats?: number;
   occupancyRate?: number;
@@ -84,6 +86,9 @@ export type CinemaRevenueItem = {
   totalRevenue: number;
   ticketRevenue?: number;
   foodDrinkRevenue?: number;
+  // Optional aggregations if API returns them in some context
+  totalTicketRevenue?: number;
+  totalFoodDrinkRevenue?: number;
   bookedSeats?: number;
   totalSeats?: number;
   occupancyRate?: number;
@@ -100,6 +105,9 @@ export type MovieRevenueItem = {
   totalRevenue: number;
   ticketRevenue?: number;
   foodDrinkRevenue?: number;
+  // Optional aggregations if API returns them in some context
+  totalTicketRevenue?: number;
+  totalFoodDrinkRevenue?: number;
   bookedSeats?: number;
   totalSeats?: number;
   occupancyRate?: number;
