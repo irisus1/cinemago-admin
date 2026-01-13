@@ -53,9 +53,9 @@ export default function AdminWalkupBookingPage() {
   const pathname = usePathname();
   const { user } = useAuth();
 
-  // RBAC for Cinema Manager
-  const isCinemaManager = user?.role === "MANAGER";
-  const managerCinemaId = user?.cinemaId;
+  // RBAC for Cinema Manager & Employee
+  const isRestrictedView = user?.role === "MANAGER" || user?.role === "EMPLOYEE";
+  const userCinemaId = user?.cinemaId;
 
   // --- STATE ---
   const [dateStr, setDateStr] = useState<string>(() => {
@@ -131,9 +131,9 @@ export default function AdminWalkupBookingPage() {
         }
 
         // RBAC Override
-        if (isCinemaManager && managerCinemaId) {
-          // Ensure the manager's cinema is in the list (or just set it forcefully)
-          targetId = managerCinemaId;
+        if (isRestrictedView && userCinemaId) {
+          // Ensure the user's cinema is in the list (or just set it forcefully)
+          targetId = userCinemaId;
         }
 
         if (targetId) {
@@ -268,7 +268,6 @@ export default function AdminWalkupBookingPage() {
   const handleCloseSheet = () => {
     setIsSheetOpen(false);
     updateUrl({ sheetOpen: undefined, showtimeId: undefined });
-    // Remove auto-clear to support Minimize & Floating Indicator
     // setTimeout(() => setSelectedMovie(null), 300);
   };
 
@@ -287,7 +286,7 @@ export default function AdminWalkupBookingPage() {
               className="rounded-md border px-3 py-2 text-sm bg-white min-w-[200px] disabled:bg-gray-100 disabled:text-gray-500"
               value={selectedCinemaId}
               onChange={(e) => handleCinemaChange(e.target.value)}
-              disabled={isCinemaManager}
+              disabled={isRestrictedView}
             >
               {cinemas.length === 0 && (
                 <option value="">Đang tải rạp...</option>

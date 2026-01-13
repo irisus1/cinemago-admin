@@ -61,8 +61,7 @@ export default function FoodDrinkListPage() {
     handleSubmitFoodDrink,
     confirmOpen,
     setConfirmOpen,
-    successOpen,
-    setSuccessOpen,
+
     errorOpen,
     setErrorOpen,
 
@@ -336,14 +335,7 @@ export default function FoodDrinkListPage() {
         confirmText="Xác nhận"
         cancelText="Hủy"
       />
-      <Modal
-        isOpen={successOpen}
-        onClose={() => setSuccessOpen(false)}
-        type="success"
-        title={dialogTitle}
-        message={dialogMsg}
-        confirmText="Đóng"
-      />
+
       <Modal
         isOpen={errorOpen}
         onClose={() => setErrorOpen(false)}

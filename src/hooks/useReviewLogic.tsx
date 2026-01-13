@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import { toast } from "sonner";
 import {
   reviewService,
   type Review,
@@ -37,12 +38,11 @@ export function useReviewLogic() {
 
   // dialogs
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
-  const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
   const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
 
   const [dialogTitle, setDialogTitle] = useState("");
   const [dialogMessage, setDialogMessage] = useState<React.ReactNode>("");
-  const [onConfirm, setOnConfirm] = useState<() => void>(() => () => {});
+  const [onConfirm, setOnConfirm] = useState<() => void>(() => () => { });
 
   // ==== FETCH MOVIES ====
   const fetchMovies = useCallback(async () => {
@@ -206,9 +206,7 @@ export function useReviewLogic() {
           setReviews((prev) =>
             prev.map((it) => (it.id === r.id ? { ...it, isActive: false } : it))
           );
-          setDialogTitle("Thành công");
-          setDialogMessage("Đã ẩn đánh giá.");
-          setIsSuccessDialogOpen(true);
+          toast.success("Đã ẩn đánh giá.");
         } catch (err) {
           alert("Thao tác thất bại: " + err);
         }
@@ -227,9 +225,7 @@ export function useReviewLogic() {
           setReviews((prev) =>
             prev.map((it) => (it.id === r.id ? { ...it, isActive: true } : it))
           );
-          setDialogTitle("Thành công");
-          setDialogMessage("Đã hiển thị lại đánh giá.");
-          setIsSuccessDialogOpen(true);
+          toast.success("Đã hiển thị lại đánh giá.");
         } catch (err) {
           alert("Thao tác thất bại: " + err);
         }
@@ -251,9 +247,7 @@ export function useReviewLogic() {
         prev.map((r) => (r.id === reviewId ? updatedReview : r))
       );
 
-      setDialogTitle("Thành công");
-      setDialogMessage("Đã gửi phản hồi thành công.");
-      setIsSuccessDialogOpen(true);
+      toast.success("Đã gửi phản hồi thành công.");
       handleReplyClose(); // Đóng modal sau khi thành công
     } catch {
       setDialogTitle("Lỗi");
@@ -299,8 +293,7 @@ export function useReviewLogic() {
     // dialogs
     isConfirmDialogOpen,
     setIsConfirmDialogOpen,
-    isSuccessDialogOpen,
-    setIsSuccessDialogOpen,
+
     isErrorDialogOpen,
     setIsErrorDialogOpen,
 

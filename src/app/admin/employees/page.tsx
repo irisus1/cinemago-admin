@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
+import { toast } from "sonner";
 import Table, { Column } from "@/components/Table";
 import { Search, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -55,7 +56,6 @@ export default function EmployeesPage() {
     const [editUser, setEditUser] = useState<User | null>(null);
 
     const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
-    const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
     const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
     const [dialogTitle, setDialogTitle] = useState("");
     const [dialogMessage, setDialogMessage] = useState<React.ReactNode>("");
@@ -147,9 +147,10 @@ export default function EmployeesPage() {
                 setUsers((prev) =>
                     prev.map((it) => (it.id === u.id ? { ...it, isActive: false } : it))
                 );
-                setDialogTitle("Thành công");
-                setDialogMessage("Đã vô hiệu hóa tài khoản.");
-                setIsSuccessDialogOpen(true);
+                setUsers((prev) =>
+                    prev.map((it) => (it.id === u.id ? { ...it, isActive: false } : it))
+                );
+                toast.success("Đã vô hiệu hóa tài khoản.");
             } catch (err) {
                 alert("Thao tác thất bại: " + err);
             }
@@ -169,9 +170,10 @@ export default function EmployeesPage() {
                 setUsers((prev) =>
                     prev.map((it) => (it.id === u.id ? { ...it, isActive: true } : it))
                 );
-                setDialogTitle("Thành công");
-                setDialogMessage("Đã kích hoạt tài khoản.");
-                setIsSuccessDialogOpen(true);
+                setUsers((prev) =>
+                    prev.map((it) => (it.id === u.id ? { ...it, isActive: true } : it))
+                );
+                toast.success("Đã kích hoạt tài khoản.");
             } catch (err) {
                 alert("Thao tác thất bại: " + err);
             }
@@ -204,13 +206,11 @@ export default function EmployeesPage() {
                     await userService.updateUser(user.id, finalPayload);
                 }
 
-                setDialogTitle("Thành công");
-                setDialogMessage(
+                toast.success(
                     isCreate
                         ? "Đã tạo nhân viên mới."
                         : "Đã cập nhật thông tin nhân viên."
                 );
-                setIsSuccessDialogOpen(true);
                 await fetchUsers();
                 setOpen(false);
                 setEditUser(null);
@@ -413,16 +413,7 @@ export default function EmployeesPage() {
                 />
             )}
 
-            {isSuccessDialogOpen && (
-                <Modal
-                    isOpen={isSuccessDialogOpen}
-                    onClose={() => setIsSuccessDialogOpen(false)}
-                    type="success"
-                    title={dialogTitle}
-                    message={dialogMessage}
-                    confirmText="Đóng"
-                />
-            )}
+
 
             {isErrorDialogOpen && (
                 <Modal

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { toast } from "sonner";
 import {
   roomService,
   cinemaService,
@@ -76,7 +77,6 @@ export function useRoomLogic(initialCinemaId?: string) {
 
   // --- DIALOGS ---
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
-  const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
   const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
   const [dialogTitle, setDialogTitle] = useState("");
   const [dialogMessage, setDialogMessage] = useState<React.ReactNode>("");
@@ -261,8 +261,8 @@ export function useRoomLogic(initialCinemaId?: string) {
         try {
           await roomService.deleteRoom(room.id);
           setDialogTitle("Thành công");
-          setDialogMessage("Đã ẩn (soft-delete) phòng.");
-          setIsSuccessDialogOpen(true);
+          setDialogTitle("Thành công");
+          toast.success("Đã ẩn (soft-delete) phòng.");
           handleRefresh();
         } catch (err) {
           console.error(err);
@@ -285,8 +285,8 @@ export function useRoomLogic(initialCinemaId?: string) {
         try {
           await roomService.restoreRoom(room.id);
           setDialogTitle("Thành công");
-          setDialogMessage("Khôi phục phòng thành công");
-          setIsSuccessDialogOpen(true);
+          setDialogTitle("Thành công");
+          toast.success("Khôi phục phòng thành công");
           handleRefresh();
         } catch (err) {
           console.error(err);
@@ -341,19 +341,15 @@ export function useRoomLogic(initialCinemaId?: string) {
               seatLayout: formData.seatLayout || makeBaseLayout10x10(),
             };
             await roomService.createRoom(payloadCreate);
-            setDialogTitle("Thành công");
-            setDialogMessage("Tạo phòng thành công");
           } else if (editRoom) {
             const payloadUpdate: RoomUpdate = {
               ...payloadBase,
               seatLayout: formData.seatLayout || editRoom.seatLayout,
             };
             await roomService.updateRoom(editRoom.id, payloadUpdate);
-            setDialogTitle("Thành công");
-            setDialogMessage("Cập nhật phòng thành công");
           }
 
-          setIsSuccessDialogOpen(true);
+          toast.success(isCreate ? "Tạo phòng thành công" : "Cập nhật phòng thành công");
           setEditRoom(null);
           handleRefresh();
         } catch (e) {
@@ -412,8 +408,6 @@ export function useRoomLogic(initialCinemaId?: string) {
     // dialogs state
     isConfirmDialogOpen,
     setIsConfirmDialogOpen,
-    isSuccessDialogOpen,
-    setIsSuccessDialogOpen,
     isErrorDialogOpen,
     setIsErrorDialogOpen,
     dialogTitle,

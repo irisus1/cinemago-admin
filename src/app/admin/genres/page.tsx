@@ -28,8 +28,7 @@ const GenresListPage: React.FC = () => {
     editGenre,
     isConfirmDialogOpen,
     setIsConfirmDialogOpen,
-    isSuccessDialogOpen,
-    setIsSuccessDialogOpen,
+
     isErrorDialogOpen,
     setIsErrorDialogOpen,
     dialogTitle,
@@ -177,14 +176,7 @@ const GenresListPage: React.FC = () => {
         confirmText="Xác nhận"
       />
 
-      <Modal
-        isOpen={isSuccessDialogOpen}
-        onClose={() => setIsSuccessDialogOpen(false)}
-        type="success"
-        title={dialogTitle}
-        message={dialogMessage}
-        confirmText="Đóng"
-      />
+
 
       <Modal
         isOpen={isErrorDialogOpen}

@@ -7,6 +7,7 @@ import {
   type PaginationMeta,
   type CreateUserRequest,
 } from "@/services";
+import { toast } from "sonner";
 
 export function useUsersLogic() {
   const [users, setUsers] = useState<User[]>([]);
@@ -28,12 +29,11 @@ export function useUsersLogic() {
   const [editUser, setEditUser] = useState<User | null>(null);
 
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
-  const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
   const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
   const [dialogTitle, setDialogTitle] = useState("");
   const [dialogMessage, setDialogMessage] = useState<React.ReactNode>("");
 
-  const [onConfirm, setOnConfirm] = useState<() => void>(() => () => {});
+  const [onConfirm, setOnConfirm] = useState<() => void>(() => () => { });
 
   // debounce search input
   useEffect(() => {
@@ -120,8 +120,7 @@ export function useUsersLogic() {
         );
 
         setDialogTitle("Thành công");
-        setDialogMessage("Đã vô hiệu hóa tài khoản.");
-        setIsSuccessDialogOpen(true);
+        toast.success("Đã vô hiệu hóa tài khoản.");
       } catch (err) {
         alert("Thao tác thất bại: " + err);
       }
@@ -145,8 +144,7 @@ export function useUsersLogic() {
         );
 
         setDialogTitle("Thành công");
-        setDialogMessage("Đã kích hoạt tài khoản.");
-        setIsSuccessDialogOpen(true);
+        toast.success("Đã kích hoạt tài khoản.");
       } catch (err) {
         alert("Thao tác thất bại: " + err);
       }
@@ -170,18 +168,22 @@ export function useUsersLogic() {
       setIsConfirmDialogOpen(false);
       try {
         if (isCreate) {
-          await userService.createUser(payload);
+          const newUser = await userService.createUser(payload);
+          await userService.updateUser(newUser.id, {
+            avatarUrl: "/default-avt.png",
+            fullname: payload.fullname,
+            gender: payload.gender,
+          });
         } else if (user) {
           await userService.updateUser(user.id, payload);
         }
 
         setDialogTitle("Thành công");
-        setDialogMessage(
+        toast.success(
           isCreate
             ? "Đã tạo người dùng mới."
             : "Đã cập nhật thông tin người dùng."
         );
-        setIsSuccessDialogOpen(true);
 
         await fetchUsers();
         setOpen(false);
@@ -200,8 +202,7 @@ export function useUsersLogic() {
 
     openConfirm(
       isCreate ? "Xác nhận tạo người dùng" : "Xác nhận cập nhật người dùng",
-      `Bạn có chắc muốn ${
-        isCreate ? "tạo tài khoản người dùng này?" : "cập nhật tài khoản này?"
+      `Bạn có chắc muốn ${isCreate ? "tạo tài khoản người dùng này?" : "cập nhật tài khoản này?"
       }`,
       doSubmit
     );
@@ -242,8 +243,6 @@ export function useUsersLogic() {
     setEditUser,
     isConfirmDialogOpen,
     setIsConfirmDialogOpen,
-    isSuccessDialogOpen,
-    setIsSuccessDialogOpen,
     isErrorDialogOpen,
     setIsErrorDialogOpen,
     dialogTitle,
