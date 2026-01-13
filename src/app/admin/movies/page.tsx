@@ -72,8 +72,7 @@ const MoviesListPage: React.FC = () => {
 
     isConfirmDialogOpen,
     setIsConfirmDialogOpen,
-    isSuccessDialogOpen,
-    setIsSuccessDialogOpen,
+
     dialogTitle,
     dialogMessage,
     onConfirm,
@@ -145,8 +144,8 @@ const MoviesListPage: React.FC = () => {
             m.status === "NOW_SHOWING"
               ? "inline-flex rounded-full px-2 py-0.5 bg-emerald-50 text-emerald-700"
               : m.status === "COMING_SOON"
-              ? "inline-flex rounded-full px-2 py-0.5 bg-amber-50 text-amber-700"
-              : "inline-flex rounded-full px-2 py-0.5 bg-slate-100 text-slate-600"
+                ? "inline-flex rounded-full px-2 py-0.5 bg-amber-50 text-amber-700"
+                : "inline-flex rounded-full px-2 py-0.5 bg-slate-100 text-slate-600"
           }
         >
           {VI_MOVIE_STATUS[m.status as keyof typeof VI_MOVIE_STATUS] ??
@@ -402,18 +401,7 @@ const MoviesListPage: React.FC = () => {
         }}
         confirmText="Xác nhận"
       />
-      <Modal
-        isOpen={isSuccessDialogOpen}
-        onClose={() => setIsSuccessDialogOpen(false)}
-        type="success"
-        title={dialogTitle}
-        message={dialogMessage}
-        onConfirm={() => {
-          setIsSuccessDialogOpen(false);
-          handleRefresh();
-        }}
-        confirmText="Đóng"
-      />
+
       <RefreshLoader isOpen={globalLoading} />
     </div>
   );

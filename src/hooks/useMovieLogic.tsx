@@ -21,10 +21,10 @@ export function useMovieLogic() {
   // ------------ State ------------
   // Dialogs
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
-  const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
+
   const [dialogTitle, setDialogTitle] = useState("");
   const [dialogMessage, setDialogMessage] = useState<React.ReactNode>("");
-  const [onConfirm, setOnConfirm] = useState<() => void>(() => () => {});
+  const [onConfirm, setOnConfirm] = useState<() => void>(() => () => { });
   const [globalLoading, setGlobalLoading] = useState(false);
 
   // Data & Paging
@@ -328,9 +328,8 @@ export function useMovieLogic() {
         try {
           await movieService.deleteMovie(m.id);
           applyMoviePatch(m.id, { isActive: false });
-          setDialogTitle("Thành công");
-          setDialogMessage("Xóa phim thành công");
-          setIsSuccessDialogOpen(true);
+          applyMoviePatch(m.id, { isActive: false });
+          toast.success("Xóa phim thành công");
         } catch (err) {
           alert("Thao tác thất bại: " + err);
         }
@@ -347,9 +346,8 @@ export function useMovieLogic() {
         try {
           await movieService.restoreMovie(m.id);
           applyMoviePatch(m.id, { isActive: true });
-          setDialogTitle("Thành công");
-          setDialogMessage("Khôi phục phim thành công");
-          setIsSuccessDialogOpen(true);
+          applyMoviePatch(m.id, { isActive: true });
+          toast.success("Khôi phục phim thành công");
         } catch (err) {
           alert("Thao tác thất bại: " + err);
         }
@@ -469,8 +467,7 @@ export function useMovieLogic() {
     // Dialogs
     isConfirmDialogOpen,
     setIsConfirmDialogOpen,
-    isSuccessDialogOpen,
-    setIsSuccessDialogOpen,
+
     dialogTitle,
     dialogMessage,
     onConfirm,

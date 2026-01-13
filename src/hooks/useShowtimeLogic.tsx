@@ -8,6 +8,7 @@ import {
   useMemo,
   ReactNode,
 } from "react";
+import { toast } from "sonner";
 import {
   cinemaService,
   roomService,
@@ -59,7 +60,6 @@ export function useShowtimeLogic() {
   const [open, setOpen] = useState(false);
   const [editShowtime, setEditShowtme] = useState<ShowTime | null>(null);
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
-  const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
   const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
   const [dialogTitle, setDialogTitle] = useState("");
   const [dialogMessage, setDialogMessage] = useState<ReactNode>("");
@@ -328,8 +328,8 @@ export function useShowtimeLogic() {
             patchShowtime(showtime.id, { isActive: false });
             handleRefresh();
             setDialogTitle("Thành công");
-            setDialogMessage("Xóa suất chiếu thành công");
-            setIsSuccessDialogOpen(true);
+            setDialogTitle("Thành công");
+            toast.success("Xóa suất chiếu thành công");
           } catch (err) {
             console.log(err);
             setDialogTitle("Thất bại");
@@ -357,8 +357,8 @@ export function useShowtimeLogic() {
             patchShowtime(showtime.id, { isActive: true });
             handleRefresh();
             setDialogTitle("Thành công");
-            setDialogMessage("Khôi phục suất chiếu thành công");
-            setIsSuccessDialogOpen(true);
+            setDialogTitle("Thành công");
+            toast.success("Khôi phục suất chiếu thành công");
           } catch (err) {
             console.log(err);
             setDialogTitle("Thất bại");
@@ -465,8 +465,6 @@ export function useShowtimeLogic() {
     setEditShowtme,
     isConfirmDialogOpen,
     setIsConfirmDialogOpen,
-    isSuccessDialogOpen,
-    setIsSuccessDialogOpen,
     isErrorDialogOpen,
     setIsErrorDialogOpen,
     dialogTitle,

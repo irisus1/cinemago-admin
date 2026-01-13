@@ -40,7 +40,7 @@ export function useFoodDrinkLogic() {
 
   // Dialog states
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [successOpen, setSuccessOpen] = useState(false);
+
   const [errorOpen, setErrorOpen] = useState(false);
   const [dialogTitle, setDialogTitle] = useState("");
   const [dialogMsg, setDialogMsg] = useState<React.ReactNode>("");
@@ -282,13 +282,8 @@ export function useFoodDrinkLogic() {
         try {
           await foodDrinkService.toggleFoodDrinkAvailability(fd.id);
           setDialogTitle("Thành công");
-          setDialogMsg(
-            <>
-              Món <b>{fd.name}</b> đã được <b>{successText.toLowerCase()}</b>{" "}
-              thành công.
-            </>
-          );
-          setSuccessOpen(true);
+          setDialogTitle("Thành công");
+          toast.success(`Món ${fd.name} đã được ${successText.toLowerCase()} thành công.`);
           updateCacheItem(fd.id, { isAvailable: !fd.isAvailable });
           await loadPage();
         } catch (e) {
@@ -354,12 +349,8 @@ export function useFoodDrinkLogic() {
             // người dùng sẽ không thấy nó ngay lập tức (đúng logic).
 
             setDialogTitle("Thành công");
-            setDialogMsg(
-              <>
-                Đã thêm món <b>{created.name}</b> thành công.
-              </>
-            );
-            setSuccessOpen(true);
+            setDialogTitle("Thành công");
+            toast.success(`Đã thêm món ${created.name} thành công.`);
           } else if (original) {
             const updated = await foodDrinkService.updateFoodDrinkById(
               original.id,
@@ -367,12 +358,8 @@ export function useFoodDrinkLogic() {
             );
             updateCacheItem(updated.id, updated);
             setDialogTitle("Thành công");
-            setDialogMsg(
-              <>
-                Đã cập nhật món <b>{updated.name}</b> thành công.
-              </>
-            );
-            setSuccessOpen(true);
+            setDialogTitle("Thành công");
+            toast.success(`Đã cập nhật món ${updated.name} thành công.`);
           }
           setEditing(null);
           await loadPage();
@@ -435,12 +422,8 @@ export function useFoodDrinkLogic() {
           });
           loadPage();
           setDialogTitle("Thành công");
-          setDialogMsg(
-            <>
-              Đã cập nhật trạng thái cho <b>{ids.length}</b> món thành công.
-            </>
-          );
-          setSuccessOpen(true);
+          setDialogTitle("Thành công");
+          toast.success(`Đã cập nhật trạng thái cho ${ids.length} món thành công.`);
           clearSelection();
         } catch (e) {
           toast.error("Không thể cập nhật: " + String(e));
@@ -510,8 +493,7 @@ export function useFoodDrinkLogic() {
     // Dialogs
     confirmOpen,
     setConfirmOpen,
-    successOpen,
-    setSuccessOpen,
+
     errorOpen,
     setErrorOpen,
     dialogTitle,
