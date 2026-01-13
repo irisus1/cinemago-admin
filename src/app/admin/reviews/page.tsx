@@ -44,8 +44,7 @@ const ReviewsListPage: React.FC = () => {
 
     isConfirmDialogOpen,
     setIsConfirmDialogOpen,
-    isSuccessDialogOpen,
-    setIsSuccessDialogOpen,
+
     isErrorDialogOpen,
     setIsErrorDialogOpen,
 
@@ -101,11 +100,10 @@ const ReviewsListPage: React.FC = () => {
 
         return (
           <span
-            className={`inline-flex px-2 py-1 rounded-full text-xs font-medium border ${
-              isReplied
-                ? "bg-blue-50 text-blue-700 border-blue-200"
-                : "bg-orange-50 text-orange-700 border-orange-200"
-            }`}
+            className={`inline-flex px-2 py-1 rounded-full text-xs font-medium border ${isReplied
+              ? "bg-blue-50 text-blue-700 border-blue-200"
+              : "bg-orange-50 text-orange-700 border-orange-200"
+              }`}
           >
             {row.status}
           </span>
@@ -118,11 +116,10 @@ const ReviewsListPage: React.FC = () => {
       key: "isActive",
       render: (_: unknown, row: Review) => (
         <span
-          className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
-            row.isActive
-              ? "bg-green-100 text-green-700"
-              : "bg-gray-200 text-gray-600"
-          }`}
+          className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${row.isActive
+            ? "bg-green-100 text-green-700"
+            : "bg-gray-200 text-gray-600"
+            }`}
         >
           {row.isActive ? "Đang hiển thị" : "Đã ẩn"}
         </span>
@@ -255,14 +252,7 @@ const ReviewsListPage: React.FC = () => {
         confirmText="Xác nhận"
       />
 
-      <Modal
-        isOpen={isSuccessDialogOpen}
-        onClose={() => setIsSuccessDialogOpen(false)}
-        type="success"
-        title={dialogTitle}
-        message={dialogMessage}
-        confirmText="Đóng"
-      />
+
 
       <Modal
         isOpen={isErrorDialogOpen}

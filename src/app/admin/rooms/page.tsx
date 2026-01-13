@@ -47,8 +47,7 @@ export default function RoomCard() {
     editRoom,
     isConfirmDialogOpen,
     setIsConfirmDialogOpen,
-    isSuccessDialogOpen,
-    setIsSuccessDialogOpen,
+
     isErrorDialogOpen,
     setIsErrorDialogOpen,
     dialogTitle,
@@ -290,14 +289,7 @@ export default function RoomCard() {
         confirmText="Xác nhận"
       />
 
-      <Modal
-        isOpen={isSuccessDialogOpen}
-        onClose={() => setIsSuccessDialogOpen(false)}
-        type="success"
-        title={dialogTitle}
-        message={dialogMessage}
-        confirmText="Đóng"
-      />
+
 
       <Modal
         isOpen={isErrorDialogOpen}

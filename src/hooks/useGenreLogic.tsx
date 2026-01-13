@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { genreService, type Genre, PaginationMeta } from "@/services";
+import { toast } from "sonner";
 
 type GenreFormPayload = {
   name: string;
@@ -28,11 +29,11 @@ export function useGenreLogic() {
 
   // Confirm/Success Dialog states
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
-  const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
+
   const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
   const [dialogTitle, setDialogTitle] = useState("");
   const [dialogMessage, setDialogMessage] = useState<React.ReactNode>("");
-  const [onConfirm, setOnConfirm] = useState<() => void>(() => () => {});
+  const [onConfirm, setOnConfirm] = useState<() => void>(() => () => { });
 
   // --- DATA FETCHING ---
   const fetchGenres = useCallback(
@@ -131,8 +132,8 @@ export function useGenreLogic() {
             prev.map((it) => (it.id === g.id ? { ...it, isActive: false } : it))
           );
           setDialogTitle("Thành công");
-          setDialogMessage("Đã xóa thể loại.");
-          setIsSuccessDialogOpen(true);
+          setDialogTitle("Thành công");
+          toast.success("Đã xóa thể loại.");
         } catch (err) {
           console.log(err);
 
@@ -158,8 +159,8 @@ export function useGenreLogic() {
             prev.map((it) => (it.id === g.id ? { ...it, isActive: true } : it))
           );
           setDialogTitle("Thành công");
-          setDialogMessage("Khôi phục thể loại thành công");
-          setIsSuccessDialogOpen(true);
+          setDialogTitle("Thành công");
+          toast.success("Khôi phục thể loại thành công");
         } catch (err) {
           console.log(err);
 
@@ -206,12 +207,12 @@ export function useGenreLogic() {
           }
 
           setDialogTitle("Thành công");
-          setDialogMessage(
+          setDialogTitle("Thành công");
+          toast.success(
             isCreate
               ? "Đã thêm thể loại mới."
               : "Đã cập nhật thông tin thể loại."
           );
-          setIsSuccessDialogOpen(true);
           setEditGenre(null);
           await fetchGenres();
         } catch (err) {
@@ -244,8 +245,6 @@ export function useGenreLogic() {
     editGenre,
     isConfirmDialogOpen,
     setIsConfirmDialogOpen,
-    isSuccessDialogOpen,
-    setIsSuccessDialogOpen,
     isErrorDialogOpen,
     setIsErrorDialogOpen,
     dialogTitle,

@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import {
   cinemaService,
@@ -39,7 +40,6 @@ export function useCinemaLogic() {
 
   // Dialog States
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
-  const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
   const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
   const [dialogTitle, setDialogTitle] = useState("");
   const [dialogMessage, setDialogMessage] = useState<React.ReactNode>("");
@@ -152,7 +152,7 @@ export function useCinemaLogic() {
           await fetchPage(1);
           setDialogTitle("Thành công");
           setDialogMessage("Đã ẩn (soft-delete) rạp phim.");
-          setIsSuccessDialogOpen(true);
+          toast.success("Đã ẩn (soft-delete) rạp phim.");
         } catch (err) {
           setDialogTitle("Thất bại");
           setDialogMessage("Không thể xóa rạp phim, vui lòng thử lại.");
@@ -174,7 +174,7 @@ export function useCinemaLogic() {
           await fetchPage(page);
           setDialogTitle("Thành công");
           setDialogMessage("Khôi phục rạp phim thành công");
-          setIsSuccessDialogOpen(true);
+          toast.success("Khôi phục rạp phim thành công");
         } catch (err) {
           setDialogTitle("Thất bại");
           setDialogMessage("Không thể khôi phục rạp phim, vui lòng thử lại.");
@@ -260,13 +260,11 @@ export function useCinemaLogic() {
           }
 
           // --- THÀNH CÔNG ---
-          setDialogTitle("Thành công");
-          setDialogMessage(
+          toast.success(
             isCreate
               ? `Đã thêm rạp và ${payload.rooms.length} phòng thành công.`
               : "Đã cập nhật thông tin rạp thành công."
           );
-          setIsSuccessDialogOpen(true);
 
           setEditCinema(null);
           if (isCreate) {
@@ -372,8 +370,6 @@ export function useCinemaLogic() {
 
     isConfirmDialogOpen,
     setIsConfirmDialogOpen,
-    isSuccessDialogOpen,
-    setIsSuccessDialogOpen,
     isErrorDialogOpen,
     setIsErrorDialogOpen,
     dialogTitle,
