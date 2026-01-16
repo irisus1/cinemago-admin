@@ -9,6 +9,7 @@ import {
   showTimeService,
   roomService,
   foodDrinkService,
+  paymentService,
   type FoodDrink,
   type Booking,
   type ShowTime,
@@ -64,6 +65,14 @@ function PaymentResultContent() {
   const pollingCount = useRef(0);
   const maxRetries = 10; // Thử tối đa 10 lần (20s)
 
+  const detectPaymentMethodFromParams = (params: any) => {
+    if (params.partnerCode === "MOMO") return "MOMO";
+    if (params.vnp_TxnRef) return "VNPAY";
+    if (params.apptransid) return "ZALOPAY";
+    if (params.method === "COD") return "COD";
+    return null;
+  };
+
   useEffect(() => {
     setPrintedAt(
       new Date().toLocaleString("vi-VN", {
@@ -73,129 +82,6 @@ function PaymentResultContent() {
   }, []);
 
   useEffect(() => {
-    const checkBookingStatus = async () => {
-      const params = Object.fromEntries(searchParams.entries());
-      let bookingId = "";
-      let methodLabel = "Thanh toán";
-
-      // 1. Lấy Booking ID từ URL params
-      if (params.partnerCode === "MOMO") {
-        bookingId = params.orderId; // MoMo trả về orderId là bookingId
-        methodLabel = "Ví MoMo";
-      } else if (params.vnp_TxnRef) {
-        bookingId = params.vnp_TxnRef; // VNPay trả về TxnRef là bookingId
-        methodLabel = "VNPay QR";
-      } else if (params.apptransid) {
-        // ZaloPay: apptransid dạng YYMMDD_BookingId
-        const parts = params.apptransid.split("_");
-        if (parts.length > 1) {
-          const rawId = parts[1];
-
-          if (rawId.length === 32) {
-            bookingId = `${rawId.slice(0, 8)}-${rawId.slice(
-              8,
-              12
-            )}-${rawId.slice(12, 16)}-${rawId.slice(16, 20)}-${rawId.slice(
-              20
-            )}`;
-          } else {
-            // Fallback nếu độ dài không đúng chuẩn UUID (hiếm gặp)
-            bookingId = rawId;
-          }
-        } else {
-          bookingId = params.apptransid;
-        }
-        methodLabel = "ZaloPay";
-      } else if (params.bookingId) {
-        bookingId = params.bookingId;
-      }
-
-      // Fallback: Lấy từ LocalStorage nếu URL không có
-      if (!bookingId && typeof window !== "undefined") {
-        bookingId = localStorage.getItem("cinemago_lastBookingId") || "";
-      }
-
-      if (!bookingId) {
-        setStatus("failed");
-        setPaymentData({
-          orderId: "Unknown",
-          amount: 0,
-          method: "Unknown",
-          message: "Không tìm thấy mã giao dịch.",
-        });
-        return;
-      }
-
-      // Set thông tin cơ bản để hiển thị trong lúc chờ
-      setPaymentData((prev) => ({
-        orderId: bookingId,
-        amount: prev?.amount || 0,
-        method: methodLabel,
-        message: "Đang kiểm tra trạng thái vé...",
-      }));
-
-      try {
-        // 2. Gọi API lấy chi tiết Booking từ DB
-        const booking = (await bookingService.getBookingById(
-          bookingId
-        )) as Booking;
-
-        // Cập nhật phương thức thanh toán chuẩn từ DB nếu có
-        if (booking.paymentMethod) {
-          methodLabel = booking.paymentMethod;
-        }
-
-        // 3. Kiểm tra trạng thái trong DB
-        // Lưu ý: Chuỗi status này phải khớp với chuỗi Backend bạn lưu (ví dụ: "Đã thanh toán")
-        if (
-          booking.status === "Đã thanh toán" ||
-          booking.status === "SUCCESS" ||
-          booking.paymentMethod === "COD"
-        ) {
-          setStatus("success");
-          await fetchOrderDetailData(booking); // Tải chi tiết vé để in
-        } else if (
-          booking.status === "Thanh toán thất bại" ||
-          booking.status === "FAILED"
-        ) {
-          setStatus("failed");
-          setPaymentData((prev) => ({
-            ...prev!,
-            message: "Giao dịch thất bại hoặc bị hủy.",
-          }));
-        } else {
-          // Trường hợp "Chờ thanh toán" (Pending) -> Webhook chưa tới kịp
-          if (pollingCount.current < maxRetries) {
-            setStatus("pending");
-            pollingCount.current += 1;
-            // Gọi lại hàm này sau 2 giây (Polling)
-            setTimeout(checkBookingStatus, 2000);
-          } else {
-            // Hết lượt thử mà vẫn chưa thấy update -> Báo lỗi hoặc yêu cầu khách check lại
-            setStatus("failed");
-            setPaymentData((prev) => ({
-              ...prev!,
-              message:
-                "Giao dịch đang xử lý lâu hơn dự kiến. Vui lòng kiểm tra lại trong lịch sử vé.",
-            }));
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching booking:", error);
-        // Nếu lỗi mạng hoặc server, thử lại vài lần
-        if (pollingCount.current < maxRetries) {
-          pollingCount.current += 1;
-          setTimeout(checkBookingStatus, 2000);
-        } else {
-          setStatus("failed");
-          setPaymentData((prev) => ({
-            ...prev!,
-            message: "Không thể tải thông tin vé.",
-          }));
-        }
-      }
-    };
-
     // Hàm tách riêng để xử lý data hiển thị hóa đơn
     const fetchOrderDetailData = async (booking: Booking) => {
       try {
@@ -213,7 +99,6 @@ function PaymentResultContent() {
           foodDrinksMaster.map((f) => [f.id, f])
         );
 
-        // ... (Logic map ghế giữ nguyên như cũ) ...
         const rawTickets: TicketItem[] = booking.bookingSeats.map((bs) => {
           const seat = seatMap.get(bs.seatId);
           const seatLabel = seat?.seatNumber ?? bs.seatId;
@@ -226,12 +111,12 @@ function PaymentResultContent() {
         const coupleSeats = rawTickets
           .filter((t) => t.seatType === "COUPLE")
           .sort((a, b) => {
-            /* Logic sort giữ nguyên */
             const parse = (s: string) => {
               const row = s[0];
               const num = Number(s.slice(1)) || 0;
               return { row, num };
             };
+            if (!a.seatLabel || !b.seatLabel) return 0;
             const pa = parse(a.seatLabel);
             const pb = parse(b.seatLabel);
             if (pa.row !== pb.row) return pa.row.localeCompare(pb.row);
@@ -256,12 +141,14 @@ function PaymentResultContent() {
         }
 
         const tickets = [...normalTickets, ...coupleTicketPairs];
-        const foodDrinks: FoodDrinkItem[] = booking.bookingFoodDrinks.map(
+
+        const bookingFoodDrinks = Array.isArray(booking.bookingFoodDrinks) ? booking.bookingFoodDrinks : [];
+        const foodDrinks: FoodDrinkItem[] = bookingFoodDrinks.map(
           (fd) => {
             const master = foodMap.get(fd.foodDrinkId);
             const name = master?.name ?? fd.foodDrinkId;
-            const unitPrice =
-              master?.price ?? fd.totalPrice / Math.max(fd.quantity, 1);
+            const qty = Math.max(fd.quantity, 1);
+            const unitPrice = master?.price ?? fd.totalPrice / qty;
             return {
               name,
               quantity: fd.quantity,
@@ -277,27 +164,178 @@ function PaymentResultContent() {
           totalAmount: booking.totalPrice,
         });
 
-        // Cập nhật lại paymentData cho chính xác amount từ DB
         setPaymentData((prev) => ({
           ...prev!,
           amount: booking.totalPrice,
           method: booking.paymentMethod || prev?.method || "Thanh toán",
           message: "Giao dịch thành công",
         }));
-      } catch (err) {
+      } catch (err: any) {
         console.error("Error parsing order detail", err);
-        setOrderError("Lỗi hiển thị chi tiết vé");
+        setOrderError(`Lỗi hiển thị chi tiết: ${err?.message || "Không xác định"}`);
+        setStatus("failed");
+        setPaymentData((prev) => ({
+          ...prev!,
+          message: `Lỗi xử lý dữ liệu vé: ${err?.message}`,
+        }));
       }
     };
 
-    // Chạy hàm check lần đầu
+    const checkBookingStatus = async () => {
+      const params = Object.fromEntries(searchParams.entries());
+
+      let bookingId = "";
+      let detectedMethod = detectPaymentMethodFromParams(params);
+      let methodLabel = "Thanh toán";
+
+      if (detectedMethod === "MOMO") {
+        bookingId = params.orderId;
+        methodLabel = "Ví MoMo";
+      } else if (detectedMethod === "VNPAY") {
+        bookingId = params.vnp_TxnRef;
+        methodLabel = "VNPay QR";
+      } else if (detectedMethod === "ZALOPAY") {
+        const parts = params.apptransid.split("_");
+        if (parts.length > 1) {
+          const rawId = parts[1];
+          bookingId = rawId.length === 32
+            ? `${rawId.slice(0, 8)}-${rawId.slice(8, 12)}-${rawId.slice(12, 16)}-${rawId.slice(16, 20)}-${rawId.slice(20)}`
+            : rawId;
+        } else {
+          bookingId = params.apptransid;
+        }
+        methodLabel = "ZaloPay";
+      } else if (params.bookingId) {
+        bookingId = params.bookingId;
+      }
+
+      // Fallback localStorage
+      if (!bookingId && typeof window !== "undefined") {
+        bookingId = localStorage.getItem("cinemago_lastBookingId") || "";
+      }
+
+      if (!bookingId) {
+        setStatus("failed");
+        setPaymentData({
+          orderId: "Unknown",
+          amount: 0,
+          method: "Unknown",
+          message: "Không tìm thấy mã giao dịch.",
+        });
+        return;
+      }
+
+      // Set trạng thái ban đầu
+      setPaymentData((prev) => ({
+        orderId: bookingId,
+        amount: prev?.amount || 0,
+        method: methodLabel,
+        message: "Đang kiểm tra kết quả thanh toán...",
+      }));
+
+      try {
+        let booking = (await bookingService.getBookingById(bookingId)) as Booking;
+
+        const finalMethod = booking.paymentMethod && booking.paymentMethod !== "COD"
+          ? booking.paymentMethod
+          : (detectedMethod || "COD");
+
+        const isDbSuccess =
+          booking.status === "Đã thanh toán" ||
+          booking.status === "SUCCESS" ||
+          (booking.paymentMethod === "COD" && detectedMethod !== "MOMO" && detectedMethod !== "VNPAY" && detectedMethod !== "ZALOPAY");
+
+        if (isDbSuccess) {
+          setStatus("success");
+          await fetchOrderDetailData(booking);
+          return;
+        }
+
+
+        let isManualSuccess = false;
+
+        if (booking.status === "Thanh toán thất bại" || booking.status === "FAILED") {
+          setStatus("failed");
+          setPaymentData(prev => ({ ...prev!, message: "Giao dịch đã bị hủy." }));
+          return;
+        }
+
+        try {
+          console.log(`Checking manual status for method: ${detectedMethod}`);
+
+          if (detectedMethod === "MOMO") {
+            const paymentId = params.requestId || (typeof window !== "undefined"
+              ? window.localStorage.getItem("cinemago_lastPaymentId")
+              : "");
+
+            if (paymentId) {
+              const momoRes = await paymentService.checkStatusMoMo(paymentId);
+              if (momoRes && momoRes.resultCode === 0) {
+                isManualSuccess = true;
+              }
+            } else if (params.resultCode === "0") {
+              isManualSuccess = true;
+            }
+
+          } else if (detectedMethod === "ZALOPAY") {
+            const zaloRes = await paymentService.checkStatusZaloPay(params.apptransid);
+            if (zaloRes && zaloRes.return_code === 1) {
+              isManualSuccess = true;
+            }
+
+          } else if (detectedMethod === "VNPAY") {
+            try {
+              // const vnpRes = await paymentService.checkStatusVnPay(params);
+              if (params.vnp_ResponseCode === "00") {
+                isManualSuccess = true;
+              }
+            } catch (e) {
+              if (params.vnp_ResponseCode === "00") {
+                isManualSuccess = true;
+              }
+            }
+          }
+        } catch (manualErr) {
+          console.error("Manual check error:", manualErr);
+        }
+
+        if (isManualSuccess) {
+          setStatus("success");
+
+          const updatedBooking = {
+            ...booking,
+            status: "Đã thanh toán",
+            paymentMethod: finalMethod,
+          };
+
+          await fetchOrderDetailData(updatedBooking);
+          return;
+        }
+
+        if (pollingCount.current < maxRetries) {
+          setStatus("pending");
+          pollingCount.current += 1;
+          setTimeout(checkBookingStatus, 2000);
+        } else {
+          setStatus("failed");
+          setPaymentData((prev) => ({
+            ...prev!,
+            message: "Giao dịch chưa hoàn tất hoặc đang xử lý.",
+          }));
+        }
+
+      } catch (error) {
+        console.error("Error flow:", error);
+        setStatus("failed");
+      }
+    };
+
     checkBookingStatus();
 
-    // Cleanup timeout nếu component unmount
     return () => {
-      pollingCount.current = maxRetries + 1; // Stop polling
+      pollingCount.current = maxRetries + 1;
     };
-  }, [searchParams]); // Chỉ chạy khi params thay đổi (lần đầu vào trang)
+  }, [searchParams]);
 
   // LOGIC IN (GIỮ NGUYÊN)
   useEffect(() => {
