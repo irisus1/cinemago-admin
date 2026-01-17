@@ -77,7 +77,7 @@ function PaymentResultContent() {
     setPrintedAt(
       new Date().toLocaleString("vi-VN", {
         hour12: false,
-      })
+      }),
     );
   }, []);
 
@@ -86,17 +86,27 @@ function PaymentResultContent() {
     const fetchOrderDetailData = async (booking: Booking) => {
       try {
         const showtime = (await showTimeService.getShowTimeById(
-          booking.showtimeId
+          booking.showtimeId,
         )) as ShowTime;
         const room = (await roomService.getRoomById(showtime.roomId)) as Room;
-        const foodDrinksMaster =
-          ((await foodDrinkService.getFoodDrinks()).data as FoodDrink[]) ?? [];
+
+        const bookingFoodDrinks = booking.bookingFoodDrinks || [];
+
+        const foodIds = Array.from(
+          new Set(bookingFoodDrinks.map((fd) => fd.foodDrinkId)),
+        );
+
+        let foodDrinksMaster: FoodDrink[] = [];
+        if (foodIds.length > 0) {
+          const fetched = await foodDrinkService.getFoodDrinkByIds(foodIds);
+          foodDrinksMaster = fetched as unknown as FoodDrink[];
+        }
 
         const seatMap = new Map<string, SeatModal>(
-          room.seats.map((s) => [s.id, s])
+          room.seats.map((s) => [s.id, s]),
         );
         const foodMap = new Map<string, FoodDrink>(
-          foodDrinksMaster.map((f) => [f.id, f])
+          foodDrinksMaster.map((f) => [f.id, f]),
         );
 
         const rawTickets: TicketItem[] = booking.bookingSeats.map((bs) => {
@@ -142,21 +152,18 @@ function PaymentResultContent() {
 
         const tickets = [...normalTickets, ...coupleTicketPairs];
 
-        const bookingFoodDrinks = Array.isArray(booking.bookingFoodDrinks) ? booking.bookingFoodDrinks : [];
-        const foodDrinks: FoodDrinkItem[] = bookingFoodDrinks.map(
-          (fd) => {
-            const master = foodMap.get(fd.foodDrinkId);
-            const name = master?.name ?? fd.foodDrinkId;
-            const qty = Math.max(fd.quantity, 1);
-            const unitPrice = master?.price ?? fd.totalPrice / qty;
-            return {
-              name,
-              quantity: fd.quantity,
-              unitPrice,
-              totalPrice: fd.totalPrice,
-            };
-          }
-        );
+        const foodDrinks: FoodDrinkItem[] = bookingFoodDrinks.map((fd) => {
+          const master = foodMap.get(fd.foodDrinkId);
+          const name = master?.name ?? fd.foodDrinkId;
+          const qty = Math.max(fd.quantity, 1);
+          const unitPrice = master?.price ?? fd.totalPrice / qty;
+          return {
+            name,
+            quantity: fd.quantity,
+            unitPrice,
+            totalPrice: fd.totalPrice,
+          };
+        });
 
         setOrderDetail({
           tickets,
@@ -165,27 +172,36 @@ function PaymentResultContent() {
         });
 
         setPaymentData((prev) => ({
-          ...prev!,
+          ...(prev as PaymentDataState),
           amount: booking.totalPrice,
           method: booking.paymentMethod || prev?.method || "Thanh toán",
           message: "Giao dịch thành công",
         }));
       } catch (err: any) {
         console.error("Error parsing order detail", err);
-        setOrderError(`Lỗi hiển thị chi tiết: ${err?.message || "Không xác định"}`);
+        setOrderError(
+          `Lỗi hiển thị chi tiết: ${err?.message || "Không xác định"}`,
+        );
         setStatus("failed");
-        setPaymentData((prev) => ({
-          ...prev!,
-          message: `Lỗi xử lý dữ liệu vé: ${err?.message}`,
-        }));
+        setPaymentData((prev) =>
+          prev
+            ? {
+                ...prev,
+                message: `Lỗi xử lý dữ liệu vé: ${err?.message}`,
+              }
+            : null,
+        );
       }
     };
 
     const checkBookingStatus = async () => {
-      const params = Object.fromEntries(searchParams.entries());
+      const params = Object.fromEntries(searchParams.entries()) as Record<
+        string,
+        string
+      >;
 
       let bookingId = "";
-      let detectedMethod = detectPaymentMethodFromParams(params);
+      const detectedMethod = detectPaymentMethodFromParams(params);
       let methodLabel = "Thanh toán";
 
       if (detectedMethod === "MOMO") {
@@ -198,9 +214,10 @@ function PaymentResultContent() {
         const parts = params.apptransid.split("_");
         if (parts.length > 1) {
           const rawId = parts[1];
-          bookingId = rawId.length === 32
-            ? `${rawId.slice(0, 8)}-${rawId.slice(8, 12)}-${rawId.slice(12, 16)}-${rawId.slice(16, 20)}-${rawId.slice(20)}`
-            : rawId;
+          bookingId =
+            rawId.length === 32
+              ? `${rawId.slice(0, 8)}-${rawId.slice(8, 12)}-${rawId.slice(12, 16)}-${rawId.slice(16, 20)}-${rawId.slice(20)}`
+              : rawId;
         } else {
           bookingId = params.apptransid;
         }
@@ -234,16 +251,22 @@ function PaymentResultContent() {
       }));
 
       try {
-        let booking = (await bookingService.getBookingById(bookingId)) as Booking;
+        const booking = (await bookingService.getBookingById(
+          bookingId,
+        )) as Booking;
 
-        const finalMethod = booking.paymentMethod && booking.paymentMethod !== "COD"
-          ? booking.paymentMethod
-          : (detectedMethod || "COD");
+        const finalMethod =
+          booking.paymentMethod && booking.paymentMethod !== "COD"
+            ? booking.paymentMethod
+            : detectedMethod || "COD";
 
         const isDbSuccess =
           booking.status === "Đã thanh toán" ||
           booking.status === "SUCCESS" ||
-          (booking.paymentMethod === "COD" && detectedMethod !== "MOMO" && detectedMethod !== "VNPAY" && detectedMethod !== "ZALOPAY");
+          (booking.paymentMethod === "COD" &&
+            detectedMethod !== "MOMO" &&
+            detectedMethod !== "VNPAY" &&
+            detectedMethod !== "ZALOPAY");
 
         if (isDbSuccess) {
           setStatus("success");
@@ -251,12 +274,16 @@ function PaymentResultContent() {
           return;
         }
 
-
         let isManualSuccess = false;
 
-        if (booking.status === "Thanh toán thất bại" || booking.status === "FAILED") {
+        if (
+          booking.status === "Thanh toán thất bại" ||
+          booking.status === "FAILED"
+        ) {
           setStatus("failed");
-          setPaymentData(prev => ({ ...prev!, message: "Giao dịch đã bị hủy." }));
+          setPaymentData((prev) =>
+            prev ? { ...prev, message: "Giao dịch đã bị hủy." } : null,
+          );
           return;
         }
 
@@ -264,9 +291,11 @@ function PaymentResultContent() {
           console.log(`Checking manual status for method: ${detectedMethod}`);
 
           if (detectedMethod === "MOMO") {
-            const paymentId = params.requestId || (typeof window !== "undefined"
-              ? window.localStorage.getItem("cinemago_lastPaymentId")
-              : "");
+            const paymentId =
+              params.requestId ||
+              (typeof window !== "undefined"
+                ? window.localStorage.getItem("cinemago_lastPaymentId")
+                : "");
 
             if (paymentId) {
               const momoRes = await paymentService.checkStatusMoMo(paymentId);
@@ -276,13 +305,13 @@ function PaymentResultContent() {
             } else if (params.resultCode === "0") {
               isManualSuccess = true;
             }
-
           } else if (detectedMethod === "ZALOPAY") {
-            const zaloRes = await paymentService.checkStatusZaloPay(params.apptransid);
+            const zaloRes = await paymentService.checkStatusZaloPay(
+              params.apptransid,
+            );
             if (zaloRes && zaloRes.return_code === 1) {
               isManualSuccess = true;
             }
-
           } else if (detectedMethod === "VNPAY") {
             try {
               // const vnpRes = await paymentService.checkStatusVnPay(params);
@@ -318,12 +347,15 @@ function PaymentResultContent() {
           setTimeout(checkBookingStatus, 2000);
         } else {
           setStatus("failed");
-          setPaymentData((prev) => ({
-            ...prev!,
-            message: "Giao dịch chưa hoàn tất hoặc đang xử lý.",
-          }));
+          setPaymentData((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  message: "Giao dịch chưa hoàn tất hoặc đang xử lý.",
+                }
+              : null,
+          );
         }
-
       } catch (error) {
         console.error("Error flow:", error);
         setStatus("failed");
@@ -384,127 +416,116 @@ function PaymentResultContent() {
   if (status === "success" && orderDetail) {
     const ticketTotal = orderDetail.tickets.reduce(
       (sum, t) => sum + t.unitPrice,
-      0
+      0,
     );
     const foodTotal = orderDetail.foodDrinks.reduce(
       (sum, f) => sum + f.totalPrice,
-      0
+      0,
     );
 
     return (
-      <div className="min-h-screen bg-white flex justify-center py-10 px-4">
-        <div className="w-full max-w-[700px] border border-gray-300 bg-white p-8 text-sm text-black shadow-lg">
-          <div className="text-center mb-6">
-            <h1 className="font-bold text-lg">PHIẾU THANH TOÁN</h1>
-            <p className="text-xs mt-1">CinemaGo - Hệ thống đặt vé xem phim</p>
-            <p className="text-xs mt-1">
-              Thời gian in: <span className="font-medium">{printedAt}</span>
-            </p>
-            <p className="text-xs">
-              Mã giao dịch:{" "}
-              <span className="font-medium">{paymentData?.orderId}</span>
+      <div className="min-h-screen bg-gray-100 flex justify-center py-10 px-4 print:p-0 print:bg-white">
+        <div className="w-full max-w-[320px] bg-white p-4 text-sm text-black shadow-lg print:shadow-none print:w-auto print:max-w-none">
+          <div className="text-center mb-4">
+            <h1 className="font-bold text-xl uppercase">PHIẾU THANH TOÁN</h1>
+            <p className="text-xs mt-1 font-semibold">CinemaGo</p>
+            <p className="text-[10px] mt-1 print:text-[10px]">{printedAt}</p>
+            <p className="text-[10px]">
+              Mã GD: <span className="font-medium">{paymentData?.orderId}</span>
             </p>
           </div>
 
-          <hr className="border-gray-300 mb-4" />
+          <div className="border-t border-dashed border-black my-2" />
 
-          {/* ... Phần hiển thị Table vé giữ nguyên ... */}
-          <div className="mb-4">
-            <h2 className="font-semibold mb-2 text-sm">Chi tiết vé xem phim</h2>
-            <table className="w-full text-xs border-collapse mb-2">
-              <thead>
-                <tr className="border-b border-gray-300">
-                  <th className="text-left py-1">Ghế</th>
-                  <th className="text-left py-1">Loại ghế</th>
-                  <th className="text-right py-1 w-24">Đơn giá</th>
-                  <th className="text-right py-1 w-12">SL</th>
-                  <th className="text-right py-1 w-28">Thành tiền</th>
-                </tr>
-              </thead>
-              <tbody>
-                {orderDetail.tickets.map((t, idx) => (
-                  <tr key={idx} className="border-b border-gray-100">
-                    <td className="py-1">{t.seatLabel}</td>
-                    <td className="py-1">{getSeatTypeLabel(t.seatType)}</td>
-                    <td className="py-1 text-right">
-                      {formatVND(t.unitPrice)}
-                    </td>
-                    <td className="py-1 text-right">1</td>
-                    <td className="py-1 text-right">
-                      {formatVND(t.unitPrice)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          {/* Vé xem phim */}
+          <div className="mb-2">
+            <h2 className="font-bold mb-1 text-sm text-center uppercase border-b border-black inline-block">
+              Vé xem phim
+            </h2>
+            <div className="flex flex-col gap-2 mt-2">
+              {orderDetail.tickets.map((t, idx) => (
+                <div key={idx} className="text-xs">
+                  <div className="flex justify-between font-bold">
+                    <span>
+                      {t.seatLabel} ({getSeatTypeLabel(t.seatType)})
+                    </span>
+                    <span>{formatVND(t.unitPrice)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
           {orderDetail.foodDrinks.length > 0 && (
-            <div className="mb-4">
-              <h2 className="font-semibold mb-2 text-sm">
-                Combo Food &amp; Drink
-              </h2>
-              <table className="w-full text-xs border-collapse">
-                {/* ... Phần hiển thị Food giữ nguyên ... */}
-                <thead>
-                  <tr className="border-b border-gray-300">
-                    <th className="text-left py-1">Sản phẩm</th>
-                    <th className="text-right py-1 w-12">SL</th>
-                    <th className="text-right py-1 w-24">Đơn giá</th>
-                    <th className="text-right py-1 w-28">Thành tiền</th>
-                  </tr>
-                </thead>
-                <tbody>
+            <>
+              <div className="border-t border-dashed border-black my-2" />
+              <div className="mb-2">
+                <h2 className="font-bold mb-1 text-sm text-center uppercase border-b border-black inline-block">
+                  Bắp nước
+                </h2>
+                <div className="flex flex-col gap-2 mt-2">
                   {orderDetail.foodDrinks.map((f, idx) => (
-                    <tr key={idx} className="border-b border-gray-100">
-                      <td className="py-1">{f.name}</td>
-                      <td className="py-1 text-right">{f.quantity}</td>
-                      <td className="py-1 text-right">
-                        {formatVND(f.unitPrice)}
-                      </td>
-                      <td className="py-1 text-right">
-                        {formatVND(f.totalPrice)}
-                      </td>
-                    </tr>
+                    <div key={idx} className="text-xs">
+                      <div className="flex justify-between">
+                        <span>
+                          {f.name} (x{f.quantity})
+                        </span>
+                        <span className="font-bold">
+                          {formatVND(f.totalPrice)}
+                        </span>
+                      </div>
+                    </div>
                   ))}
-                </tbody>
-              </table>
-            </div>
+                </div>
+              </div>
+            </>
           )}
 
-          <div className="flex justify-end mb-4 text-sm">
-            <div className="w-full max-w-xs space-y-1">
+          <div className="border-t border-dashed border-black my-2" />
+
+          <div className="space-y-1 text-xs font-bold">
+            <div className="flex justify-between">
+              <span>Tổng vé:</span>
+              <span>{formatVND(ticketTotal)}</span>
+            </div>
+            {foodTotal > 0 && (
               <div className="flex justify-between">
-                <span>Tổng vé:</span>
-                <span>{formatVND(ticketTotal)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Tổng đồ ăn &amp; thức uống:</span>
+                <span>Tổng bắp nước:</span>
                 <span>{formatVND(foodTotal)}</span>
               </div>
-              <div className="flex justify-between font-semibold border-t border-gray-300 pt-1 mt-1">
-                <span>Tổng thanh toán:</span>
-                <span>{formatVND(orderDetail.totalAmount)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Phương thức thanh toán:</span>
-                <span>{paymentData?.method}</span>
-              </div>
+            )}
+            <div className="flex justify-between text-base mt-2 pt-2 border-t border-black">
+              <span>TỔNG CỘNG:</span>
+              <span>{formatVND(orderDetail.totalAmount)}</span>
+            </div>
+            <div className="flex justify-between font-normal italic text-[10px] mt-1">
+              <span>{paymentData?.method}</span>
             </div>
           </div>
 
-          <hr className="border-gray-300 mb-4" />
-          <div className="text-center text-xs mb-4">
-            <p>Cảm ơn bạn đã sử dụng dịch vụ CinemaGo!</p>
+          <div className="border-t border-dashed border-black my-4" />
+
+          <div className="text-center text-[10px]">
+            <p className="font-semibold">Cảm ơn quý khách!</p>
+            <p>Hẹn gặp lại tại CinemaGo</p>
+            <p className="italic mt-1 text-[8px] print:hidden">
+              (Hóa đơn này chỉ có giá trị trong ngày)
+            </p>
           </div>
 
-          <div className="mt-4 flex justify-end print:hidden">
+          <div className="mt-6 flex flex-col gap-2 print:hidden">
+            <Button
+              className="w-full bg-black hover:bg-gray-800 text-white"
+              onClick={() => window.print()}
+            >
+              In hóa đơn
+            </Button>
             <Button
               variant="outline"
-              size="sm"
+              className="w-full"
               onClick={() => router.push("/admin/ticket")}
             >
-              Đóng tab
+              Đóng & Quay lại
             </Button>
           </div>
         </div>
@@ -514,17 +535,17 @@ function PaymentResultContent() {
 
   // RENDER FAILED
   return (
-    <div className="min-h-screen bg-white flex justify-center items-center px-4">
-      <div className="w-full max-w-md border border-red-300 bg-white p-6 text-center shadow-lg rounded-lg">
+    <div className="min-h-screen bg-gray-100 flex justify-center items-center px-4">
+      <div className="w-full max-w-[320px] border border-red-300 bg-white p-6 text-center shadow-lg rounded-lg">
         <div className="mb-4 flex justify-center">
-          <div className="h-16 w-16 bg-red-100 rounded-full flex items-center justify-center">
-            <span className="text-3xl text-red-600">✕</span>
+          <div className="h-12 w-12 bg-red-100 rounded-full flex items-center justify-center">
+            <span className="text-xl text-red-600">✕</span>
           </div>
         </div>
-        <h1 className="font-bold text-xl text-red-600 mb-2">
+        <h1 className="font-bold text-lg text-red-600 mb-2">
           Thanh toán thất bại
         </h1>
-        <p className="text-sm text-gray-700 mb-4">
+        <p className="text-xs text-gray-700 mb-4">
           {paymentData?.message || "Đã có lỗi xảy ra"}
         </p>
         <div className="print:hidden">
