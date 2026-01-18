@@ -15,6 +15,7 @@ import {
   cinemaService,
   type Cinema,
 } from "@/services";
+import { useAuth } from "@/context/AuthContext";
 
 type Gender = "MALE" | "FEMALE" | "OTHER";
 type Role = "ADMIN" | "MANAGER" | "EMPLOYEE";
@@ -42,6 +43,7 @@ export default function UserModal({
   fixedRole,
   hideCinemaSelect = false,
 }: UserModalProps) {
+  const { user: currentUser } = useAuth();
   const [fullname, setFullname] = useState(user?.fullname ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
   const [gender, setGender] = useState<Gender>("MALE");
@@ -236,8 +238,8 @@ export default function UserModal({
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 ${(password.length > 0 && !pwCheck.valid)
-                        ? "border-red-500 focus:ring-red-500"
-                        : "focus:ring-blue-500"
+                      ? "border-red-500 focus:ring-red-500"
+                      : "focus:ring-blue-500"
                       }`}
                     type="password"
                     placeholder={
@@ -290,7 +292,10 @@ export default function UserModal({
                       className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${fixedRole ? "bg-gray-100 cursor-not-allowed" : ""
                         }`}
                     >
-                      <option value="ADMIN">Quản trị viên</option>
+                      {(currentUser?.role === "ADMIN" || currentUser?.role !== "MANAGER") && (
+                        <option value="ADMIN">Quản trị viên</option>
+                      )}
+
                       <option value="MANAGER">Quản lý rạp</option>
                       <option value="EMPLOYEE">Nhân viên bán vé</option>
                     </select>

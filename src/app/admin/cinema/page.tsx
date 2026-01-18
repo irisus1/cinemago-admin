@@ -50,7 +50,6 @@ const CinemasListPage: React.FC = () => {
     onConfirm,
   } = useCinemaLogic();
 
-  // dùng riêng cho combobox (value = id tỉnh)
   const [cityId, setCityId] = useState("");
 
   // ===== STATE XEM CHI TIẾT =====
@@ -151,7 +150,6 @@ const CinemasListPage: React.FC = () => {
                   const province = VIETNAM_PROVINCES.find(
                     (p) => p.value === id
                   );
-                  // Gửi label (tên tỉnh / thành phố) sang hook để gọi API với param city
                   setCityKw(province?.label ?? "");
                 }}
                 placeholder="Chọn thành phố"
@@ -193,7 +191,6 @@ const CinemasListPage: React.FC = () => {
           getRowKey={(r) => r.id}
         />
 
-        {/* Chỉ còn pagination server-side */}
         {displayRows.length > 0 && pagination && (
           <div className="flex items-center justify-between px-4 py-2 bg-gray-50">
             <button
