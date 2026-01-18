@@ -202,9 +202,7 @@ export default function ProfileInfo({
                   ) : user?.avatarUrl ? (
                     <Image src={user.avatarUrl} alt="Avatar" width={160} height={160} className="w-full h-full object-cover" />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <ShieldCheck className="h-10 w-10 text-gray-400" />
-                    </div>
+                    <Image src="/default-avt.png" alt="Default Avatar" width={160} height={160} className="w-full h-full object-cover" />
                   )}
                 </label>
                 <input

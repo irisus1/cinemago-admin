@@ -168,12 +168,7 @@ export function useUsersLogic() {
       setIsConfirmDialogOpen(false);
       try {
         if (isCreate) {
-          const newUser = await userService.createUser(payload);
-          await userService.updateUser(newUser.id, {
-            avatarUrl: "/default-avt.png",
-            fullname: payload.fullname,
-            gender: payload.gender,
-          });
+          await userService.createUser(payload);
         } else if (user) {
           await userService.updateUser(user.id, payload);
         }

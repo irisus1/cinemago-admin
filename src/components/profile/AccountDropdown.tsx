@@ -25,7 +25,7 @@ export default function AccountDropdown({
     <DropdownMenu>
       <DropdownMenuTrigger className="flex items-center gap-3 w-full px-3 py-2 rounded-lg hover:bg-gray-100 transition">
         <Image
-          src={user?.avatarUrl || "/default-avatar.png"}
+          src={user?.avatarUrl || "/default-avt.png"}
           alt="avatar"
           width={80}
           height={80}
@@ -46,7 +46,7 @@ export default function AccountDropdown({
         {/* Avatar + name */}
         <DropdownMenuLabel className="flex items-center gap-3 p-2">
           <Image
-            src={user?.avatarUrl || "/default-avatar.png"}
+            src={user?.avatarUrl || "/default-avt.png"}
             alt="avatar"
             width={80}
             height={80}

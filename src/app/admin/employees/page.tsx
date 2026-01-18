@@ -40,7 +40,6 @@ export default function EmployeesPage() {
     const [users, setUsers] = useState<User[]>([]);
     const [search, setSearch] = useState("");
     const [searchInput, setSearchInput] = useState("");
-    // Chỉ hiện Employee, không cho chọn role khác
     const [status, setStatus] = useState<"__ALL__" | "ACTIVE" | "INACTIVE">(
         "__ALL__"
     );
@@ -79,14 +78,12 @@ export default function EmployeesPage() {
             const isActiveParam =
                 status === "__ALL__" ? undefined : status === "ACTIVE";
 
-            // FORCE filters: role=EMPLOYEE, cinemaId=currentUser.cinemaId
             const res = await userService.getAllUsers({
                 page: toPage,
                 limit: pageSize,
                 search: search.trim() || undefined,
-                role: "EMPLOYEE",
                 isActive: isActiveParam,
-                cinemaId: currentUser.cinemaId, // Filter theo rạp của manager
+                cinemaId: currentUser.cinemaId,
             });
 
             const { data, pagination } = res;
@@ -116,9 +113,7 @@ export default function EmployeesPage() {
 
     // --- Handlers ---
     const handleAddOpen = () => {
-        // Khi add employee, cần gán cinemaId mặc định là của manager
-        // UserModal hiện tại có lẽ chưa support hidden fields hoặc preset
-        // Ta setEditUser(null)
+
         setEditUser(null);
         setOpen(true);
     };
@@ -188,12 +183,8 @@ export default function EmployeesPage() {
     ) => {
         const isCreate = mode === "create";
 
-        // Inject cinemaId for new employee
-        // payload từ UserModal có thể thiếu cinemaId nếu manager ko chọn được
-        // Ta tự inject currentUser.cinemaId vào payload nếu create
         const finalPayload = { ...payload };
         if (isCreate && currentUser?.cinemaId) {
-            finalPayload.role = "EMPLOYEE"; // Force role
             finalPayload.cinemaId = currentUser.cinemaId;
         }
 
@@ -407,7 +398,7 @@ export default function EmployeesPage() {
                     cancelText="Hủy"
                     onConfirm={() => {
                         onConfirm();
-                        // setIsConfirmDialogOpen(false); // Do logic inside onConfirm calls it
+                        // setIsConfirmDialogOpen(false);
                     }}
                     confirmText="Xác nhận"
                 />
@@ -433,7 +424,6 @@ export default function EmployeesPage() {
                     mode={editUser ? "edit" : "create"}
                     user={editUser ?? undefined}
                     onSubmit={handleSubmitUser}
-                    fixedRole="EMPLOYEE"
                     hideCinemaSelect={true}
                 />
             )}
