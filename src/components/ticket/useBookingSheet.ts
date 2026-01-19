@@ -440,10 +440,10 @@ export const useBookingLogic = ({
 
         let foundShowtimeToRestore:
           | (SelectedShowtimeInfo & {
-              price: number;
-              vipPrice: number;
-              couplePrice: number;
-            })
+            price: number;
+            vipPrice: number;
+            couplePrice: number;
+          })
           | null = null;
 
         const requiredShowtimeId = searchParams.get("showtimeId");
@@ -776,8 +776,10 @@ export const useBookingLogic = ({
   const handleOpenPaymentModal = () => {
     if (!selectedShowtime) return;
 
-    if (selectedSeats.length === 0) {
-      toast.warning("Vui lòng chọn ghế trước");
+    const totalFoodCount = Object.values(foodQuantities).reduce((a, b) => a + b, 0);
+
+    if (selectedSeats.length === 0 && totalFoodCount === 0) {
+      toast.warning("Vui lòng chọn ghế hoặc bắp nước");
       return;
     }
 
@@ -907,9 +909,9 @@ export const useBookingLogic = ({
     const ticketPrice =
       quantities.standard * selectedShowtime.basePrice +
       quantities.vip *
-        (selectedShowtime.basePrice + selectedShowtime.vipSurcharge) +
+      (selectedShowtime.basePrice + selectedShowtime.vipSurcharge) +
       quantities.couple *
-        (selectedShowtime.basePrice * 2 + selectedShowtime.coupleSurcharge * 2);
+      (selectedShowtime.basePrice * 2 + selectedShowtime.coupleSurcharge * 2);
 
     let foodPrice = 0;
     const foodItemsStr: string[] = [];
