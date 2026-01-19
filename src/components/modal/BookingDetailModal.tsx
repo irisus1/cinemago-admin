@@ -67,7 +67,7 @@ const BookingDetailModal: React.FC<Props> = ({
   const processSeats = (
     bookingSeats: { seatId: string }[],
     allRoomSeats: SeatModal[],
-    basePrice: number
+    basePrice: number,
   ): DisplaySeat[] => {
     // 1. Map từ bookingSeat -> thông tin chi tiết (có tên, loại, giá)
     const rawSeats = bookingSeats
@@ -155,7 +155,6 @@ const BookingDetailModal: React.FC<Props> = ({
           userObj = {
             name: "Khách vãng lai (Tại quầy)",
             email: "",
-
           };
         } else {
           userObj = {
@@ -180,7 +179,7 @@ const BookingDetailModal: React.FC<Props> = ({
         displaySeats = processSeats(
           booking.bookingSeats,
           room.seats,
-          basePrice
+          basePrice,
         );
       } else {
         // Fallback nếu không có dữ liệu phòng
@@ -213,7 +212,7 @@ const BookingDetailModal: React.FC<Props> = ({
           booking.bookingFoodDrinks.map(async (item) => {
             try {
               const foodData = await foodDrinkService.getFoodDrinkById(
-                item.foodDrinkId
+                item.foodDrinkId,
               );
 
               return {
@@ -228,10 +227,10 @@ const BookingDetailModal: React.FC<Props> = ({
                 price: item.totalPrice,
               };
             }
-          })
+          }),
         ).then((updatedFoods) => {
           setDetails((prev) =>
-            prev ? { ...prev, foodItems: updatedFoods } : null
+            prev ? { ...prev, foodItems: updatedFoods } : null,
           );
           setLoadingFood(false);
         });
@@ -347,7 +346,7 @@ const BookingDetailModal: React.FC<Props> = ({
               </div>
             ) : (
               <p className="text-gray-400 italic text-sm">
-                Không tìm thấy thông tin ghế.
+                Không có thông tin ghế.
               </p>
             )}
           </div>
@@ -377,10 +376,11 @@ const BookingDetailModal: React.FC<Props> = ({
                     {details.foodItems.map((item, idx) => (
                       <tr key={idx} className="hover:bg-gray-50">
                         <td
-                          className={`px-4 py-2 font-medium ${item.name.includes("Đang tải")
-                            ? "text-gray-400 italic"
-                            : "text-gray-800"
-                            }`}
+                          className={`px-4 py-2 font-medium ${
+                            item.name.includes("Đang tải")
+                              ? "text-gray-400 italic"
+                              : "text-gray-800"
+                          }`}
                         >
                           {item.name}
                         </td>
@@ -421,10 +421,11 @@ const BookingDetailModal: React.FC<Props> = ({
                 <button
                   onClick={() => window.print()}
                   disabled={booking.isUsed}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${booking.isUsed
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                    booking.isUsed
                       ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                       : "bg-blue-50 text-blue-700 hover:bg-blue-100"
-                    }`}
+                  }`}
                 >
                   <FiPrinter size={18} />
                   <span>In vé</span>
@@ -432,10 +433,11 @@ const BookingDetailModal: React.FC<Props> = ({
                 <button
                   onClick={() => setShowQR(true)}
                   disabled={booking.isUsed}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${booking.isUsed
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                    booking.isUsed
                       ? "bg-gray-200 text-gray-400 cursor-not-allowed"
                       : "bg-gray-900 text-white hover:bg-black shadow-lg shadow-gray-200"
-                    }`}
+                  }`}
                 >
                   <LuQrCode size={18} />
                   <span>Mã QR</span>
@@ -460,23 +462,42 @@ const BookingDetailModal: React.FC<Props> = ({
             <p className="text-sm text-gray-500">{details?.roomName}</p>
           </div>
           <div className="mb-6 border-b pb-4">
-            <p className="flex justify-between"><span>Mã vé:</span> <span className="font-mono font-bold">{booking.id.slice(0, 8).toUpperCase()}</span></p>
-            <p className="flex justify-between"><span>Phim:</span> <span className="font-bold">{movieMap[showTimeMap[booking.showtimeId]?.movieId]?.title || "Unknown"}</span></p>
-            <p className="flex justify-between"><span>Suất chiếu:</span> <span>{new Date(showTimeMap[booking.showtimeId]?.startTime).toLocaleString("vi-VN")}</span></p>
+            <p className="flex justify-between">
+              <span>Mã vé:</span>{" "}
+              <span className="font-mono font-bold">
+                {booking.id.slice(0, 8).toUpperCase()}
+              </span>
+            </p>
+            <p className="flex justify-between">
+              <span>Phim:</span>{" "}
+              <span className="font-bold">
+                {movieMap[showTimeMap[booking.showtimeId]?.movieId]?.title ||
+                  "Unknown"}
+              </span>
+            </p>
+            <p className="flex justify-between">
+              <span>Suất chiếu:</span>{" "}
+              <span>
+                {new Date(
+                  showTimeMap[booking.showtimeId]?.startTime,
+                ).toLocaleString("vi-VN")}
+              </span>
+            </p>
           </div>
 
           <div className="flex justify-center mb-6">
             <QRCode
               value={JSON.stringify({
                 id: booking.id,
-                showtimeId: booking.showtimeId
+                showtimeId: booking.showtimeId,
               })}
               size={150}
             />
           </div>
-          <p className="text-center text-xs italic">Vui lòng đưa mã này cho nhân viên soát vé.</p>
+          <p className="text-center text-xs italic">
+            Vui lòng đưa mã này cho nhân viên soát vé.
+          </p>
         </div>
-
       </div>
 
       {/* QR Code Overlay (Screen only) */}
@@ -490,12 +511,14 @@ const BookingDetailModal: React.FC<Props> = ({
           </button>
 
           <div className="bg-white p-8 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-gray-100 text-center">
-            <h3 className="text-xl font-bold text-gray-800 mb-6">Mã Vé Vào Rạp</h3>
+            <h3 className="text-xl font-bold text-gray-800 mb-6">
+              Mã Vé Vào Rạp
+            </h3>
             <div className="p-4 bg-white border-2 border-gray-900 rounded-xl inline-block mb-6">
               <QRCode
                 value={JSON.stringify({
                   id: booking.id,
-                  showtimeId: booking.showtimeId
+                  showtimeId: booking.showtimeId,
                 })}
                 size={220}
                 style={{ height: "auto", maxWidth: "100%", width: "100%" }}
@@ -505,7 +528,9 @@ const BookingDetailModal: React.FC<Props> = ({
             <p className="font-mono text-lg font-bold text-gray-600 tracking-wider">
               {booking.id.slice(0, 8).toUpperCase()}
             </p>
-            <p className="text-sm text-gray-400 mt-2">Quét mã này tại quầy soát vé</p>
+            <p className="text-sm text-gray-400 mt-2">
+              Quét mã này tại quầy soát vé
+            </p>
           </div>
         </div>
       )}
