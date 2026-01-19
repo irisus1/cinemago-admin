@@ -218,14 +218,19 @@ export default function BookingSheet({
               </div>
               <Button
                 className="w-full text-lg h-12"
-                disabled={totalQty === 0 || !isEnoughSeats}
+                disabled={
+                  (totalQty === 0 && totalFoodPrice === 0) ||
+                  (totalQty > 0 && !isEnoughSeats)
+                }
                 onClick={handleOpenPaymentModal}
               >
-                {totalQty === 0
-                  ? "Vui lòng chọn vé"
-                  : isEnoughSeats
+                {totalQty > 0
+                  ? isEnoughSeats
                     ? "Xác nhận đặt vé"
-                    : "Vui lòng chọn đủ ghế"}
+                    : "Vui lòng chọn đủ ghế"
+                  : totalFoodPrice > 0
+                    ? "Thanh toán bắp nước"
+                    : "Vui lòng chọn vé hoặc bắp nước"}
               </Button>
             </div>
 

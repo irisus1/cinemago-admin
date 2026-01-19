@@ -106,7 +106,7 @@ export default function AdminWalkupBookingPage() {
     if (isUrlOpen && !isSheetOpen && selectedMovie) {
       setIsSheetOpen(true);
     }
-  }, [searchParams, isSheetOpen, selectedMovie]);
+  }, [searchParams, selectedMovie]);
 
   // 1. Fetch Cinemas + Init from URL
   useEffect(() => {
