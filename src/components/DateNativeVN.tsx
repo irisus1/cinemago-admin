@@ -1,4 +1,3 @@
-// import React from 'react'
 import { Calendar, X } from "lucide-react";
 import DatePicker, { registerLocale } from "react-datepicker";
 import { vi } from "date-fns/locale";
@@ -23,34 +22,19 @@ export function DateNativeVN({
   maxISO,
   maxDate,
 }: {
-  valueISO?: string; // "YYYY-MM-DD"
-  onChangeISO?: (iso: string) => void; // trả về ISO
+  valueISO?: string;
+  onChangeISO?: (iso: string) => void;
   placeholder?: string;
   className?: string;
-  widthClass?: string; // cho phép chỉnh width
+  widthClass?: string;
   showClearButton?: boolean;
-  minISO?: string; // "YYYY-MM-DD"
+  minISO?: string;
   minDate?: Date;
   maxISO?: string;
   maxDate?: Date;
 }) {
-  // const hiddenRef = React.useRef<HTMLInputElement>(null)
-
   const effectiveMinDate = minDate || (minISO ? new Date(minISO) : undefined);
   const effectiveMaxDate = maxDate || (maxISO ? new Date(maxISO) : undefined);
-
-  // const openPicker = () => {
-  //   const el = hiddenRef.current
-  //   if (!el) return
-  //   // Chrome/Edge hỗ trợ showPicker()
-  //   // Safari/Firefox: focus vào input để hiện picker (nếu có)
-  //   if (typeof (el as any).showPicker === 'function') {
-  //     ;(el as any).showPicker()
-  //   } else {
-  //     el.focus() // fallback
-  //     // Firefox/Safari vẫn mở panel date theo native UI (tuỳ trình duyệt/OS)
-  //   }
-  // }
 
   const selectedDate = valueISO ? new Date(valueISO) : null;
 
@@ -112,8 +96,8 @@ export function DateNativeVN({
               <button
                 type="button"
                 onClick={(e) => {
-                  e.stopPropagation(); // không mở lại popup
-                  onChangeISO?.(""); // reset ngày
+                  e.stopPropagation();
+                  onChangeISO?.("");
                 }}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 transition-colors"
                 title="Xóa ngày đã chọn"

@@ -24,7 +24,6 @@ interface SeatSelectionStepProps {
   roomId: string | number;
   processingSeats: string[];
   onToggleSeat: (seat: SeatModal, nextSeat: SeatModal | null) => void;
-  // [NEW]
   heldSeats: string[];
 }
 
@@ -53,7 +52,7 @@ export default function SeatSelectionStep({
 
   const currentCounts = useMemo(
     () => calculateSeatCounts(selectedSeats, seatList),
-    [selectedSeats, seatList]
+    [selectedSeats, seatList],
   );
 
   const checkSeatDisabled = (seatType: string, isSelected: boolean) => {
@@ -78,17 +77,13 @@ export default function SeatSelectionStep({
       idsToToggle.push(nextSeat.id);
     }
 
-    // Kiểm tra xem TRONG CÁC ID CẦN TOGGLE, có cái nào đã được chọn chưa?
-    // Nếu chỉ cần 1 cái đã chọn -> Coi như hành động là BỎ CHỌN (Unselect) tất cả nhóm đó
     const isAnySelected = idsToToggle.some((id) => selectedSeats.includes(id));
 
     let newSelected;
 
     if (isAnySelected) {
-      // === LOGIC BỎ CHỌN ===
       newSelected = selectedSeats.filter((id) => !idsToToggle.includes(id));
     } else {
-      // === LOGIC CHỌN MỚI ===
       const uniqueSet = new Set([...selectedSeats, ...idsToToggle]);
       newSelected = Array.from(uniqueSet);
     }

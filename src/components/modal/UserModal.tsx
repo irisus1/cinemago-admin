@@ -28,10 +28,10 @@ type UserModalProps = {
   onSubmit?: (
     payload: CreateUserRequest,
     mode: "create" | "edit",
-    user?: User
+    user?: User,
   ) => void | Promise<void>;
-  fixedRole?: Role; // New prop
-  hideCinemaSelect?: boolean; // New prop
+  fixedRole?: Role;
+  hideCinemaSelect?: boolean;
 };
 
 export default function UserModal({
@@ -47,17 +47,14 @@ export default function UserModal({
   const [fullname, setFullname] = useState(user?.fullname ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
   const [gender, setGender] = useState<Gender>("MALE");
-  // Default to fixedRole if provided, else EMPLOYEE
   const [role, setRole] = useState<Role>(fixedRole ?? "EMPLOYEE");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Cinema selection
   const [cinemas, setCinemas] = useState<Cinema[]>([]);
   const [selectedCinemaId, setSelectedCinemaId] = useState<string>("");
 
   useEffect(() => {
-    // Only fetch if we need to show select
     if (hideCinemaSelect) return;
 
     const fetchCinemas = async () => {
@@ -91,7 +88,6 @@ export default function UserModal({
 
   const baseValid = fullname.trim().length > 0 && isEmailValid;
 
-  // Cinema is required if role is NOT ADMIN AND not hidden
   const isCinemaRequired = role !== "ADMIN";
   const isCinemaValid =
     hideCinemaSelect ||
@@ -101,9 +97,7 @@ export default function UserModal({
   const valid =
     mode === "create"
       ? baseValid && pwCheck.valid && isCinemaValid
-      : baseValid &&
-      (password.length === 0 || pwCheck.valid) &&
-      isCinemaValid;
+      : baseValid && (password.length === 0 || pwCheck.valid) && isCinemaValid;
 
   useEffect(() => {
     if (!open) return;
@@ -113,7 +107,10 @@ export default function UserModal({
       setEmail(user.email ?? "");
       setGender((user.gender as Gender) || "MALE");
       const r = user.role as Role;
-      setRole(fixedRole ?? (["ADMIN", "MANAGER", "EMPLOYEE"].includes(r) ? r : "EMPLOYEE"));
+      setRole(
+        fixedRole ??
+          (["ADMIN", "MANAGER", "EMPLOYEE"].includes(r) ? r : "EMPLOYEE"),
+      );
       setPassword("");
       setSelectedCinemaId(user.cinemaId || "");
     } else {
@@ -213,10 +210,11 @@ export default function UserModal({
                   <input
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 ${showEmailError
-                      ? "border-red-500 focus:ring-red-500"
-                      : "focus:ring-blue-500"
-                      }`}
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
+                      showEmailError
+                        ? "border-red-500 focus:ring-red-500"
+                        : "focus:ring-blue-500"
+                    }`}
                     placeholder="Nhập email"
                     type="email"
                   />
@@ -237,10 +235,11 @@ export default function UserModal({
                   <input
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 ${(password.length > 0 && !pwCheck.valid)
-                      ? "border-red-500 focus:ring-red-500"
-                      : "focus:ring-blue-500"
-                      }`}
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
+                      password.length > 0 && !pwCheck.valid
+                        ? "border-red-500 focus:ring-red-500"
+                        : "focus:ring-blue-500"
+                    }`}
                     type="password"
                     placeholder={
                       mode === "create"
@@ -248,18 +247,26 @@ export default function UserModal({
                         : "Để trống nếu không đổi mật khẩu"
                     }
                   />
-                  {/* Password Requirements UI */}
                   {(mode === "create" || password.length > 0) && (
                     <div className="bg-gray-50 text-gray-700 text-xs p-3 rounded-lg space-y-1 mt-2 border border-gray-100">
                       <p className="font-semibold mb-1">Yêu cầu:</p>
-                      <div className={`flex items-center gap-2 ${pwCheck.minLength ? "text-green-600" : "text-gray-500"}`}>
-                        <span>{pwCheck.minLength ? "✔" : "•"}</span> Ít nhất 8 ký tự
+                      <div
+                        className={`flex items-center gap-2 ${pwCheck.minLength ? "text-green-600" : "text-gray-500"}`}
+                      >
+                        <span>{pwCheck.minLength ? "✔" : "•"}</span> Ít nhất 8
+                        ký tự
                       </div>
-                      <div className={`flex items-center gap-2 ${pwCheck.hasNumber ? "text-green-600" : "text-gray-500"}`}>
-                        <span>{pwCheck.hasNumber ? "✔" : "•"}</span> Chứa ít nhất một số
+                      <div
+                        className={`flex items-center gap-2 ${pwCheck.hasNumber ? "text-green-600" : "text-gray-500"}`}
+                      >
+                        <span>{pwCheck.hasNumber ? "✔" : "•"}</span> Chứa ít
+                        nhất một số
                       </div>
-                      <div className={`flex items-center gap-2 ${pwCheck.hasSpecial ? "text-green-600" : "text-gray-500"}`}>
-                        <span>{pwCheck.hasSpecial ? "✔" : "•"}</span> Chứa ký tự đặc biệt (@#$%^&*)
+                      <div
+                        className={`flex items-center gap-2 ${pwCheck.hasSpecial ? "text-green-600" : "text-gray-500"}`}
+                      >
+                        <span>{pwCheck.hasSpecial ? "✔" : "•"}</span> Chứa ký tự
+                        đặc biệt (@#$%^&*)
                       </div>
                     </div>
                   )}
@@ -289,10 +296,12 @@ export default function UserModal({
                       value={role}
                       onChange={(e) => setRole(e.target.value as Role)}
                       disabled={!!fixedRole}
-                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${fixedRole ? "bg-gray-100 cursor-not-allowed" : ""
-                        }`}
+                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        fixedRole ? "bg-gray-100 cursor-not-allowed" : ""
+                      }`}
                     >
-                      {(currentUser?.role === "ADMIN" || currentUser?.role !== "MANAGER") && (
+                      {(currentUser?.role === "ADMIN" ||
+                        currentUser?.role !== "MANAGER") && (
                         <option value="ADMIN">Quản trị viên</option>
                       )}
 
@@ -302,28 +311,26 @@ export default function UserModal({
                   </div>
                 </div>
 
-                {
-                  !hideCinemaSelect && isCinemaRequired && (
-                    <div>
-                      <label className="block text-sm font-medium mb-1">
-                        Rạp chiếu phim <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        value={selectedCinemaId}
-                        onChange={(e) => setSelectedCinemaId(e.target.value)}
-                        className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="">-- Chọn rạp --</option>
-                        {cinemas.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  )
-                }
-              </div >
+                {!hideCinemaSelect && isCinemaRequired && (
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Rạp chiếu phim <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={selectedCinemaId}
+                      onChange={(e) => setSelectedCinemaId(e.target.value)}
+                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">-- Chọn rạp --</option>
+                      {cinemas.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
 
               <div className="mt-5 flex justify-end gap-2">
                 <button
@@ -335,10 +342,11 @@ export default function UserModal({
                 <button
                   disabled={!valid || loading}
                   onClick={handleSubmit}
-                  className={`px-4 py-2 rounded-lg text-white transition-colors ${valid && !loading
-                    ? "bg-blue-600 hover:bg-blue-700"
-                    : "bg-gray-400 cursor-not-allowed"
-                    }`}
+                  className={`px-4 py-2 rounded-lg text-white transition-colors ${
+                    valid && !loading
+                      ? "bg-blue-600 hover:bg-blue-700"
+                      : "bg-gray-400 cursor-not-allowed"
+                  }`}
                 >
                   {mode === "create"
                     ? loading
@@ -349,10 +357,10 @@ export default function UserModal({
                       : "Lưu"}
                 </button>
               </div>
-            </DialogPanel >
-          </TransitionChild >
-        </div >
-      </Dialog >
-    </Transition >
+            </DialogPanel>
+          </TransitionChild>
+        </div>
+      </Dialog>
+    </Transition>
   );
 }

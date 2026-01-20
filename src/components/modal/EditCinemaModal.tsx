@@ -21,11 +21,10 @@ type CinemaModalProps = {
   onClose: () => void;
   mode: "create" | "edit";
   cinema?: Cinema;
-  // page xử lý confirm + call API
   onSubmit?: (
     payload: CinemaFormPayload,
     mode: "create" | "edit",
-    cinema?: Cinema
+    cinema?: Cinema,
   ) => void | Promise<void>;
 };
 
@@ -38,21 +37,20 @@ export default function EditCinemaModal({
 }: CinemaModalProps) {
   const [name, setName] = useState(cinema?.name ?? "");
   const [city, setCity] = useState(cinema?.city ?? "");
-  const [cityId, setCityId] = useState<string>(""); // id tỉnh/thành được chọn
+  const [cityId, setCityId] = useState<string>("");
   const [address, setAddress] = useState(cinema?.address ?? "");
 
-  // Changed to number | null to match LocationPicker and Cinema type
   const [longitude, setLongitude] = useState<number | null>(
-    cinema?.longitude ?? null
+    cinema?.longitude ?? null,
   );
   const [latitude, setLatitude] = useState<number | null>(
-    cinema?.latitude ?? null
+    cinema?.latitude ?? null,
   );
   const [isActive, setIsActive] = useState<boolean>(cinema?.isActive ?? true);
 
   const valid = useMemo(
     () => Boolean(name.trim() && city.trim() && address.trim()),
-    [name, city, address]
+    [name, city, address],
   );
 
   useEffect(() => {
@@ -62,16 +60,14 @@ export default function EditCinemaModal({
       setName(cinema.name ?? "");
       setCity(cinema.city ?? "");
       setAddress(cinema.address ?? "");
-      // Preserve original numeric values
       setLongitude(cinema.longitude ?? null);
       setLatitude(cinema.latitude ?? null);
       setIsActive(cinema.isActive ?? true);
 
-      // map city hiện tại -> option trong VIETNAM_PROVINCES
       const found = VIETNAM_PROVINCES.find(
         (p) =>
           p.label.trim().toLowerCase() ===
-          (cinema.city ?? "").trim().toLowerCase()
+          (cinema.city ?? "").trim().toLowerCase(),
       );
       setCityId(found?.value ?? "");
     } else {
@@ -103,7 +99,6 @@ export default function EditCinemaModal({
   return (
     <Transition show={open} as={Fragment}>
       <Dialog onClose={onClose} className="relative z-50">
-        {/* Overlay */}
         <TransitionChild
           as={Fragment}
           enter="ease-out duration-200"
@@ -116,7 +111,6 @@ export default function EditCinemaModal({
           <div className="fixed inset-0 bg-black/40" />
         </TransitionChild>
 
-        {/* Panel */}
         <div className="fixed inset-0 flex items-center justify-center p-4">
           <TransitionChild
             as={Fragment}
@@ -145,7 +139,6 @@ export default function EditCinemaModal({
                   />
                 </div>
 
-                {/* Thành phố: dùng combobox */}
                 <div>
                   <label className="block text-sm font-medium mb-1">
                     Thành phố <span className="text-red-500">*</span>
@@ -156,7 +149,7 @@ export default function EditCinemaModal({
                     onChange={(id) => {
                       setCityId(id);
                       const province = VIETNAM_PROVINCES.find(
-                        (p) => p.value === id
+                        (p) => p.value === id,
                       );
                       setCity(province?.label ?? "");
                     }}
@@ -166,7 +159,6 @@ export default function EditCinemaModal({
                   />
                 </div>
 
-                {/* Location Picker replaces Address & Coords inputs */}
                 <div>
                   <LocationPicker
                     address={address}
@@ -191,8 +183,9 @@ export default function EditCinemaModal({
                 <button
                   disabled={!valid}
                   onClick={handleSubmit}
-                  className={`px-4 py-2 rounded-lg text-white ${valid ? "bg-blue-600 hover:bg-blue-700" : "bg-gray-400"
-                    }`}
+                  className={`px-4 py-2 rounded-lg text-white ${
+                    valid ? "bg-blue-600 hover:bg-blue-700" : "bg-gray-400"
+                  }`}
                 >
                   {mode === "create" ? "Thêm" : "Lưu"}
                 </button>

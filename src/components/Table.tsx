@@ -1,4 +1,3 @@
-// components/TableGeneric.tsx
 import React from "react";
 import {
   Table as STable,
@@ -76,7 +75,7 @@ export default function TableGeneric<T extends object>({
                       col.getValue?.(row) ??
                       (col.key && isKeyOf(row, col.key)
                         ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        (row as any)[col.key]
+                          (row as any)[col.key]
                         : undefined);
 
                     return (

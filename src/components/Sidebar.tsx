@@ -35,9 +35,9 @@ export default function Sidebar({
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
   const { selectedCinemaId, setSelectedCinema } = useCinemaStore();
-  const [currentCinema, setCurrentCinema] = useState<Cinema | CinemaPublic | null>(
-    null
-  );
+  const [currentCinema, setCurrentCinema] = useState<
+    Cinema | CinemaPublic | null
+  >(null);
 
   const filteredTabs = tabs
     .filter((tab) => {
@@ -50,7 +50,7 @@ export default function Sidebar({
       if (tab.type === "group" && tab.children) {
         const validChildren = tab.children.filter(
           (child) =>
-            !child.allowedRoles || child.allowedRoles.includes(user!.role)
+            !child.allowedRoles || child.allowedRoles.includes(user!.role),
         );
 
         if (validChildren.length === 1) {
@@ -113,7 +113,7 @@ export default function Sidebar({
           <div className="flex justify-center py-4 border-b">
             <span className="text-gray-400 text-xs">...</span>
           </div>
-        )
+        );
       }
 
       const cinemaName = currentCinema.name;
@@ -141,10 +141,10 @@ export default function Sidebar({
 
   return (
     <div
-      className={`${isSidebarOpen ? "w-[300px]" : "w-20"
-        } bg-white shadow-lg transition-all duration-300 ease-in-out h-screen flex flex-col z-50 relative`}
+      className={`${
+        isSidebarOpen ? "w-[300px]" : "w-20"
+      } bg-white shadow-lg transition-all duration-300 ease-in-out h-screen flex flex-col z-50 relative`}
     >
-      {/* Header */}
       <div className="flex items-center justify-between p-3 border-b">
         {isSidebarOpen && (
           <div className="flex items-center gap-2">
@@ -165,18 +165,18 @@ export default function Sidebar({
         </button>
       </div>
 
-      {/* Cinema Selector */}
       {renderCinemaSelector()}
 
       <nav
-        className={`p-3 flex-1 ${isSidebarOpen ? "overflow-y-auto" : "overflow-visible"
-          }`}
+        className={`p-3 flex-1 ${
+          isSidebarOpen ? "overflow-y-auto" : "overflow-visible"
+        }`}
       >
         <ul className="space-y-2">
           {filteredTabs.map((tab, index) => {
             if (tab.type === "group") {
               const isChildActive = tab.children.some(
-                (child) => child.path === pathname
+                (child) => child.path === pathname,
               );
               const isGroupOpen = openGroups[tab.name] ?? isChildActive;
 
@@ -185,10 +185,11 @@ export default function Sidebar({
                   <button
                     type="button"
                     onClick={() => toggleGroup(tab.name)}
-                    className={`flex items-center w-full px-3 py-3.5 rounded-xl justify-between text-[15px] ${isChildActive
-                      ? "text-blue-600 font-semibold bg-blue-50"
-                      : "text-gray-700 hover:bg-gray-100"
-                      } transition-colors duration-200`}
+                    className={`flex items-center w-full px-3 py-3.5 rounded-xl justify-between text-[15px] ${
+                      isChildActive
+                        ? "text-blue-600 font-semibold bg-blue-50"
+                        : "text-gray-700 hover:bg-gray-100"
+                    } transition-colors duration-200`}
                   >
                     <div className="flex items-center">
                       <span
@@ -219,9 +220,10 @@ export default function Sidebar({
                       className={`
                         ml-4 space-y-1 overflow-hidden
                         transition-all duration-300 ease-in-out
-                        ${isGroupOpen
-                          ? "max-h-40 opacity-100 mt-1"
-                          : "max-h-0 opacity-0"
+                        ${
+                          isGroupOpen
+                            ? "max-h-40 opacity-100 mt-1"
+                            : "max-h-0 opacity-0"
                         }
                       `}
                     >
@@ -231,10 +233,11 @@ export default function Sidebar({
                           <li key={childIndex}>
                             <Link
                               href={child.path}
-                              className={`flex items-center px-3 py-2.5 rounded-lg text-[14px] ${isActive
-                                ? "text-blue-600 font-semibold bg-blue-50"
-                                : "text-gray-700 hover:bg-gray-100"
-                                } transition-colors duration-200`}
+                              className={`flex items-center px-3 py-2.5 rounded-lg text-[14px] ${
+                                isActive
+                                  ? "text-blue-600 font-semibold bg-blue-50"
+                                  : "text-gray-700 hover:bg-gray-100"
+                              } transition-colors duration-200`}
                             >
                               <span
                                 className={
@@ -265,10 +268,11 @@ export default function Sidebar({
                             <li key={childIndex}>
                               <Link
                                 href={child.path}
-                                className={`flex items-center px-3 py-2 rounded-md text-[14px] ${isActive
-                                  ? "text-blue-600 bg-blue-50 font-medium"
-                                  : "text-gray-700 hover:bg-gray-100"
-                                  }`}
+                                className={`flex items-center px-3 py-2 rounded-md text-[14px] ${
+                                  isActive
+                                    ? "text-blue-600 bg-blue-50 font-medium"
+                                    : "text-gray-700 hover:bg-gray-100"
+                                }`}
                               >
                                 {child.icon}
                                 <span className="ml-2">{child.name}</span>
@@ -289,10 +293,11 @@ export default function Sidebar({
               <li key={index} className="group relative">
                 <Link
                   href={tab.path}
-                  className={`flex items-center p-3 rounded-lg ${isActive
-                    ? "text-blue-500 font-bold bg-blue-50"
-                    : "text-gray-700 hover:bg-gray-100"
-                    }`}
+                  className={`flex items-center p-3 rounded-lg ${
+                    isActive
+                      ? "text-blue-500 font-bold bg-blue-50"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
                 >
                   <span
                     className={isActive ? "text-blue-500" : "text-gray-700"}

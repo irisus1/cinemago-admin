@@ -1,4 +1,3 @@
-// nếu đã có type SelectOption thì import
 import type { SelectOption } from "@/components/SearchableCombobox";
 
 export const VIETNAM_PROVINCES: SelectOption[] = [

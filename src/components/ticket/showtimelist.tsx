@@ -2,7 +2,6 @@
 
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { formatTime } from "./seat-helper";
 
 export interface ShowtimeItem {
   id: string;
@@ -31,14 +30,13 @@ interface ShowtimeListProps {
     roomId: string,
     price: number,
     vipPrice: number,
-    couplePrice: number
+    couplePrice: number,
   ) => void;
 }
 
 const formatToVNTime = (isoString: string) => {
   if (!isoString) return "--:--";
   try {
-    // 1. Nếu chuỗi chưa có múi giờ (không có Z hoặc +), ta ép nó thành UTC bằng cách thêm Z
     let safeIso = isoString;
     if (!safeIso.endsWith("Z") && !safeIso.includes("+")) {
       safeIso += "Z";
@@ -46,10 +44,8 @@ const formatToVNTime = (isoString: string) => {
 
     const date = new Date(safeIso);
 
-    // 2. Kiểm tra nếu ngày không hợp lệ
     if (isNaN(date.getTime())) return "--:--";
 
-    // 3. Format sang múi giờ HCM
     return new Intl.DateTimeFormat("vi-VN", {
       hour: "2-digit",
       minute: "2-digit",
@@ -97,12 +93,11 @@ export default function ShowtimeList({
                   {times.map((st) => {
                     const isActive =
                       String(selectedShowtimeId) === String(st.id);
-                    // console.log(st.startTime);
 
                     return (
                       <Button
                         key={st.id}
-                        // disabled={st.isPast}
+                        disabled={st.isPast}
                         variant={isActive ? "default" : "outline"}
                         className={`h-10 transition-all ${
                           isActive
@@ -110,14 +105,14 @@ export default function ShowtimeList({
                             : "hover:bg-primary/10"
                         }`}
                         onClick={() =>
-                          // !st.isPast &&
+                          !st.isPast &&
                           onSelect(
                             st.id,
                             room.roomName,
                             room.roomId,
                             st.price,
                             st.vipPrice || 0,
-                            st.couplePrice || 0
+                            st.couplePrice || 0,
                           )
                         }
                       >

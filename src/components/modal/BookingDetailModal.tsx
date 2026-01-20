@@ -16,7 +16,6 @@ import QRCode from "react-qr-code";
 import { FiPrinter, FiX } from "react-icons/fi";
 import { LuQrCode } from "react-icons/lu";
 
-// 1. Cập nhật Interface Props để nhận các Map
 interface Props {
   isOpen: boolean;
   onClose: () => void;
@@ -29,10 +28,10 @@ interface Props {
 }
 
 interface DisplaySeat {
-  displayName: string; // "A1" hoặc "J10-J11"
-  type: string; // "NORMAL", "VIP", "COUPLE"
-  price: number; // Tổng giá
-  isMerged?: boolean; // Đánh dấu là ghế gộp
+  displayName: string;
+  type: string;
+  price: number;
+  isMerged?: boolean;
 }
 
 interface BookingDetails {
@@ -56,7 +55,7 @@ const BookingDetailModal: React.FC<Props> = ({
   const [details, setDetails] = useState<BookingDetails | null>(null);
   const [loadingFood, setLoadingFood] = useState(false);
   const [showQR, setShowQR] = useState(false);
-  const { user: currentUser } = useAuth(); // <--- Get current user
+  const { user: currentUser } = useAuth();
 
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat("vi-VN", {
@@ -69,28 +68,23 @@ const BookingDetailModal: React.FC<Props> = ({
     allRoomSeats: SeatModal[],
     basePrice: number,
   ): DisplaySeat[] => {
-    // 1. Map từ bookingSeat -> thông tin chi tiết (có tên, loại, giá)
     const rawSeats = bookingSeats
       .map((bs) => {
         const seatDef = allRoomSeats.find((s) => s.id === bs.seatId);
         if (!seatDef) return null;
         return {
-          name: seatDef.seatNumber, // Ví dụ: "J10"
-          type: seatDef.seatType, // Ví dụ: "COUPLE"
-          // Giá = Giá vé gốc + Phụ thu ghế
+          name: seatDef.seatNumber,
+          type: seatDef.seatType,
           price: basePrice + (seatDef.extraPrice || 0),
-          row: seatDef.seatNumber.charAt(0), // "J"
-          number: parseInt(seatDef.seatNumber.slice(1)) || 0, // 10
+          row: seatDef.seatNumber.charAt(0),
+          number: parseInt(seatDef.seatNumber.slice(1)) || 0,
         };
       })
       .filter((s): s is NonNullable<typeof s> => !!s);
 
-    // 2. Tách ghế Couple và ghế thường
     const coupleSeats = rawSeats.filter((s) => s.type === "COUPLE");
     const otherSeats = rawSeats.filter((s) => s.type !== "COUPLE");
 
-    // 3. Xử lý gộp ghế Couple liền kề
-    // Sắp xếp theo hàng và số ghế: J10, J11, J12...
     coupleSeats.sort((a, b) => {
       if (a.row === b.row) return a.number - b.number;
       return a.row.localeCompare(b.row);
@@ -103,24 +97,21 @@ const BookingDetailModal: React.FC<Props> = ({
       if (visitedIndices.has(i)) continue;
 
       const current = coupleSeats[i];
-      // Kiểm tra ghế kế tiếp có phải là cặp đôi của ghế này không (Cùng hàng, số liền kề)
       const nextIndex = i + 1;
       if (nextIndex < coupleSeats.length) {
         const next = coupleSeats[nextIndex];
         if (next.row === current.row && next.number === current.number + 1) {
-          // --> Tìm thấy cặp đôi: Gộp lại
           mergedCouples.push({
-            displayName: `${current.name}-${next.name}`, // "J10-J11"
+            displayName: `${current.name}-${next.name}`,
             type: "COUPLE",
-            price: current.price + next.price, // Cộng dồn giá
+            price: current.price + next.price,
             isMerged: true,
           });
-          visitedIndices.add(nextIndex); // Đánh dấu đã xử lý ghế sau
+          visitedIndices.add(nextIndex);
           continue;
         }
       }
 
-      // Nếu không tìm thấy cặp (ghế lẻ), cứ push bình thường
       mergedCouples.push({
         displayName: current.name,
         type: "COUPLE",
@@ -129,7 +120,6 @@ const BookingDetailModal: React.FC<Props> = ({
       });
     }
 
-    // 4. Format ghế thường
     const formattedOthers: DisplaySeat[] = otherSeats.map((s) => ({
       displayName: s.name,
       type: s.type,
@@ -137,20 +127,15 @@ const BookingDetailModal: React.FC<Props> = ({
       isMerged: false,
     }));
 
-    // 5. Trả về mảng đã gộp
     return [...formattedOthers, ...mergedCouples];
   };
 
   useEffect(() => {
     if (isOpen && booking) {
-      // --- XỬ LÝ DỮ LIỆU TỪ CACHE (KHÔNG GỌI API) ---
-
-      // 1. Lấy User từ Map
       const user = booking.userId ? userMap[booking.userId] : null;
 
       let userObj = null;
       if (user) {
-        // Logic override tên nếu là chính mình đặt (Khách vãng lai)
         if (currentUser && user.email === currentUser.email) {
           userObj = {
             name: "Khách vãng lai (Tại quầy)",
@@ -164,7 +149,6 @@ const BookingDetailModal: React.FC<Props> = ({
         }
       }
 
-      // 2. Lấy Showtime & Room & Cinema từ Map
       const showTime = showTimeMap[booking.showtimeId];
       const room = showTime ? roomMap[showTime.roomId] : null;
       const cinema = showTime ? cinemaMap[showTime.cinemaId] : null;
@@ -173,7 +157,6 @@ const BookingDetailModal: React.FC<Props> = ({
       const cinemaName = cinema?.name || "Rạp ?";
       const basePrice = showTime?.price || 0;
 
-      // 3. Tính toán tên ghế (Dùng room.seats từ cache)
       let displaySeats: DisplaySeat[] = [];
       if (room && room.seats) {
         displaySeats = processSeats(
@@ -182,7 +165,6 @@ const BookingDetailModal: React.FC<Props> = ({
           basePrice,
         );
       } else {
-        // Fallback nếu không có dữ liệu phòng
         displaySeats = booking.bookingSeats.map(() => ({
           displayName: "ID?",
           type: "UNKNOWN",
@@ -190,7 +172,6 @@ const BookingDetailModal: React.FC<Props> = ({
         }));
       }
 
-      // 4. Riêng Food: Nếu chưa cache Food thì phải gọi nhẹ, hoặc hiển thị tạm
       const initialFoodItems = booking.bookingFoodDrinks.map((f) => ({
         name: "Đang tải tên...",
         quantity: f.quantity,
@@ -205,7 +186,6 @@ const BookingDetailModal: React.FC<Props> = ({
         foodItems: initialFoodItems,
       });
 
-      // 5. Fetch tên món ăn (Lazy load)
       if (booking.bookingFoodDrinks.length > 0) {
         setLoadingFood(true);
         Promise.all(
@@ -240,23 +220,12 @@ const BookingDetailModal: React.FC<Props> = ({
     }
   }, [isOpen, booking, userMap, showTimeMap, roomMap, cinemaMap]);
 
-  const getSeatColor = (type: string) => {
-    switch (type) {
-      case "VIP":
-        return "bg-yellow-100 text-yellow-800 border-yellow-200";
-      case "COUPLE":
-        return "bg-pink-100 text-pink-800 border-pink-200";
-      default:
-        return "bg-blue-100 text-blue-800 border-blue-200";
-    }
-  };
   if (!isOpen || !booking) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="fixed inset-0 bg-black/60" onClick={onClose} />
       <div className="bg-white z-10 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
-        {/* Header */}
         <div className="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
           <div>
             <h3 className="text-xl font-bold text-gray-800">
@@ -274,9 +243,7 @@ const BookingDetailModal: React.FC<Props> = ({
           </button>
         </div>
 
-        {/* Body */}
         <div className="p-6 overflow-y-auto flex-1 space-y-6">
-          {/* Block 1: Khách & Rạp */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
               <p className="text-xs font-bold uppercase mb-2">Khách hàng</p>
@@ -298,15 +265,11 @@ const BookingDetailModal: React.FC<Props> = ({
             </div>
           </div>
 
-          {/* Block 2: Ghế */}
           <div>
             <h4 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
               <span>Ghế đã đặt</span>
               <span className="bg-gray-200 text-gray-700 text-xs px-2 py-0.5 rounded-full">
                 {booking.bookingSeats.length} vé
-                {/* nếu muốn đếm theo displaySeats thì đổi thành:
-          {details?.displaySeats.length ?? 0} vé
-      */}
               </span>
             </h4>
 
@@ -351,7 +314,6 @@ const BookingDetailModal: React.FC<Props> = ({
             )}
           </div>
 
-          {/* Block 3: Đồ ăn */}
           <div>
             <h4 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
               <span>Bắp & Nước</span>
@@ -403,7 +365,6 @@ const BookingDetailModal: React.FC<Props> = ({
           </div>
         </div>
 
-        {/* Footer */}
         <div className="bg-gray-50 px-6 py-4 border-t flex justify-between items-center print:hidden">
           <div>
             <p className="text-xs text-gray-500 uppercase font-semibold">
@@ -415,7 +376,6 @@ const BookingDetailModal: React.FC<Props> = ({
           </div>
 
           <div className="flex gap-3">
-            {/* Print & QR Buttons */}
             {booking.status === "Đã thanh toán" && (
               <>
                 <button
@@ -454,7 +414,6 @@ const BookingDetailModal: React.FC<Props> = ({
           </div>
         </div>
 
-        {/* Hidden Print Section with QR */}
         <div className="hidden print:block p-8">
           <div className="text-center mb-6">
             <h1 className="text-2xl font-bold uppercase mb-2">Vé Xem Phim</h1>
@@ -500,7 +459,6 @@ const BookingDetailModal: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* QR Code Overlay (Screen only) */}
       {showQR && (
         <div className="absolute inset-0 z-50 bg-white/95 flex flex-col items-center justify-center animate-in fade-in zoom-in duration-200 print:hidden">
           <button

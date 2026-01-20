@@ -50,7 +50,7 @@ export default function MovieForm({
   const [thumbUrl, setThumbUrl] = useState<string | undefined>(undefined);
   const [thumbFile, setThumbFile] = useState<File | null>(null);
   const [status, setStatus] = useState<"COMING_SOON" | "NOW_SHOWING" | "ENDED">(
-    "COMING_SOON"
+    "COMING_SOON",
   );
   const [openStatusBox, setOpenStatusBox] = useState(false);
 
@@ -58,7 +58,7 @@ export default function MovieForm({
 
   const [trailerFile, setTrailerFile] = useState<File | null>(null);
   const [trailerMode, setTrailerMode] = useState<"file" | "url">(
-    trailerFile ? "file" : trailerUrl ? "url" : "file"
+    trailerFile ? "file" : trailerUrl ? "url" : "file",
   );
 
   const isValidUrl = (s: string) => {
@@ -90,7 +90,7 @@ export default function MovieForm({
     setTrailerUrl(film.trailerUrl ?? "");
     setThumbUrl(film.thumbnail ?? undefined);
     setStatus(
-      (film.status as "COMING_SOON" | "NOW_SHOWING" | "ENDED") ?? "COMING_SOON"
+      (film.status as "COMING_SOON" | "NOW_SHOWING" | "ENDED") ?? "COMING_SOON",
     );
   }, [film]);
 
@@ -154,14 +154,18 @@ export default function MovieForm({
   // ======== genre handlers ========
   const addGenre = (g: Genre) =>
     setGenres((prev) =>
-      prev.some((x) => x.id === g.id) ? prev : [...prev, g]
+      prev.some((x) => x.id === g.id) ? prev : [...prev, g],
     );
   const removeGenre = (id: string) =>
     setGenres((prev) => prev.filter((g) => g.id !== id));
 
   // ======== validation ========
   const baseValid =
-    !!title && !!description && !!duration && !!releaseDate && genres.length > 0;
+    !!title &&
+    !!description &&
+    !!duration &&
+    !!releaseDate &&
+    genres.length > 0;
 
   const hasTrailer =
     trailerMode === "file"
@@ -212,7 +216,6 @@ export default function MovieForm({
     }
   };
 
-  // =============== UI ===============
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -239,14 +242,14 @@ export default function MovieForm({
         </button>
       )}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left */}
         <div className="lg:col-span-4 space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Thumbnail <span className="text-red-500">*</span></CardTitle>
+              <CardTitle>
+                Thumbnail <span className="text-red-500">*</span>
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {/* 1) Ẩn input file */}
               <input
                 ref={fileRef}
                 type="file"
@@ -256,7 +259,6 @@ export default function MovieForm({
                 disabled={readOnly}
               />
 
-              {/* 2) Ảnh đóng vai trò nút chọn file */}
               <div
                 role="button"
                 tabIndex={0}
@@ -284,7 +286,6 @@ export default function MovieForm({
                   </div>
                 )}
 
-                {/* overlay nhắc người dùng */}
                 <div className="pointer-events-none absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
                 <div
                   className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2
@@ -295,7 +296,6 @@ export default function MovieForm({
                 </div>
               </div>
 
-              {/* 3) Nút xoá (tuỳ chọn) */}
               {(thumbFile || thumbUrl) && (
                 <Button
                   type="button"
@@ -313,8 +313,6 @@ export default function MovieForm({
           </Card>
         </div>
 
-        {/* Right */}
-
         <div className="lg:col-span-8 space-y-6">
           <Card>
             <CardHeader>
@@ -322,7 +320,9 @@ export default function MovieForm({
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xl">
               <div className="md:col-span-3 space-y-2">
-                <Label>Tiêu đề <span className="text-red-500">*</span></Label>
+                <Label>
+                  Tiêu đề <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   value={title}
                   disabled={readOnly}
@@ -331,7 +331,9 @@ export default function MovieForm({
               </div>
 
               <div className="md:col-span-3 space-y-2">
-                <Label>Mô tả <span className="text-red-500">*</span></Label>
+                <Label>
+                  Mô tả <span className="text-red-500">*</span>
+                </Label>
                 <Textarea
                   rows={5}
                   disabled={readOnly}
@@ -341,7 +343,9 @@ export default function MovieForm({
               </div>
 
               <div className="space-y-2">
-                <Label>Thời lượng (phút) <span className="text-red-500">*</span></Label>
+                <Label>
+                  Thời lượng (phút) <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   type="number"
                   inputMode="numeric"
@@ -353,7 +357,9 @@ export default function MovieForm({
               </div>
 
               <div className="space-y-2">
-                <Label>Ngày phát hành <span className="text-red-500">*</span></Label>
+                <Label>
+                  Ngày phát hành <span className="text-red-500">*</span>
+                </Label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
@@ -361,7 +367,7 @@ export default function MovieForm({
                       disabled={readOnly}
                       className={cn(
                         "w-full justify-start",
-                        !releaseDate && "text-muted-foreground"
+                        !releaseDate && "text-muted-foreground",
                       )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
@@ -418,7 +424,7 @@ export default function MovieForm({
                                 "mr-2 h-4 w-4",
                                 status === "COMING_SOON"
                                   ? "opacity-100"
-                                  : "opacity-0"
+                                  : "opacity-0",
                               )}
                             />
                             Sắp chiếu
@@ -435,7 +441,7 @@ export default function MovieForm({
                                 "mr-2 h-4 w-4",
                                 status === "NOW_SHOWING"
                                   ? "opacity-100"
-                                  : "opacity-0"
+                                  : "opacity-0",
                               )}
                             />
                             Đang chiếu
@@ -450,7 +456,9 @@ export default function MovieForm({
                             <Check
                               className={cn(
                                 "mr-2 h-4 w-4",
-                                status === "ENDED" ? "opacity-100" : "opacity-0"
+                                status === "ENDED"
+                                  ? "opacity-100"
+                                  : "opacity-0",
                               )}
                             />
                             Đã kết thúc
@@ -463,9 +471,10 @@ export default function MovieForm({
               </div>
 
               <div className="md:col-span-3">
-                <Label className="mb-2 inline-block">Thể loại <span className="text-red-500">*</span></Label>
+                <Label className="mb-2 inline-block">
+                  Thể loại <span className="text-red-500">*</span>
+                </Label>
 
-                {/* các tag đã chọn */}
                 <div className="flex flex-wrap gap-2 mb-2">
                   {genres.map((g) => (
                     <Badge
@@ -489,7 +498,6 @@ export default function MovieForm({
                   ))}
                 </div>
 
-                {/* Combobox tìm & chọn từ toàn bộ thể loại */}
                 <Popover open={openGenreBox} onOpenChange={setOpenGenreBox}>
                   <PopoverTrigger asChild>
                     <Button
@@ -499,15 +507,11 @@ export default function MovieForm({
                       disabled={readOnly}
                       className="w-full justify-between"
                     >
-                      {/* {genres.length
-                        ? `${genres.length} thể loại đã chọn`
-                        : "Tìm thể loại…"} */}
                       Chọn thể loại
                       <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
                     </Button>
                   </PopoverTrigger>
 
-                  {/* chiều rộng = đúng chiều rộng trigger */}
                   <PopoverContent
                     align="start"
                     className="p-0 w-[var(--radix-popover-trigger-width)]"
@@ -523,15 +527,15 @@ export default function MovieForm({
                         <CommandGroup heading="Thể loại">
                           {allGenres
                             .filter(
-                              (opt) => !genres.some((g) => g.id === opt.id)
-                            ) // loại trùng
+                              (opt) => !genres.some((g) => g.id === opt.id),
+                            )
                             .map((opt) => (
                               <CommandItem
                                 key={opt.id}
                                 value={opt.name}
                                 onSelect={() => {
                                   addGenre(opt);
-                                  setOpenGenreBox(false); // đóng sau khi chọn
+                                  setOpenGenreBox(false);
                                 }}
                               >
                                 <Plus className="mr-2 h-4 w-4" />
@@ -548,7 +552,9 @@ export default function MovieForm({
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle>Trailer <span className="text-red-500">*</span></CardTitle>
+              <CardTitle>
+                Trailer <span className="text-red-500">*</span>
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="rounded-2xl overflow-hidden border bg-black">
@@ -571,13 +577,12 @@ export default function MovieForm({
                 )}
               </div>
 
-              {/* Upload file */}
               <div className="flex items-center gap-3">
                 <Input
                   type="file"
                   accept="video/*"
                   onChange={onPickTrailer}
-                  disabled={(trailerMode === "url" && !!trailerUrl) || readOnly} // khóa khi đang nhập URL
+                  disabled={(trailerMode === "url" && !!trailerUrl) || readOnly}
                 />
                 {trailerFile && (
                   <Button
@@ -592,7 +597,6 @@ export default function MovieForm({
                 )}
               </div>
 
-              {/* Hoặc dán URL */}
               <div>
                 <Label className="mb-1 inline-block">Hoặc dán URL</Label>
                 <Input
@@ -601,7 +605,7 @@ export default function MovieForm({
                   onChange={(e) => onChangeTrailerUrl(e.target.value)}
                   disabled={
                     (trailerMode === "file" && !!trailerFile) || readOnly
-                  } // khóa khi đã chọn file
+                  }
                 />
               </div>
             </CardContent>
@@ -618,10 +622,10 @@ export default function MovieForm({
             disabled={!isValid}
             onClick={() => {
               setDialogTitle(
-                mode === "create" ? "Xác nhận thêm phim" : "Xác nhận cập nhật"
+                mode === "create" ? "Xác nhận thêm phim" : "Xác nhận cập nhật",
               );
               setDialogMsg(
-                mode === "create" ? "Thêm phim mới?" : "Lưu thay đổi?"
+                mode === "create" ? "Thêm phim mới?" : "Lưu thay đổi?",
               );
               setConfirmOpen(true);
             }}

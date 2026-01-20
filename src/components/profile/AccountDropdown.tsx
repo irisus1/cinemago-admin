@@ -43,7 +43,6 @@ export default function AccountDropdown({
         className="w-64 shadow-lg rounded-xl p-2"
         align="end"
       >
-        {/* Avatar + name */}
         <DropdownMenuLabel className="flex items-center gap-3 p-2">
           <Image
             src={user?.avatarUrl || "/default-avt.png"}
@@ -60,7 +59,6 @@ export default function AccountDropdown({
 
         <DropdownMenuSeparator />
 
-        {/* Tài khoản */}
         <DropdownMenuItem
           className="flex items-center gap-2 cursor-pointer px-3 py-2"
           onClick={onOpenProfile}
@@ -69,7 +67,6 @@ export default function AccountDropdown({
           <span>Tài khoản</span>
         </DropdownMenuItem>
 
-        {/* Đăng xuất */}
         <DropdownMenuItem
           onClick={logout}
           className="flex items-center gap-2 cursor-pointer px-3 py-2 text-red-600 focus:text-red-600"
