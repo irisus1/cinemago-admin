@@ -4,8 +4,8 @@ import axios from "axios";
 export type SeatType = "NORMAL" | "VIP" | "COUPLE" | "EMPTY";
 
 export type SeatCell = {
-  row: string; // "A", "B", ...
-  col: number; // 1, 2, ...
+  row: string;
+  col: number;
   type: SeatType;
 };
 
@@ -29,7 +29,6 @@ export type Room = {
   isActive?: boolean;
   seatLayout?: SeatCell[];
   seats: SeatModal[];
-  // các trường thống kê nếu BE có:
   VIP?: number;
   COUPLE?: number;
 };
@@ -68,7 +67,7 @@ export type ServerPaginated<T> = {
 type ApiErrorBody = { message?: string };
 const getMsg = (e: unknown, fb: string) =>
   axios.isAxiosError<ApiErrorBody>(e)
-    ? e.response?.data?.message ?? e.message ?? fb
+    ? (e.response?.data?.message ?? e.message ?? fb)
     : fb;
 
 const toIso = (v?: Date | string) =>
@@ -84,7 +83,6 @@ export type RoomCreate = {
 export type RoomUpdate = Partial<RoomCreate>;
 
 class RoomService {
-  // GET /rooms/public -> { pagination, data }
   async getRooms(params?: RoomQuery): Promise<ServerPaginated<Room>> {
     try {
       const { data } = await api.get<ServerPaginated<Room>>("/rooms/public", {
@@ -102,7 +100,6 @@ class RoomService {
     }
   }
 
-  // GET /rooms/public/:id -> { data: room }
   async getRoomById(id: string): Promise<Room> {
     try {
       const { data } = await api.get<{ data: Room }>(`/rooms/public/${id}`);
@@ -114,7 +111,6 @@ class RoomService {
     }
   }
 
-  // POST /rooms -> { data: room }
   async createRoom(payload: RoomCreate): Promise<Room> {
     try {
       const { data } = await api.post<{ data: Room }>("/rooms", payload);
@@ -126,7 +122,6 @@ class RoomService {
     }
   }
 
-  // PUT /rooms/:id -> { data: room }
   async updateRoom(id: string, payload: RoomUpdate): Promise<Room> {
     try {
       const { data } = await api.put<{ data: Room }>(`/rooms/${id}`, payload);
@@ -138,7 +133,6 @@ class RoomService {
     }
   }
 
-  // PUT /rooms/archive/:id -> string
   async deleteRoom(id: string): Promise<string> {
     try {
       const { data } = await api.put<string>(`/rooms/archive/${id}`);
@@ -150,7 +144,6 @@ class RoomService {
     }
   }
 
-  // PUT /rooms/restore/:id -> string
   async restoreRoom(id: string): Promise<string> {
     try {
       const { data } = await api.put<string>(`/rooms/restore/${id}`);
@@ -162,7 +155,6 @@ class RoomService {
     }
   }
 
-  // POST /rooms/hold-seat -> string (message)
   async holdSeat(showtimeId: string, seatId: string): Promise<string> {
     try {
       const { data } = await api.post<string>("/rooms/hold-seat", {
@@ -191,11 +183,10 @@ class RoomService {
     }
   }
 
-  // GET /rooms/held-seats/:showtimeId -> { data: string[] }
   async getHeldSeats(showtimeId: string): Promise<HeldSeatResponse[]> {
     try {
       const { data } = await api.get<{ data: HeldSeatResponse[] }>(
-        `/rooms/${showtimeId}/hold-seat`
+        `/rooms/${showtimeId}/hold-seat`,
       );
       return data.data;
     } catch (e: unknown) {
@@ -213,10 +204,9 @@ class RoomService {
           startTime,
           endTime,
         },
-      }
+      },
     );
 
-    // res.data là object { data: string[] }
     return res.data?.data ?? res.data ?? [];
   }
 }

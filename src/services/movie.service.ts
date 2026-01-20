@@ -2,19 +2,18 @@ import api from "@/config/api";
 import axios from "axios";
 import type { Genre } from "./genre.service";
 
-// ===== Types =====
 export interface Movie {
   id: string;
   title: string;
   description: string;
   duration: number;
-  releaseDate: string; // BE trả Date -> FE nhận string ISO
-  genres: Genre[]; // lưu id/slug; tùy BE bạn có thể đổi
+  releaseDate: string;
+  genres: Genre[];
   thumbnail: string;
   trailerUrl?: string;
   trailerPath?: string;
   isActive: boolean;
-  status?: string; // e.g. "COMING_SOON", "SHOWING"
+  status?: string;
   rating?: number;
   createdAt?: string;
   updatedAt?: string;
@@ -25,7 +24,7 @@ export type MovieQuery = {
   limit?: number;
   search?: string;
   rating?: number;
-  genreQuery?: string; // BE nhận "1,2,3"
+  genreQuery?: string;
   isActive?: boolean;
   status?: string;
 };
@@ -47,12 +46,10 @@ export type ServerPaginated<T> = {
 type ApiErrorBody = { message?: string };
 const getMsg = (e: unknown, fb: string) =>
   axios.isAxiosError<ApiErrorBody>(e)
-    ? e.response?.data?.message ?? e.message ?? fb
+    ? (e.response?.data?.message ?? e.message ?? fb)
     : fb;
 
-// ===== Service =====
 class MovieService {
-  // GET /movies/public -> { pagination, data }
   async getAllMovies(params?: MovieQuery): Promise<ServerPaginated<Movie>> {
     try {
       const { data } = await api.get<ServerPaginated<Movie>>("/movies/public", {
@@ -66,7 +63,6 @@ class MovieService {
     }
   }
 
-  // GET /movies/public/:movieId -> { data: movie }
   async getMovieById(id: string): Promise<Movie> {
     try {
       const { data } = await api.get<{ data: Movie }>(`/movies/public/${id}`);
@@ -78,7 +74,6 @@ class MovieService {
     }
   }
 
-  // POST /movies (multipart) -> { data: movie }
   async addMovie(form: FormData): Promise<Movie> {
     try {
       const { data } = await api.post<{ data: Movie }>("/movies", form, {
@@ -92,7 +87,6 @@ class MovieService {
     }
   }
 
-  // PUT /movies/:movieId (multipart) -> { data: movie }
   async updateMovie(id: string, form: FormData): Promise<Movie> {
     try {
       const { data } = await api.put<{ data: Movie }>(`/movies/${id}`, form, {
@@ -106,7 +100,6 @@ class MovieService {
     }
   }
 
-  // PUT /movies/status -> string
   async updateMovieStatus(movieIds: string[], status: string): Promise<string> {
     try {
       const { data } = await api.put<string>("/movies/status", {
@@ -121,7 +114,6 @@ class MovieService {
     }
   }
 
-  // PUT /movies/archive/:movieId -> string
   async deleteMovie(id: string): Promise<string> {
     try {
       const { data } = await api.put<string>(`/movies/archive/${id}`);
@@ -133,7 +125,6 @@ class MovieService {
     }
   }
 
-  // PUT /movies/restore/:movieId -> string
   async restoreMovie(id: string): Promise<string> {
     try {
       const { data } = await api.put<string>(`/movies/restore/${id}`);

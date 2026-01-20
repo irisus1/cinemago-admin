@@ -1,4 +1,3 @@
-// Export all services
 export { authService } from "./auth.service";
 export { cinemaService } from "./cinema.service";
 export { userService } from "./user.service";
@@ -12,7 +11,6 @@ export { bookingService } from "./booking.service";
 export { reviewService } from "./review.service";
 export { dashboardService } from "./dashboard.service";
 
-// Export types
 export type { LoginResponse, RegisterRequest } from "./auth.service";
 
 export type {
@@ -77,7 +75,6 @@ export type {
   RevenueByPeriod,
   MovieRevenueItem,
   CinemaRevenueItem,
-
   DailyRevenueGlobal,
   DailyRevenueBreakdown,
   PeakHourItem,

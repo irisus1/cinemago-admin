@@ -1,18 +1,16 @@
-// src/services/DashboardService.ts
 import api from "@/config/api";
 import axios from "axios";
 
 type ApiErrorBody = { message?: string };
 const getMsg = (e: unknown, fb: string) =>
   axios.isAxiosError<ApiErrorBody>(e)
-    ? e.response?.data?.message ?? e.message ?? fb
+    ? (e.response?.data?.message ?? e.message ?? fb)
     : fb;
 
-// ==== Kiểu dữ liệu ====
 export type DateRangeParams = {
   startDate: string;
   endDate: string;
-  type?: string; // nếu sau này bạn muốn filter theo loại booking
+  type?: string;
   cinemaId?: string;
 };
 
@@ -42,8 +40,6 @@ export type PeakHourResponse = {
   allHours: PeakHourItem[];
 };
 
-// Doanh thu theo giai đoạn
-// Doanh thu theo giai đoạn
 export type DailyRevenueGlobal = {
   date: string;
   totalRevenue: number;
@@ -86,7 +82,6 @@ export type CinemaRevenueItem = {
   totalRevenue: number;
   ticketRevenue?: number;
   foodDrinkRevenue?: number;
-  // Optional aggregations if API returns them in some context
   totalTicketRevenue?: number;
   totalFoodDrinkRevenue?: number;
   bookedSeats?: number;
@@ -95,7 +90,6 @@ export type CinemaRevenueItem = {
   dailyBreakdown?: DailyRevenueBreakdown[];
 };
 
-// Item doanh thu theo phim
 export type MovieRevenueItem = {
   movie: {
     id: string;
@@ -105,7 +99,6 @@ export type MovieRevenueItem = {
   totalRevenue: number;
   ticketRevenue?: number;
   foodDrinkRevenue?: number;
-  // Optional aggregations if API returns them in some context
   totalTicketRevenue?: number;
   totalFoodDrinkRevenue?: number;
   bookedSeats?: number;
@@ -114,13 +107,11 @@ export type MovieRevenueItem = {
   dailyBreakdown?: DailyRevenueBreakdown[];
 };
 
-
-// ... (CinemaRevenueItem, CinemaRevenueResponse, MovieRevenueItem, MovieRevenueResponse definitions skipped)
 class DashboardService {
   async getMovieCount(): Promise<number> {
     try {
       const { data } = await api.get<{ data: { totalMovies: number } }>(
-        "/movies/dashboard/total-count"
+        "/movies/dashboard/total-count",
       );
       return data.data.totalMovies ?? 0;
     } catch (e: unknown) {
@@ -130,11 +121,10 @@ class DashboardService {
     }
   }
 
-  // GET /cinemas/dashboard/total-count -> { data: { totalCinemas } }
   async getCinemaCount(): Promise<number> {
     try {
       const { data } = await api.get<{ data: { totalCinemas: number } }>(
-        "/cinemas/dashboard/total-count"
+        "/cinemas/dashboard/total-count",
       );
       return data.data.totalCinemas ?? 0;
     } catch (e: unknown) {
@@ -144,11 +134,10 @@ class DashboardService {
     }
   }
 
-  // GET /users/dashboard/total-count -> { data: { totalUsers } }
   async getUserCount(): Promise<number> {
     try {
       const { data } = await api.get<{ data: { totalUsers: number } }>(
-        "/users/dashboard/total-count"
+        "/users/dashboard/total-count",
       );
       return data.data.totalUsers ?? 0;
     } catch (e: unknown) {
@@ -158,31 +147,29 @@ class DashboardService {
     }
   }
 
-  // GET /bookings/dashboard/revenue?startDate=&endDate= -> { data | body: RevenueByPeriod }
   async getRevenueByPeriod(params: DateRangeParams): Promise<RevenueByPeriod> {
     try {
       const { data } = await api.get<{ data: RevenueByPeriod }>(
         "/bookings/dashboard/revenue",
-        { params }
+        { params },
       );
 
       const body = data.data;
-      return body; // Return full structure (summary + daily)
+      return body;
     } catch (e: unknown) {
       const msg = getMsg(e, "Không thể lấy doanh thu theo giai đoạn.");
       console.error("Lỗi getRevenueByPeriod:", e);
       throw new Error(msg);
     }
   }
-  // GET /bookings/dashboard/revenue/cinema?startDate=&endDate=&type=
+
   async getRevenueByPeriodAndCinema(
-    params: DateRangeParams
+    params: DateRangeParams,
   ): Promise<CinemaRevenueItem[]> {
     try {
-      // API now returns { data: CinemaRevenueItem[] }
       const { data } = await api.get<{ data: CinemaRevenueItem[] }>(
         "/bookings/dashboard/revenue/cinema",
-        { params }
+        { params },
       );
       console.log("cinema dashboard", data);
       return data.data || [];
@@ -193,15 +180,13 @@ class DashboardService {
     }
   }
 
-  // GET /bookings/dashboard/revenue/movie?startDate=&endDate=&type=
   async getRevenueByPeriodAndMovie(
-    params: DateRangeParams
+    params: DateRangeParams,
   ): Promise<MovieRevenueItem[]> {
     try {
-      // API now returns { data: MovieRevenueItem[] }
       const { data } = await api.get<{ data: MovieRevenueItem[] }>(
         "/bookings/dashboard/revenue/movie",
-        { params }
+        { params },
       );
       console.log("movie dashboard", data);
       return data.data || [];
@@ -212,12 +197,11 @@ class DashboardService {
     }
   }
 
-  // GET /bookings/dashboard/peak-hours?month=&year=&cinemaId=&type=
   async getPeakHoursInMonth(params: PeakHourParam): Promise<PeakHourResponse> {
     try {
       const { data } = await api.get<{ data: PeakHourResponse }>(
         "/bookings/dashboard/peak-hours",
-        { params }
+        { params },
       );
       return data.data;
     } catch (e: unknown) {
@@ -226,16 +210,13 @@ class DashboardService {
       throw new Error(msg);
     }
   }
-  // GET /bookings/dashboard/export?startDate=&endDate=&type=&cinemaId=
+
   async exportRevenue(params: DateRangeParams): Promise<Blob> {
     try {
-      const response = await api.get(
-        "/bookings/dashboard/export",
-        {
-          params,
-          responseType: "blob", // Quan trọng để nhận file binary
-        }
-      );
+      const response = await api.get("/bookings/dashboard/export", {
+        params,
+        responseType: "blob",
+      });
       return response.data;
     } catch (e: unknown) {
       const msg = getMsg(e, "Không thể xuất file báo cáo.");
