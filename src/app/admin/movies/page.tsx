@@ -54,7 +54,6 @@ const MoviesListPage: React.FC = () => {
     clearFilters,
     canClearFilters,
 
-    handleRefresh,
     handleAddNavigate,
     handleViewNavigate,
     handleEditNavigate,
@@ -78,13 +77,11 @@ const MoviesListPage: React.FC = () => {
     onConfirm,
   } = useMovieLogic();
 
-  // Helper cho checkbox "Select All"
   const pageIds = rows.map((r) => r.id);
   const allChecked =
     pageIds.length > 0 && pageIds.every((id) => selectedIds.has(id));
   const someChecked = pageIds.some((id) => selectedIds.has(id)) && !allChecked;
 
-  // ===== Table Columns =====
   const columns: Column<Movie>[] = [
     {
       header: (
@@ -263,7 +260,7 @@ const MoviesListPage: React.FC = () => {
                     setBulkStatus(v);
                   } else {
                     setStatus(
-                      v as "__ALL__" | "COMING_SOON" | "NOW_SHOWING" | "ENDED"
+                      v as "__ALL__" | "COMING_SOON" | "NOW_SHOWING" | "ENDED",
                     );
                   }
                 }}
@@ -284,7 +281,6 @@ const MoviesListPage: React.FC = () => {
             </div>
           </div>
 
-          {/* RIGHT: actions */}
           <div className="flex items-center gap-3 justify-self-end self-start">
             <button
               className={

@@ -10,17 +10,19 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { type Movie } from "@/services";
-import { formatVND } from "../../../components/ticket/seat-helper";
+import { formatVND } from "@/components/ticket/seat-helper";
 
-// Import Hook Logic
-// import { useBookingLogic } from "../../../components/ticket/useBookingSheet";
-
-// Import Component con
 import PaymentMethodModal from "@/components/modal/PaymentModal";
-import SeatSelectionStep from "../../../components/ticket/SeatSelection";
+import SeatSelectionStep from "@/components/ticket/SeatSelection";
 import ShowtimeList from "@/components/ticket/showtimelist";
-import FoodSelector from "../../../components/ticket/foodSelector";
+import FoodSelector from "@/components/ticket/foodSelector";
 import { RefreshCcw } from "lucide-react";
+
+import {
+  useBookingLogic,
+} from "@/components/ticket/useBookingSheet";
+
+type BookingState = ReturnType<typeof useBookingLogic>;
 
 interface BookingSheetProps {
   isOpen: boolean;
@@ -29,15 +31,13 @@ interface BookingSheetProps {
   movie: Movie | null;
   cinemaId: string;
   date: string;
-  bookingState: any; // Using explicit type or any if complex
+  bookingState: BookingState;
 }
 
 export default function BookingSheet({
   isOpen,
   onClose,
-  onReopen,
   movie,
-  cinemaId,
   date,
   bookingState,
 }: BookingSheetProps) {
@@ -62,7 +62,6 @@ export default function BookingSheet({
     timeLeft,
     formattedTime,
 
-    // Modal & Payment Handlers
     handleOpenPaymentModal,
     handleProcessPayment,
     isPaymentModalOpen,

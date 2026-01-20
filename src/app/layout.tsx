@@ -6,8 +6,8 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: {
-    template: "%s ", // %s sẽ được thay thế bởi tiêu đề của trang con
-    default: "CinemaGo - Admin", // Tiêu đề mặc định nếu trang con không set
+    template: "%s ",
+    default: "CinemaGo - Admin",
   },
   description: "Hệ thống quản lý đặt vé xem phim",
 };

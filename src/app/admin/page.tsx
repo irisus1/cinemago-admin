@@ -1,4 +1,3 @@
-// app/page.tsx
 "use client";
 
 import { useEffect } from "react";
@@ -12,5 +11,5 @@ export default function Root() {
     router.replace(token ? "/admin/dashboard" : "/login");
   }, [router]);
 
-  return null; // Không cần render gì
+  return null;
 }

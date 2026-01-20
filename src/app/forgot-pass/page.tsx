@@ -31,7 +31,7 @@ export default function ForgotPasswordPage() {
     <div
       style={{
         backgroundColor: "rgb(245,245,245)",
-        backgroundImage: `url("/background.jpg")`, // ảnh để trong public/
+        backgroundImage: `url("/background.jpg")`,
         backgroundSize: "cover",
       }}
       className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8"
@@ -42,7 +42,6 @@ export default function ForgotPasswordPage() {
         </h2>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Email input */}
           <div className="relative">
             <FaEnvelope className="absolute top-3 left-3 text-gray-400" />
             <input
@@ -55,7 +54,6 @@ export default function ForgotPasswordPage() {
             />
           </div>
 
-          {/* Submit button */}
           <button
             type="submit"
             disabled={loading}

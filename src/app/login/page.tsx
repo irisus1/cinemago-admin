@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react"; // Thêm useEffect
+import { useState, useEffect } from "react";
 import {
   FaEnvelope,
   FaLock,
@@ -79,7 +79,6 @@ export default function LoginPage() {
           Đăng nhập
         </h2>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          {/* Username */}
           <div className="relative">
             <FaEnvelope className="absolute top-3 left-3 text-gray-400" />
             <input
@@ -94,7 +93,6 @@ export default function LoginPage() {
             />
           </div>
 
-          {/* Password */}
           <div className="relative mt-4">
             <FaLock className="absolute top-3 left-3 text-gray-400" />
             <input
@@ -122,19 +120,18 @@ export default function LoginPage() {
             </a>
           </p>
 
-          {/* Submit Button */}
           <button
             type="submit"
             disabled={loading}
-            className={`w-full py-2 text-white rounded-md flex items-center justify-center transition-all ${loading
-              ? "bg-[#F25019] cursor-not-allowed"
-              : "bg-[#F25019] hover:bg-[#C24014] cursor-pointer"
-              }`}
+            className={`w-full py-2 text-white rounded-md flex items-center justify-center transition-all ${
+              loading
+                ? "bg-[#F25019] cursor-not-allowed"
+                : "bg-[#F25019] hover:bg-[#C24014] cursor-pointer"
+            }`}
           >
             {loading ? (
               <>
                 <FaSpinner className="animate-spin text-xl mr-2" />
-                {/* Thay đổi text để user biết đang chuyển trang */}
                 <span>Đang chuyển hướng...</span>
               </>
             ) : (

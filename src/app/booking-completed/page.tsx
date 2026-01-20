@@ -18,8 +18,6 @@ import {
 } from "@/services";
 import { toast } from "sonner";
 
-// ===== INTERFACES =====
-
 type Status = "loading" | "success" | "failed" | "pending";
 
 interface TicketItem {
@@ -49,8 +47,6 @@ interface PaymentDataState {
   message: string;
 }
 
-// ===== COMPONENT =====
-
 function PaymentResultContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -61,9 +57,8 @@ function PaymentResultContent() {
   const [orderDetail, setOrderDetail] = useState<OrderDetail | null>(null);
   const [orderError, setOrderError] = useState<string | null>(null);
 
-  // Dùng ref để kiểm soát việc polling (gọi lại api)
   const pollingCount = useRef(0);
-  const maxRetries = 10; // Thử tối đa 10 lần (20s)
+  const maxRetries = 10;
 
   const detectPaymentMethodFromParams = (params: any) => {
     if (params.partnerCode === "MOMO") return "MOMO";

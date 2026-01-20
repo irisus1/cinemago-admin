@@ -2,8 +2,7 @@
 
 import React from "react";
 import Image from "next/image";
-import { BiRefresh } from "react-icons/bi";
-import { FiEdit2, FiTrash2, FiPlusCircle } from "react-icons/fi";
+import { FiEdit2, FiTrash2 } from "react-icons/fi";
 import {
   Select,
   SelectTrigger,
@@ -21,9 +20,7 @@ import FoodDrinkModal from "@/components/modal/FoodDrinkModal";
 import { useFoodDrinkLogic } from "@/hooks/useFoodDrinkLogic";
 import { type FoodDrink } from "@/services";
 import { Plus, Search } from "lucide-react";
-import {
-  SearchableCombobox,
-} from "@/components/SearchableCombobox";
+import { SearchableCombobox } from "@/components/SearchableCombobox";
 
 const VI_TYPE = { SNACK: "Đồ ăn", DRINK: "Thức uống", COMBO: "Combo" };
 const VI_AVAIL = { true: "Còn bán", false: "Ngừng bán" };
@@ -57,7 +54,6 @@ export default function FoodDrinkListPage() {
     handleAdd,
     handleEdit,
     handleDelete,
-    handleRefresh,
     handleSubmitFoodDrink,
     confirmOpen,
     setConfirmOpen,
@@ -76,7 +72,6 @@ export default function FoodDrinkListPage() {
     isManager,
   } = useFoodDrinkLogic();
 
-  // Logic xác định checkbox "Select All"
   const pageIds = rows.map((r) => r.id);
   const allChecked =
     pageIds.length > 0 && pageIds.every((id) => selectedIds.has(id));
@@ -195,7 +190,6 @@ export default function FoodDrinkListPage() {
             <Select
               value={type === "" ? "ALL" : type}
               onValueChange={(val) => {
-                // "ALL" = Tất cả → lưu "" trong state
                 setType(val === "ALL" ? "" : val);
               }}
             >
@@ -262,24 +256,22 @@ export default function FoodDrinkListPage() {
         </div>
       </div>
 
-      {
-        selectedIds.size > 0 && (
-          <div className="flex items-center gap-3 bg-muted/30 border rounded-lg p-3 mb-3">
-            <span className="text-sm">
-              Đã chọn <b>{selectedIds.size}</b> món
-            </span>
-            <Button
-              onClick={handleBulkToggle}
-              className="bg-black text-white hover:bg-blue-700"
-            >
-              Chuyển trạng thái
-            </Button>
-            <Button variant="outline" onClick={clearSelection}>
-              Hủy chọn
-            </Button>
-          </div>
-        )
-      }
+      {selectedIds.size > 0 && (
+        <div className="flex items-center gap-3 bg-muted/30 border rounded-lg p-3 mb-3">
+          <span className="text-sm">
+            Đã chọn <b>{selectedIds.size}</b> món
+          </span>
+          <Button
+            onClick={handleBulkToggle}
+            className="bg-black text-white hover:bg-blue-700"
+          >
+            Chuyển trạng thái
+          </Button>
+          <Button variant="outline" onClick={clearSelection}>
+            Hủy chọn
+          </Button>
+        </div>
+      )}
 
       <div className="bg-white rounded-lg shadow-sm overflow-x-auto">
         <Table columns={columns} data={rows} getRowKey={(r) => r.id} />
@@ -307,19 +299,17 @@ export default function FoodDrinkListPage() {
         )}
       </div>
 
-      {
-        showForm && (
-          <FoodDrinkModal
-            open={showForm}
-            onClose={() => setShowForm(false)}
-            editData={editing}
-            onSubmit={handleSubmitFoodDrink}
-            cinemaOptions={cinemaOptions}
-            hideCinemaSelect={isManager}
-            fixedCinemaId={isManager && cinemaId ? cinemaId : undefined} // Or relying on hook's internal logic, but passing it helps modal defaults
-          />
-        )
-      }
+      {showForm && (
+        <FoodDrinkModal
+          open={showForm}
+          onClose={() => setShowForm(false)}
+          editData={editing}
+          onSubmit={handleSubmitFoodDrink}
+          cinemaOptions={cinemaOptions}
+          hideCinemaSelect={isManager}
+          fixedCinemaId={isManager && cinemaId ? cinemaId : undefined}
+        />
+      )}
 
       <Modal
         isOpen={confirmOpen}
@@ -345,6 +335,6 @@ export default function FoodDrinkListPage() {
         confirmText="Đóng"
       />
       <RefreshLoader isOpen={loading} />
-    </div >
+    </div>
   );
 }

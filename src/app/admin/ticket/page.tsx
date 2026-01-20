@@ -17,7 +17,6 @@ import { useBookingLogic } from "@/components/ticket/useBookingSheet";
 import { FloatingIndicator } from "@/components/ticket/FloatingIndicator";
 import { useAuth } from "@/context/AuthContext";
 
-/** Helpers */
 const todayLocalISODate = () => {
   const d = new Date();
   const y = d.getFullYear();
@@ -25,8 +24,6 @@ const todayLocalISODate = () => {
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 };
-
-const pad = (n: number) => String(n).padStart(2, "0");
 
 const toUtcDayRangeFromLocalISO = (dateStr: string) => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
@@ -36,11 +33,9 @@ const toUtcDayRangeFromLocalISO = (dateStr: string) => {
 
   const [y, m, d] = dateStr.split("-").map((n) => parseInt(n, 10));
 
-  // local start / end (VN)
   const localStart = new Date(y, m - 1, d, 0, 0, 0, 0);
   const localEndExclusive = new Date(y, m - 1, d + 1, 0, 0, 0, 0);
 
-  // chuyển sang ISO UTC có Z
   const startTime = localStart.toISOString();
   const endTime = new Date(localEndExclusive.getTime() - 1).toISOString();
 
@@ -53,11 +48,10 @@ export default function AdminWalkupBookingPage() {
   const pathname = usePathname();
   const { user } = useAuth();
 
-  // RBAC for Cinema Manager & Employee
-  const isRestrictedView = user?.role === "MANAGER" || user?.role === "EMPLOYEE";
+  const isRestrictedView =
+    user?.role === "MANAGER" || user?.role === "EMPLOYEE";
   const userCinemaId = user?.cinemaId;
 
-  // --- STATE ---
   const [dateStr, setDateStr] = useState<string>(() => {
     return searchParams.get("date") || todayLocalISODate();
   });
@@ -69,10 +63,8 @@ export default function AdminWalkupBookingPage() {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // --- LIFTED BOOKING LOGIC ---
   const bookingState = useBookingLogic({
     isOpen: isSheetOpen,
-
     movie: selectedMovie,
     cinemaId: selectedCinemaId,
     date: dateStr,
@@ -80,15 +72,13 @@ export default function AdminWalkupBookingPage() {
 
   const dayRange = useMemo(() => toUtcDayRangeFromLocalISO(dateStr), [dateStr]);
 
-  const updateUrl = (
-    updates: {
-      date?: string;
-      cinemaId?: string;
-      movieId?: string;
-      sheetOpen?: string;
-      showtimeId?: string;
-    }
-  ) => {
+  const updateUrl = (updates: {
+    date?: string;
+    cinemaId?: string;
+    movieId?: string;
+    sheetOpen?: string;
+    showtimeId?: string;
+  }) => {
     const params = new URLSearchParams(searchParams.toString());
     Object.entries(updates).forEach(([key, value]) => {
       if (value === undefined || value === null) {
@@ -100,7 +90,6 @@ export default function AdminWalkupBookingPage() {
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
-  // Sync Sheet Open State with URL
   useEffect(() => {
     const isUrlOpen = searchParams.get("sheetOpen") === "true";
     if (isUrlOpen && !isSheetOpen && selectedMovie) {
@@ -108,7 +97,6 @@ export default function AdminWalkupBookingPage() {
     }
   }, [searchParams, selectedMovie]);
 
-  // 1. Fetch Cinemas + Init from URL
   useEffect(() => {
     (async () => {
       try {
@@ -116,7 +104,6 @@ export default function AdminWalkupBookingPage() {
         const list = res?.data || [];
         setCinemas(list);
 
-        // Logic ưu tiên: URL param -> LocalStorage -> Default
         const urlCinemaId = searchParams.get("cinemaId");
         const savedId = localStorage.getItem("admin_persistent_cinema_id");
 
@@ -130,9 +117,7 @@ export default function AdminWalkupBookingPage() {
           targetId = String(list[0].id);
         }
 
-        // RBAC Override
         if (isRestrictedView && userCinemaId) {
-          // Ensure the user's cinema is in the list (or just set it forcefully)
           targetId = userCinemaId;
         }
 
@@ -150,7 +135,6 @@ export default function AdminWalkupBookingPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 2. Load Movies & Restore Sheet State
   useEffect(() => {
     let cancelled = false;
     if (!selectedCinemaId) return;
@@ -159,7 +143,6 @@ export default function AdminWalkupBookingPage() {
       try {
         setLoading(true);
 
-        // 1) Lấy showtimes theo khoảng [start, end)
         const sts = await showTimeService.getShowTimes({
           startTime: dayRange.startTime,
           endTime: dayRange.endTime,
@@ -183,17 +166,31 @@ export default function AdminWalkupBookingPage() {
           const mid = String(s.movieId || "");
           if (!mid) continue;
           const curr = metaByMovieId[mid] || {
-            languages: [], formats: [], minPrice: null, earliestStart: null, hasSubtitle: null
+            languages: [],
+            formats: [],
+            minPrice: null,
+            earliestStart: null,
+            hasSubtitle: null,
           };
-          if (s.language && !curr.languages.includes(s.language)) curr.languages.push(s.language);
-          if (s.format && !curr.formats.includes(s.format)) curr.formats.push(s.format);
+          if (s.language && !curr.languages.includes(s.language))
+            curr.languages.push(s.language);
+          if (s.format && !curr.formats.includes(s.format))
+            curr.formats.push(s.format);
           if (typeof s.price === "number") {
-            curr.minPrice = curr.minPrice === null ? s.price : Math.min(curr.minPrice, s.price);
+            curr.minPrice =
+              curr.minPrice === null
+                ? s.price
+                : Math.min(curr.minPrice, s.price);
           }
           if (s.startTime) {
-            curr.earliestStart = curr.earliestStart === null || new Date(s.startTime) < new Date(curr.earliestStart) ? s.startTime : curr.earliestStart;
+            curr.earliestStart =
+              curr.earliestStart === null ||
+              new Date(s.startTime) < new Date(curr.earliestStart)
+                ? s.startTime
+                : curr.earliestStart;
           }
-          if (typeof s.subtitle === "boolean") curr.hasSubtitle = curr.hasSubtitle || s.subtitle;
+          if (typeof s.subtitle === "boolean")
+            curr.hasSubtitle = curr.hasSubtitle || s.subtitle;
           metaByMovieId[mid] = curr;
         }
 
@@ -204,7 +201,7 @@ export default function AdminWalkupBookingPage() {
         }
 
         const details = await Promise.all(
-          ids.map((id) => movieService.getMovieById(id))
+          ids.map((id) => movieService.getMovieById(id)),
         );
 
         const moviesEnriched = details.map((m) => {
@@ -219,7 +216,9 @@ export default function AdminWalkupBookingPage() {
           const urlSheetOpen = searchParams.get("sheetOpen");
 
           if (urlMovieId && urlSheetOpen === "true") {
-            const foundMovie = moviesEnriched.find(m => String(m.id) === urlMovieId);
+            const foundMovie = moviesEnriched.find(
+              (m) => String(m.id) === urlMovieId,
+            );
             if (foundMovie) {
               setSelectedMovie(foundMovie as Movie);
               setIsSheetOpen(true);
@@ -238,9 +237,6 @@ export default function AdminWalkupBookingPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dayRange.startTime, dayRange.endTime, selectedCinemaId]);
 
-
-  // --- HANDLERS ---
-
   const handleCinemaChange = (newId: string) => {
     setSelectedCinemaId(newId);
     localStorage.setItem("admin_persistent_cinema_id", newId);
@@ -253,9 +249,11 @@ export default function AdminWalkupBookingPage() {
   };
 
   const handleMovieSelect = (movie: Movie) => {
-    // Nếu đang chọn phim khác -> Reset phiên cũ
     if (selectedMovie && String(selectedMovie.id) !== String(movie.id)) {
-      if (bookingState.selectedSeats.length > 0 || bookingState.selectedShowtime) {
+      if (
+        bookingState.selectedSeats.length > 0 ||
+        bookingState.selectedShowtime
+      ) {
         bookingState.resetBookingSession();
       }
     }
@@ -268,10 +266,8 @@ export default function AdminWalkupBookingPage() {
   const handleCloseSheet = () => {
     setIsSheetOpen(false);
     updateUrl({ sheetOpen: undefined, showtimeId: undefined });
-    // setTimeout(() => setSelectedMovie(null), 300);
   };
 
-  // ====== UI ======
   return (
     <div className="max-w-7xl mx-auto">
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -345,11 +341,14 @@ export default function AdminWalkupBookingPage() {
         bookingState={bookingState}
       />
 
-      {/* Floating Indicator (Page Level) */}
       {!isSheetOpen && bookingState.selectedShowtime && (
         <FloatingIndicator
           count={bookingState.totalQty}
-          movieName={bookingState.selectedShowtime.roomName ? `${selectedMovie?.title} - ${bookingState.selectedShowtime.roomName}` : selectedMovie?.title}
+          movieName={
+            bookingState.selectedShowtime.roomName
+              ? `${selectedMovie?.title} - ${bookingState.selectedShowtime.roomName}`
+              : selectedMovie?.title
+          }
           formattedTime={bookingState.formattedTime}
           onReopen={() => setIsSheetOpen(true)}
         />
