@@ -11,15 +11,12 @@ import {
   PaginationMeta,
 } from "@/services";
 
-// Constants
 const LIMIT = 7;
 const SEARCH_LIMIT = 7;
 
 export function useMovieLogic() {
   const router = useRouter();
 
-  // ------------ State ------------
-  // Dialogs
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
 
   const [dialogTitle, setDialogTitle] = useState("");
@@ -27,24 +24,20 @@ export function useMovieLogic() {
   const [onConfirm, setOnConfirm] = useState<() => void>(() => () => { });
   const [globalLoading, setGlobalLoading] = useState(false);
 
-  // Data & Paging
   const [rows, setRows] = useState<Movie[]>([]);
   const [allGenres, setAllGenres] = useState<Genre[]>([]);
 
-  // Server-side Paging
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [hasPrev, setHasPrev] = useState(false);
   const [hasNext, setHasNext] = useState(false);
   const [loadingPage, setLoadingPage] = useState(false);
 
-  // Client-side Search Paging
   const [searchPage, setSearchPage] = useState(1);
   const [searchTotalPages, setSearchTotalPages] = useState(1);
   const [searchAll, setSearchAll] = useState<Movie[]>([]);
   const [loadingSearch, setLoadingSearch] = useState(false);
 
-  // Filters
   const [q, setQ] = useState("");
   const [qDebounced, setQDebounced] = useState("");
   const [genreIds, setGenreIds] = useState<string[]>([]);
@@ -54,7 +47,6 @@ export function useMovieLogic() {
   >("__ALL__");
   const [reloadTick, setReloadTick] = useState(0);
 
-  // Derived State
   const hasAnyFilter =
     qDebounced.length > 0 ||
     genreIds.length > 0 ||
@@ -69,14 +61,12 @@ export function useMovieLogic() {
     ratingFrom !== null ||
     status !== "__ALL__";
 
-  // ------------ Cache Refs ------------
   const pageCache = useRef(new Map<number, Movie[]>());
   const metaRef = useRef<PaginationMeta | null>(null);
   const inFlight = useRef(
     new Map<number, Promise<{ data: Movie[]; meta: PaginationMeta }>>()
   );
 
-  // ------------ Helpers ------------
   function clearCache() {
     pageCache.current.clear();
     metaRef.current = null;
@@ -92,7 +82,6 @@ export function useMovieLogic() {
 
   const fetchPageCached = useCallback(
     async (p: number) => {
-      // 1) cache hit
       const hit = pageCache.current.get(p);
       if (hit) {
         const meta = metaRef.current ?? {
@@ -103,11 +92,9 @@ export function useMovieLogic() {
         return { data: hit, meta };
       }
 
-      // 2) in-flight dedup
       const inflight = inFlight.current.get(p);
       if (inflight) return inflight;
 
-      // 3) fetch real
       const req = (async () => {
         const { data, pagination } = await fetchPage(p);
         const meta: PaginationMeta = {
@@ -133,9 +120,6 @@ export function useMovieLogic() {
     [fetchPage]
   );
 
-  // ------------ Effects ------------
-
-  // 1. Debounce Search
   useEffect(() => {
     const t = setTimeout(() => {
       setQDebounced(q.trim());
@@ -145,7 +129,6 @@ export function useMovieLogic() {
     return () => clearTimeout(t);
   }, [q, genreIds, ratingFrom, status]);
 
-  // 2. Fetch Page (Server Mode)
   useEffect(() => {
     if (isSearchMode) return;
     let cancelled = false;
@@ -176,7 +159,6 @@ export function useMovieLogic() {
     };
   }, [page, isSearchMode, fetchPageCached, reloadTick]);
 
-  // 3. Fetch All & Filter (Search Mode)
   useEffect(() => {
     if (!isSearchMode) return;
     let cancelled = false;
@@ -238,14 +220,12 @@ export function useMovieLogic() {
     reloadTick,
   ]);
 
-  // 4. Client Pagination for Search results
   useEffect(() => {
     if (!isSearchMode) return;
     const start = (searchPage - 1) * SEARCH_LIMIT;
     setRows(searchAll.slice(start, start + SEARCH_LIMIT));
   }, [isSearchMode, searchPage, searchAll]);
 
-  // 5. Fetch Genres
   useEffect(() => {
     (async () => {
       try {
@@ -256,8 +236,6 @@ export function useMovieLogic() {
       }
     })();
   }, []);
-
-  // ------------ Actions ------------
 
   const reloadCurrent = async () => {
     setReloadTick((x) => x + 1);
@@ -280,15 +258,12 @@ export function useMovieLogic() {
     setSearchPage(1);
   };
 
-  // Navigation
   const handleAddNavigate = () => router.push("/admin/movies/new");
   const handleViewNavigate = (m: Movie) => router.push(`/admin/movies/${m.id}`);
   const handleEditNavigate = (m: Movie) =>
     router.push(`/admin/movies/${m.id}/edit`);
 
-  // Optimistic UI Patch
   const applyMoviePatch = (id: Movie["id"], patch: Partial<Movie>) => {
-    // Update cache
     for (const [k, arr] of pageCache.current.entries()) {
       const idx = arr.findIndex((x) => x.id === id);
       if (idx !== -1) {
@@ -297,16 +272,13 @@ export function useMovieLogic() {
         pageCache.current.set(k, next);
       }
     }
-    // Update current rows
     setRows((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)));
-    // Update search list
     setSearchAll((prev) => {
       if (!isSearchMode || !prev?.length) return prev;
       return prev.map((x) => (x.id === id ? { ...x, ...patch } : x));
     });
   };
 
-  // Dialog Helper
   const openConfirm = (
     title: string,
     message: React.ReactNode,
@@ -318,7 +290,6 @@ export function useMovieLogic() {
     setIsConfirmDialogOpen(true);
   };
 
-  // CRUD Actions
   const handleDelete = (m: Movie) => {
     openConfirm(
       "Xác nhận lưu trữ",
@@ -355,7 +326,6 @@ export function useMovieLogic() {
     );
   };
 
-  // Bulk Actions
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkStatus, setBulkStatus] = useState<string>("");
   const selectionMode = selectedIds.size > 0;
@@ -416,7 +386,6 @@ export function useMovieLogic() {
   };
 
   return {
-    // Data & Loading
     rows,
     allGenres,
     loadingPage,
@@ -425,7 +394,6 @@ export function useMovieLogic() {
     isSearchMode,
     canClearFilters,
 
-    // Paging
     page,
     setPage,
     totalPages,
@@ -435,7 +403,6 @@ export function useMovieLogic() {
     setSearchPage,
     searchTotalPages,
 
-    // Filters
     q,
     setQ,
     genreIds,
@@ -446,7 +413,6 @@ export function useMovieLogic() {
     setStatus,
     clearFilters,
 
-    // Actions
     handleRefresh,
     handleAddNavigate,
     handleViewNavigate,
@@ -454,7 +420,6 @@ export function useMovieLogic() {
     handleDelete,
     handleRestore,
 
-    // Selection & Bulk
     selectedIds,
     selectionMode,
     bulkStatus,
@@ -464,7 +429,6 @@ export function useMovieLogic() {
     clearSelection,
     handleBulkUpdate,
 
-    // Dialogs
     isConfirmDialogOpen,
     setIsConfirmDialogOpen,
 

@@ -43,39 +43,32 @@ export function useRoomLogic(initialCinemaId?: string) {
   const { user } = useAuth();
   const isManager = user?.role === "MANAGER";
 
-  // --- CINEMA SELECT (bắt buộc theo rạp) ---
   const [cinemaOptions, setCinemaOptions] = useState<CinemaOption[]>([]);
-  // Use user.cinemaId if manager, otherwise fall back to initial or let logic decide
   const [cinemaId, setCinemaId] = useState<string>(
     (isManager ? user?.cinemaId : initialCinemaId) ?? ""
   );
   const [cinemaSearch, setCinemaSearch] = useState<string>("");
   const [cinemaSearchInput, setCinemaSearchInput] = useState("");
 
-  // --- SERVER DATA + PAGING ---
   const [rooms, setRooms] = useState<Room[]>([]);
   const [pagination, setPagination] = useState<PaginationMeta | null>(null);
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
 
-  // --- FILTERS (client) ---
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [status, setStatus] = useState<"__ALL__" | "active" | "inactive">(
     "__ALL__"
   );
 
-  // --- UI STATES ---
   const [loading, setLoading] = useState(false);
   const [reloadTick, setReloadTick] = useState(0);
 
-  // --- MODALS ---
-  const [open, setOpen] = useState(false); // Modal Create/Edit Room
-  const [openLayout, setOpenLayout] = useState(false); // Modal Layout
-  const [openRoom, setOpenRoom] = useState<Room | null>(null); // Room đang xem layout
-  const [editRoom, setEditRoom] = useState<Room | null>(null); // Room đang edit
+  const [open, setOpen] = useState(false);
+  const [openLayout, setOpenLayout] = useState(false);
+  const [openRoom, setOpenRoom] = useState<Room | null>(null);
+  const [editRoom, setEditRoom] = useState<Room | null>(null);
 
-  // --- DIALOGS ---
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
   const [dialogTitle, setDialogTitle] = useState("");
@@ -84,7 +77,6 @@ export function useRoomLogic(initialCinemaId?: string) {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // ==================== LOAD DANH SÁCH RẠP ====================
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -93,9 +85,6 @@ export function useRoomLogic(initialCinemaId?: string) {
         const data = (res.data ?? []) as Cinema[];
 
         if (cancelled) return;
-
-        // If Manager, options should ideally be only their cinema, or just visual.
-        // But logic below enforces selection.
 
         const opts: CinemaOption[] = data.map((c) => ({
           id: String(c.id),
@@ -136,21 +125,17 @@ export function useRoomLogic(initialCinemaId?: string) {
     [cinemaOptions, cinemaSearch]
   );
 
-  // ==================== DEBOUNCE SEARCH TÊN PHÒNG ====================
   useEffect(() => {
     const t = setTimeout(() => setSearch(searchInput), 400);
     return () => clearTimeout(t);
   }, [searchInput]);
 
-  // reset page khi search thay đổi
   useEffect(() => {
     setPage(1);
   }, [search]);
 
-  // ==================== FETCH ROOMS THEO RẠP + SEARCH ====================
   const fetchRooms = useCallback(
     async (toPage = page) => {
-      // chưa chọn rạp => clear list & bỏ qua
       if (!cinemaId) {
         setRooms([]);
         setPagination(null);
@@ -188,7 +173,6 @@ export function useRoomLogic(initialCinemaId?: string) {
     fetchRooms();
   }, [fetchRooms, reloadTick]);
 
-  // ==================== FILTER CLIENT-SIDE (STATUS) ====================
   const displayRows = useMemo(() => {
     if (status === "__ALL__") return rooms;
     return rooms.filter((r) =>
@@ -196,14 +180,11 @@ export function useRoomLogic(initialCinemaId?: string) {
     );
   }, [rooms, status]);
 
-  // nút "Xóa lọc" có thể active không (để tô đỏ)
   const canClearFilters = useMemo(() => {
     const hasSearch = search.trim().length > 0;
     const hasStatusFilter = status !== "__ALL__";
     return hasSearch || hasStatusFilter;
   }, [search, status]);
-
-  // ===================== HANDLERS =====================
 
   const handleRefresh = () => setReloadTick((x) => x + 1);
 
@@ -212,7 +193,6 @@ export function useRoomLogic(initialCinemaId?: string) {
     setSearch("");
     setStatus("__ALL__");
     setPage(1);
-    // KHÔNG reset cinemaId, vì luôn phải thuộc 1 rạp cụ thể
   };
 
   const handleViewLayoutOpen = (r: Room) => {
@@ -238,7 +218,6 @@ export function useRoomLogic(initialCinemaId?: string) {
     }
   };
 
-  // Dialog helper
   const openConfirm = (
     title: string,
     message: React.ReactNode,
@@ -298,11 +277,9 @@ export function useRoomLogic(initialCinemaId?: string) {
     );
   };
 
-  // Submit form Room (tạo / cập nhật)
   const handleSubmitRoom = (formData: RoomFormData) => {
     const isCreate = !editRoom;
 
-    // phải có cinemaId, vì phòng luôn thuộc 1 rạp
     if (!cinemaId) {
       setDialogTitle("Thiếu thông tin rạp");
       setDialogMessage("Vui lòng chọn rạp trước khi lưu phòng.");
@@ -371,7 +348,6 @@ export function useRoomLogic(initialCinemaId?: string) {
   };
 
   return {
-    // dữ liệu
     rooms,
     displayRows,
     pagination,
@@ -379,7 +355,6 @@ export function useRoomLogic(initialCinemaId?: string) {
     page,
     setPage,
 
-    // rạp
     cinemaOptions,
     filteredCinemaOptions,
     cinemaId,
@@ -389,7 +364,6 @@ export function useRoomLogic(initialCinemaId?: string) {
     cinemaSearchInput,
     setCinemaSearchInput,
 
-    // filters
     searchInput,
     setSearchInput,
     status,
@@ -397,7 +371,6 @@ export function useRoomLogic(initialCinemaId?: string) {
     clearFilters,
     canClearFilters,
 
-    // modal state
     open,
     setOpen,
     openLayout,
@@ -405,7 +378,6 @@ export function useRoomLogic(initialCinemaId?: string) {
     openRoom,
     editRoom,
 
-    // dialogs state
     isConfirmDialogOpen,
     setIsConfirmDialogOpen,
     isErrorDialogOpen,
@@ -414,7 +386,6 @@ export function useRoomLogic(initialCinemaId?: string) {
     dialogMessage,
     onConfirm,
 
-    // handlers
     fetchRooms,
     handleRefresh,
     handleViewLayoutOpen,
@@ -424,11 +395,9 @@ export function useRoomLogic(initialCinemaId?: string) {
     handleRestore,
     handleModalSuccess,
 
-    // submit
     isSubmitting,
     handleSubmitRoom,
 
-    // Auth info
     isManager,
   };
 }

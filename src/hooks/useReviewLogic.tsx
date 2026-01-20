@@ -1,4 +1,3 @@
-// hooks/useReviewLogic.ts
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
@@ -36,7 +35,6 @@ export function useReviewLogic() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
 
-  // dialogs
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
 
@@ -44,7 +42,6 @@ export function useReviewLogic() {
   const [dialogMessage, setDialogMessage] = useState<React.ReactNode>("");
   const [onConfirm, setOnConfirm] = useState<() => void>(() => () => { });
 
-  // ==== FETCH MOVIES ====
   const fetchMovies = useCallback(async () => {
     try {
       const res = await movieService.getAllMovies({
@@ -54,7 +51,6 @@ export function useReviewLogic() {
       const list = res.data ?? [];
       setMovies(list);
 
-      // nếu chưa có movieId thì auto set phim đầu
       if (list.length > 0 && !filters.movieId) {
         setFilters((prev) => ({
           ...prev,
@@ -67,7 +63,6 @@ export function useReviewLogic() {
     }
   }, [filters.movieId]);
 
-  // ==== FETCH REVIEWS ====
   const fetchReviews = useCallback(
     async (toPage: number) => {
       if (!filters.movieId) {
@@ -120,12 +115,10 @@ export function useReviewLogic() {
     ]
   );
 
-  // initial load movies
   useEffect(() => {
     fetchMovies();
   }, [fetchMovies]);
 
-  // load reviews khi page / filters đổi
   useEffect(() => {
     fetchReviews(page);
   }, [
@@ -138,7 +131,6 @@ export function useReviewLogic() {
     fetchReviews,
   ]);
 
-  // reset page về 1 khi filter đổi
   useEffect(() => {
     setPage(1);
   }, [
@@ -161,7 +153,6 @@ export function useReviewLogic() {
     setReplyingReview(review);
   };
 
-  // Hàm đóng modal reply
   const handleReplyClose = () => {
     setReplyingReview(null);
     setIsSubmittingReply(false);
@@ -169,7 +160,7 @@ export function useReviewLogic() {
 
   const clearFilters = () => {
     setFilters((prev) => ({
-      movieId: prev.movieId, // giữ phim
+      movieId: prev.movieId,
       rating: undefined,
       status: undefined,
       type: undefined,
@@ -183,7 +174,6 @@ export function useReviewLogic() {
     filters.type !== undefined ||
     filters.isActive !== undefined;
 
-  // ===== Confirm dialog helpers =====
   const openConfirm = (
     title: string,
     message: React.ReactNode,
@@ -241,25 +231,22 @@ export function useReviewLogic() {
         content,
       });
 
-      // Cập nhật lại list review local để hiển thị trạng thái mới nếu cần
-      // (Tuỳ vào BE trả về gì, ở đây giả sử cập nhật lại row đó)
       setReviews((prev) =>
         prev.map((r) => (r.id === reviewId ? updatedReview : r))
       );
 
       toast.success("Đã gửi phản hồi thành công.");
-      handleReplyClose(); // Đóng modal sau khi thành công
+      handleReplyClose();
     } catch {
       setDialogTitle("Lỗi");
       setDialogMessage("Không thể gửi phản hồi.");
-      setIsErrorDialogOpen?.(true); // Nếu bạn có dialog error
+      setIsErrorDialogOpen?.(true);
     } finally {
       setIsSubmittingReply(false);
     }
   };
 
   return {
-    // data
     reviews,
     movies,
     filters,
@@ -269,19 +256,16 @@ export function useReviewLogic() {
     setViewingReview,
     replyingReview,
 
-    // pagination
     page,
     setPage,
     pagination,
     totalPages,
     totalItems,
 
-    // filter helpers
     clearFilters,
     canClearFilters,
     handleRefresh,
 
-    // actions
     handleHide,
     handleUnhide,
     handleView,
@@ -290,7 +274,6 @@ export function useReviewLogic() {
     handleSubmitReply,
     isSubmittingReply,
 
-    // dialogs
     isConfirmDialogOpen,
     setIsConfirmDialogOpen,
 

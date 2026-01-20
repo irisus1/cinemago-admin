@@ -16,7 +16,6 @@ import {
 
 import { useAuth } from "@/context/AuthContext";
 
-// ===== Helpers (Logic thuần túy) =====
 const pad = (n: number) => String(n).padStart(2, "0");
 
 const toIsoUtcFromLocal = (d: string, t: string) => {
@@ -60,18 +59,16 @@ export function useShowtimeFormLogic({
   const [rooms, setRooms] = useState<Room[]>([]);
   const [duration, setDuration] = useState<number | null>(null);
 
-  const [movies, setMovies] = useState<Movie[]>([]); // List phim để chọn
+  const [movies, setMovies] = useState<Movie[]>([]);
   const [selectedMovieId, setSelectedMovieId] = useState<string>(
     isPreSelected ? movieId : ""
   );
 
-  // --- Form State ---
   const [cinemaId, setCinemaId] = useState("");
   const [roomId, setRoomId] = useState("");
   const [price, setPrice] = useState<string>("");
   const [startDate, setStartDate] = useState("");
 
-  // Time slots (cho phép tạo nhiều suất 1 lúc)
   const [timeSlots, setTimeSlots] = useState<string[]>([""]);
   const [timeSlotErrors, setTimeSlotErrors] = useState<string[]>([""]);
 
@@ -90,14 +87,13 @@ export function useShowtimeFormLogic({
 
   const handleCinemaChange = (newCinemaId: string) => {
     setCinemaId(newCinemaId);
-    setRoomId(""); // Chỉ reset phòng khi người dùng TỰ TAY đổi rạp
-    setRooms([]); // Clear tạm danh sách phòng cũ
+    setRoomId("");
+    setRooms([]);
   };
 
   useEffect(() => {
     if (!open) return;
 
-    // Reset basics
     setCinemas([]);
     setMovies([]);
 
@@ -118,7 +114,6 @@ export function useShowtimeFormLogic({
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           setCinemas([{ id: user.cinemaId, name: (user as any).cinemaName || "Rạp hiện tại" } as any]);
         } else {
-          // Chạy song song 2 API lấy list
           const [cinemaRes, moviesRes] = await Promise.all([
             cinemaService.getAllCinemas(),
             movieService.getAllMovies(),
@@ -130,7 +125,6 @@ export function useShowtimeFormLogic({
 
         setMovies(loadedMovies);
 
-        // Logic tự động set Duration nếu đã có movie được chọn từ trước (từ props)
         if (isPreSelected) {
           const found = loadedMovies.find((m) => m.id === movieId);
           if (found) {
@@ -146,27 +140,6 @@ export function useShowtimeFormLogic({
 
     fetchData();
   }, [open, movieId, isPreSelected]);
-  // useEffect(() => {
-  //   if (!open) return;
-
-  //   // Reset cinemas & rooms state để tránh flash dữ liệu cũ
-  //   setCinemas([]);
-
-  //   (async () => {
-  //     try {
-  //       // Chạy song song để nhanh hơn
-  //       const [movieRes, cinemaRes] = await Promise.all([
-  //         movieId ? movieService.getMovieById(movieId) : null,
-  //         cinemaService.getAllCinemas(),
-  //       ]);
-
-  //       if (movieRes) setDuration(movieRes.duration ?? null);
-  //       setCinemas(cinemaRes.data ?? []);
-  //     } catch {
-  //       toast.error("Lỗi tải dữ liệu ban đầu (Rạp/Phim)");
-  //     }
-  //   })();
-  // }, [open, movieId]);
 
   useEffect(() => {
     if (!open || !cinemaId) {
@@ -235,8 +208,6 @@ export function useShowtimeFormLogic({
       setSubtitle(false);
     }
   }, [open, mode, showtime]);
-
-  // --- Logic Helpers ---
 
   const getEndFor = (time: string) => {
     if (!startDate || !time || duration == null) return null;
@@ -389,7 +360,6 @@ export function useShowtimeFormLogic({
     return errors;
   };
 
-  // --- SUBMIT LOGIC ---
   const handleSubmit = async () => {
     if (!canSubmit || duration == null) return;
 
@@ -422,7 +392,6 @@ export function useShowtimeFormLogic({
 
     if (!slotMetas.length) return;
 
-    // 2. Check Chồng Giờ (Local)
     const errorsInBatch: string[] = Array(timeSlots.length).fill("");
     const sorted = [...slotMetas].sort((a, b) => a.startMs - b.startMs);
     const accepted: typeof slotMetas = [];
@@ -445,26 +414,11 @@ export function useShowtimeFormLogic({
       return;
     }
 
-    // 3. Check Trùng Ca (Database) & Submit
     const errorsBusy: string[] = [...errorsInBatch];
 
     try {
       setLoading(true);
 
-      //Check busy rooms
-      //   for (const slot of slotMetas) {
-      //     const busyRes = await roomService.getBusyRooms(
-      //       slot.startIso,
-      //       slot.endIso
-      //     );
-      //     // Giả sử API trả mảng ID các phòng bận: string[]
-      //     const busyRooms: string[] = busyRes ?? [];
-
-      //     if (busyRooms.includes(roomId)) {
-      //       errorsBusy[slot.originalIndex] =
-      //         "Giờ này trùng với 1 suất chiếu khác trong phòng.";
-      //     }
-      //   }
 
       const errorsBusy = await checkConflictsOnServer(slotMetas, {
         cinemaId,
@@ -527,14 +481,12 @@ export function useShowtimeFormLogic({
   };
 
   return {
-    // State
     loading,
     cinemas,
     rooms,
     movies,
     selectedMovieId,
     setSelectedMovieId,
-    // Form Values
     cinemaId,
     setCinemaId,
     roomId,
@@ -552,10 +504,8 @@ export function useShowtimeFormLogic({
     subtitle,
     setSubtitle,
 
-    // Computed
     canSubmit,
 
-    // Actions
     getEndFor,
     updateTimeSlot,
     addTimeSlot,
@@ -565,7 +515,6 @@ export function useShowtimeFormLogic({
 
     handleCinemaChange,
 
-    // Auth
     isManager,
   };
 }

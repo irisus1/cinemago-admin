@@ -17,7 +17,6 @@ import {
 } from "@/services";
 import { useAuth } from "@/context/AuthContext";
 
-// Định nghĩa các Map
 type UserMap = Record<string, User>;
 type ShowTimeMap = Record<string, ShowTime>;
 type MovieMap = Record<string, Movie>;
@@ -42,31 +41,37 @@ export function useBookingLogic() {
     cinemas: {} as CinemaMap,
   });
 
-  // Pagination states
   const [page, setPage] = useState(1);
   const [limit] = useState(7);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
 
-  // Modal states
   const [detailOpen, setDetailOpen] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
 
-  // Filters
-  const [showtimeFilter, setShowtimeFilter] = useState<"__ALL__" | string>("__ALL__");
-  const [typeFilter, setTypeFilter] = useState<"__ALL__" | "online" | "offline">("__ALL__");
-  const [statusFilter, setStatusFilter] = useState<"__ALL__" | "Chưa thanh toán" | "Đã thanh toán" | "Thanh toán thất bại">("__ALL__");
+  const [showtimeFilter, setShowtimeFilter] = useState<"__ALL__" | string>(
+    "__ALL__",
+  );
+  const [typeFilter, setTypeFilter] = useState<
+    "__ALL__" | "online" | "offline"
+  >("__ALL__");
+  const [statusFilter, setStatusFilter] = useState<
+    "__ALL__" | "Chưa thanh toán" | "Đã thanh toán" | "Thanh toán thất bại"
+  >("__ALL__");
 
-  // New Filter Data States
   const [filterMovies, setFilterMovies] = useState<Movie[]>([]);
   const [filterShowtimes, setFilterShowtimes] = useState<ShowTime[]>([]);
-  const [selectedMovieFilter, setSelectedMovieFilter] = useState<string | null>(null);
+  const [selectedMovieFilter, setSelectedMovieFilter] = useState<string | null>(
+    null,
+  );
 
-  // Fetch available movies for filter
   useEffect(() => {
     const fetchMovies = async () => {
       try {
-        const res = await movieService.getAllMovies({ limit: 100, isActive: true });
+        const res = await movieService.getAllMovies({
+          limit: 100,
+          isActive: true,
+        });
         setFilterMovies(res.data);
       } catch (error) {
         console.error("Failed to fetch filter movies", error);
@@ -75,7 +80,6 @@ export function useBookingLogic() {
     fetchMovies();
   }, []);
 
-  // Fetch showtimes when movie selected
   useEffect(() => {
     if (!selectedMovieFilter) {
       setFilterShowtimes([]);
@@ -84,9 +88,12 @@ export function useBookingLogic() {
     }
     const fetchShowtimes = async () => {
       try {
-        const res = await showTimeService.getShowTimes({ movieId: selectedMovieFilter, limit: 100 });
+        const res = await showTimeService.getShowTimes({
+          movieId: selectedMovieFilter,
+          limit: 100,
+        });
         setFilterShowtimes(res.data);
-        setShowtimeFilter("__ALL__"); // Reset specific showtime when movie changes
+        setShowtimeFilter("__ALL__");
       } catch (error) {
         console.error("Failed to fetch filter showtimes", error);
       }
@@ -121,33 +128,32 @@ export function useBookingLogic() {
       setTotalPages(res.pagination.totalPages);
       setTotalItems(res.pagination.totalItems);
 
-      // ==== Caching users & showtimes ====
       const allUserIdsInPage = Array.from(
         new Set(
-          bookingList.map((b) => b.userId).filter((id): id is string => !!id)
-        )
+          bookingList.map((b) => b.userId).filter((id): id is string => !!id),
+        ),
       );
       const missingUserIds = allUserIdsInPage.filter(
-        (id) => !cache.current.users[id]
+        (id) => !cache.current.users[id],
       );
 
       const allShowTimeIdsInPage = Array.from(
-        new Set(bookingList.map((b) => b.showtimeId))
+        new Set(bookingList.map((b) => b.showtimeId)),
       );
       const missingShowTimeIds = allShowTimeIdsInPage.filter(
-        (id) => !cache.current.showTimes[id]
+        (id) => !cache.current.showTimes[id],
       );
 
       const [newUsers, newShowTimes] = await Promise.all([
         Promise.all(
           missingUserIds.map((id) =>
-            userService.getUserById(id).catch(() => null)
-          )
+            userService.getUserById(id).catch(() => null),
+          ),
         ),
         Promise.all(
           missingShowTimeIds.map((id) =>
-            showTimeService.getShowTimeById(id).catch(() => null)
-          )
+            showTimeService.getShowTimeById(id).catch(() => null),
+          ),
         ),
       ]);
 
@@ -178,18 +184,18 @@ export function useBookingLogic() {
       const [newMovies, newRooms, newCinemas] = await Promise.all([
         Promise.all(
           Array.from(neededMovieIds).map((id) =>
-            movieService.getMovieById(id).catch(() => null)
-          )
+            movieService.getMovieById(id).catch(() => null),
+          ),
         ),
         Promise.all(
           Array.from(neededRoomIds).map((id) =>
-            roomService.getRoomById(id).catch(() => null)
-          )
+            roomService.getRoomById(id).catch(() => null),
+          ),
         ),
         Promise.all(
           Array.from(neededCinemaIds).map((id) =>
-            cinemaService.getCinemaById(id).catch(() => null)
-          )
+            cinemaService.getCinemaById(id).catch(() => null),
+          ),
         ),
       ]);
 
@@ -215,7 +221,15 @@ export function useBookingLogic() {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, showtimeFilter, typeFilter, statusFilter, user?.role, user?.cinemaId]);
+  }, [
+    page,
+    limit,
+    showtimeFilter,
+    typeFilter,
+    statusFilter,
+    user?.role,
+    user?.cinemaId,
+  ]);
 
   useEffect(() => {
     setPage(1);
@@ -225,7 +239,6 @@ export function useBookingLogic() {
     fetchBookings();
   }, [fetchBookings]);
 
-  // Pagination Object
   const pagination = {
     currentPage: page,
     totalPages: totalPages,
@@ -257,7 +270,6 @@ export function useBookingLogic() {
     totalPages,
     totalItems,
 
-    // filters
     showtimeFilter,
     setShowtimeFilter,
     typeFilter,
@@ -266,7 +278,6 @@ export function useBookingLogic() {
     statusFilter,
     setStatusFilter,
 
-    // Two-step filters
     filterMovies,
     filterShowtimes,
     selectedMovieFilter,

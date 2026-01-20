@@ -4,7 +4,6 @@ export type PageResp<T> = {
   pagination?: PaginationMeta;
 };
 
-// Dạng data tối thiểu để map ID -> Name
 export type HasIdName = {
   id: string;
   name: string;
@@ -13,7 +12,7 @@ export type HasIdName = {
 export async function fetchNamesFromPaginated(
   ids: Set<string>,
   fetchPage: (page: number, limit: number) => Promise<PageResp<HasIdName>>,
-  limit = 10
+  limit = 10,
 ): Promise<Map<string, string>> {
   const result = new Map<string, string>();
 
@@ -33,14 +32,12 @@ export async function fetchNamesFromPaginated(
       }
     }
 
-    // nếu đã tìm đủ tất cả ID rồi thì dừng
     if (result.size === ids.size) break;
 
     if (pagination?.totalPages != null) {
       totalPages = pagination.totalPages;
     }
 
-    // không có totalPages mà ít hơn limit => hết dữ liệu
     if (!pagination?.totalPages && items.length < limit) {
       break;
     }
@@ -57,7 +54,7 @@ export async function fetchNamesFromPaginated(
 
 export async function fetchAllPaginated<T>(
   fetchPage: (page: number, limit: number) => Promise<PageResp<T>>,
-  limit = 10
+  limit = 10,
 ): Promise<T[]> {
   const all: T[] = [];
   let page = 1;
@@ -71,7 +68,6 @@ export async function fetchAllPaginated<T>(
     if (pagination?.totalPages != null) {
       totalPages = pagination.totalPages;
     } else if (items.length < limit) {
-      // không có totalPages, mà ít hơn limit => hết
       break;
     }
 
@@ -82,13 +78,12 @@ export async function fetchAllPaginated<T>(
   return all;
 }
 
-// cache in-memory: key -> list<T>
 const listCache = new Map<string, unknown[]>();
 
 export async function fetchAllPaginatedCached<T>(
   cacheKey: string,
   fetchPage: (page: number, limit: number) => Promise<PageResp<T>>,
-  limit = 10
+  limit = 10,
 ): Promise<T[]> {
   const cached = listCache.get(cacheKey);
   if (cached) {

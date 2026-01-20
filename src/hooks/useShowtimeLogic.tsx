@@ -99,12 +99,10 @@ export function useShowtimeLogic() {
   useEffect(() => {
     (async () => {
       try {
-        // Init logic for Manager
         if (isManager && user?.cinemaId) {
           setCinemaId(user.cinemaId);
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           setCinemaOptions([{ id: user.cinemaId, name: (user as any).cinemaName || "Rạp hiện tại" }]);
-          // Fetch only movies
           const movies = await fetchAllPaginatedCached<Movie>("all-movies", (page, limit) =>
             movieService.getAllMovies({ page, limit }).then((res) => ({
               data: res.data ?? [],
@@ -154,7 +152,6 @@ export function useShowtimeLogic() {
 
 
 
-  // === FETCH SHOWTIME THEO FILTER + PAGINATION ===
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -268,15 +265,12 @@ export function useShowtimeLogic() {
   const filteredShowtimes = useMemo(() => {
     let result = showtimes;
 
-    // Filter by Language
     if (filterLang) {
       result = result.filter(
         (s) => ((s.language && s.language.trim()) || "Unknown") === filterLang
       );
     }
 
-    // Filter by Status (Client-side refinement for Showing/Ended)
-    // Note: 'stopped' is handled by API (isActive=false)
     if (statusFilter === "showing") {
       const now = Date.now();
       result = result.filter((s) => new Date(s.endTime).getTime() > now);
@@ -413,21 +407,17 @@ export function useShowtimeLogic() {
 
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
 
-  // === RETURN ===
   return {
-    // data
     showtimes,
     filteredShowtimes,
     loadingShow,
 
-    // pagination
     page,
     setPage,
     pageSize,
     totalItems,
     totalPages,
 
-    // movie / cinema dropdown
     movieOptions,
     cinemaOptions,
     movieId,
@@ -435,7 +425,6 @@ export function useShowtimeLogic() {
     cinemaId,
     setCinemaId,
 
-    // filters
     statusFilter,
     setStatusFilter,
     startTime,
@@ -446,19 +435,15 @@ export function useShowtimeLogic() {
     filterLang,
     setFilterLang,
 
-    // actions
     handleRefresh,
     handleAddOpen,
     handleEditOpen,
     handleDelete,
     handleRestore,
 
-    // filter
-
     canClearFilters,
     clearFilters,
 
-    // modal states
     open,
     setOpen,
     editShowtime,
@@ -471,7 +456,6 @@ export function useShowtimeLogic() {
     dialogMessage,
     onConfirm,
 
-    // Auth
     isManager,
     user,
   };

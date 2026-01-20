@@ -11,7 +11,6 @@ import { authService, userService, type User } from "@/services";
 import api from "@/config/api";
 import { toast } from "sonner";
 
-// ======================== TYPES ========================
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
@@ -24,11 +23,10 @@ interface AuthContextType {
   resetPassword: (
     email: string,
     otp: string,
-    newPassword: string
+    newPassword: string,
   ) => Promise<void>;
 }
 
-// ======================== CONTEXT ========================
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const useAuth = (): AuthContextType => {
@@ -37,13 +35,11 @@ export const useAuth = (): AuthContextType => {
   return ctx;
 };
 
-// ======================== PROVIDER ========================
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  // ===== INIT AUTH STATE =====
   useEffect(() => {
     if (
       typeof window !== "undefined" &&
@@ -55,28 +51,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const initAuth = async () => {
       try {
-        // 1. Kiểm tra xem có Access Token trong LocalStorage không
         const token = authService.getToken();
 
-        // 2. Logic kiểm tra và khôi phục
         if (token) {
-          // Trường hợp A: Token còn hạn -> Lấy user profile
           if (!authService.isTokenExpired()) {
             await fetchProfile();
-          }
-          // Trường hợp B: Token hết hạn -> Thử Refresh bằng cookie
-          else {
+          } else {
             console.log("Token expired on init, attempting refresh...");
             await tryRefreshAndFetchProfile();
           }
         } else {
-          // Trường hợp C: Không có Access Token -> Vẫn thử Refresh (phòng trường hợp localStorage bị xóa nhưng cookie còn)
           console.log("No token found, checking refresh cookie...");
           await tryRefreshAndFetchProfile();
         }
       } catch (error) {
         console.error("Auth init failed:", error);
-        // Chỉ logout nếu thực sự không thể khôi phục phiên
         authService.clearLocalAuth();
         setUser(null);
       } finally {
@@ -88,7 +77,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const fetchProfile = async () => {
-    // Lấy tạm user từ localStorage để hiển thị ngay cho đỡ giật
     const storedUser = authService.getStoredUser();
     if (storedUser) setUser(storedUser);
 
@@ -99,18 +87,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (e) {
       console.warn(
         "Fetch profile failed (server might be down or token invalid)",
-        e
+        e,
       );
-      throw e; // Ném lỗi để catch bên trên xử lý
+      throw e;
     }
   };
 
-  // Hàm phụ: Refresh token + Lấy user
   const tryRefreshAndFetchProfile = async () => {
     try {
-      // Gọi service refresh (nó sẽ tự lấy cookie refreshToken để gửi đi)
       await authService.refreshAccessToken();
-      // Nếu refresh thành công, gọi api lấy profile
       await fetchProfile();
     } catch (e) {
       console.warn("Refresh failed on init. Session really expired.");
@@ -118,7 +103,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // ===== AUTO REFRESH TOKEN =====
   useEffect(() => {
     if (isLoading) return;
     const checkAndRefresh = async () => {
@@ -127,7 +111,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const hasToken = !!authService.getToken();
       if (!hasToken) return;
 
-      //Nếu token hết hạn
       if (authService.isTokenExpired()) {
         try {
           await authService.refreshAccessToken();
@@ -137,9 +120,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           console.warn("Token refresh failed:", error);
           await logout();
         }
-      }
-      // Nếu token sắp hết hạn
-      else if (authService.isTokenExpiringSoon(1)) {
+      } else if (authService.isTokenExpiringSoon(1)) {
         try {
           await authService.refreshAccessToken();
           console.log("Token refreshed proactively");
@@ -150,11 +131,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     // checkAndRefresh();
-    const interval = setInterval(checkAndRefresh, 60000); // check mỗi phút
+    const interval = setInterval(checkAndRefresh, 60000);
     return () => clearInterval(interval);
   }, [isLoading]);
 
-  // ===== LOGIN =====
   const login = async (email: string, password: string) => {
     try {
       const res = await authService.login(email, password);
@@ -168,7 +148,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // ===== LOGOUT =====
   const logout = async () => {
     setIsLoggingOut(true);
     try {
@@ -182,7 +161,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // ===== REFRESH USER INFO =====
   const refreshUser = async () => {
     try {
       const res = await userService.getMe();
@@ -195,7 +173,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // ===== FORGOT PASSWORD =====
   const forgotPassword = async (email: string) => {
     try {
       await api.post("/auth/forgot-password", { email });
@@ -206,11 +183,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // ===== RESET PASSWORD =====
   const resetPassword = async (
     email: string,
     otp: string,
-    newPassword: string
+    newPassword: string,
   ) => {
     try {
       await api.post("/auth/reset-password", { email, otp, newPassword });
@@ -221,7 +197,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // ===== CONTEXT VALUE =====
   const value: AuthContextType = {
     user,
     isAuthenticated: !!user,
