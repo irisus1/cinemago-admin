@@ -1,4 +1,3 @@
-// components/modal/ReplyReviewModal.tsx
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -79,7 +78,7 @@ export default function ReplyReviewModal({
       return [];
     }
     return review.response.filter(
-      (r: ResponseItem) => r.userId === currentUserId
+      (r: ResponseItem) => r.userId === currentUserId,
     );
   }, [review, currentUserId]);
 
@@ -135,7 +134,7 @@ export default function ReplyReviewModal({
               {myReplies.map((reply: ResponseItem, index: number) => (
                 <div
                   key={index}
-                  className="rounded-lg bg-blue-50 p-3 border border-blue-100" // Đổi màu xanh nhẹ để nhận biết là của mình
+                  className="rounded-lg bg-blue-50 p-3 border border-blue-100"
                 >
                   <div className="text-sm text-gray-800 mb-1">
                     {reply.content}
@@ -150,7 +149,6 @@ export default function ReplyReviewModal({
           </div>
         )}
 
-        {/* Form trả lời */}
         <div className="space-y-2">
           <label className="text-sm font-semibold text-gray-900">
             Phản hồi của bạn

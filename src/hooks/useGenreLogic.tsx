@@ -10,7 +10,6 @@ type GenreFormPayload = {
 };
 
 export function useGenreLogic() {
-  // --- STATE ---
   const [genres, setGenres] = useState<Genre[]>([]);
   const [queryName, setQueryName] = useState("");
   const [genre, setGenre] = useState("");
@@ -23,19 +22,16 @@ export function useGenreLogic() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
 
-  // Modal states
   const [open, setOpen] = useState(false);
   const [editGenre, setEditGenre] = useState<Genre | null>(null);
 
-  // Confirm/Success Dialog states
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
 
   const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
   const [dialogTitle, setDialogTitle] = useState("");
   const [dialogMessage, setDialogMessage] = useState<React.ReactNode>("");
-  const [onConfirm, setOnConfirm] = useState<() => void>(() => () => { });
+  const [onConfirm, setOnConfirm] = useState<() => void>(() => () => {});
 
-  // --- DATA FETCHING ---
   const fetchGenres = useCallback(
     async (toPage = page) => {
       try {
@@ -63,26 +59,22 @@ export function useGenreLogic() {
         setLoading(false);
       }
     },
-    [page, pageSize, queryName]
+    [page, pageSize, queryName],
   );
 
-  // --- EFFECTS ---
   useEffect(() => {
     fetchGenres();
   }, [page, queryName, fetchGenres]);
 
-  // Reset về trang 1 khi search thay đổi
   useEffect(() => {
     setPage(1);
   }, [queryName]);
 
-  // Debounce search input
   useEffect(() => {
     const t = setTimeout(() => setQueryName(genre), 300);
     return () => clearTimeout(t);
   }, [genre]);
 
-  // --- HANDLERS ---
   const handleRefresh = async () => {
     setLoading(true);
     await fetchGenres();
@@ -106,11 +98,10 @@ export function useGenreLogic() {
     setOpen(true);
   };
 
-  // Helper mở dialog confirm
   const openConfirm = (
     title: string,
     message: React.ReactNode,
-    action: () => void
+    action: () => void,
   ) => {
     setDialogTitle(title);
     setDialogMessage(message);
@@ -127,9 +118,10 @@ export function useGenreLogic() {
         try {
           await genreService.deleteGenre(g.id);
 
-          // Cập nhật UI ngay lập tức (Optimistic update)
           setGenres((prev) =>
-            prev.map((it) => (it.id === g.id ? { ...it, isActive: false } : it))
+            prev.map((it) =>
+              it.id === g.id ? { ...it, isActive: false } : it,
+            ),
           );
           setDialogTitle("Thành công");
           setDialogTitle("Thành công");
@@ -141,7 +133,7 @@ export function useGenreLogic() {
           setDialogMessage("Xóa thể loại thất bại.");
           setIsErrorDialogOpen(true);
         }
-      }
+      },
     );
   };
 
@@ -154,9 +146,8 @@ export function useGenreLogic() {
         try {
           await genreService.restoreGenre(g.id);
 
-          // Cập nhật UI ngay lập tức
           setGenres((prev) =>
-            prev.map((it) => (it.id === g.id ? { ...it, isActive: true } : it))
+            prev.map((it) => (it.id === g.id ? { ...it, isActive: true } : it)),
           );
           setDialogTitle("Thành công");
           setDialogTitle("Thành công");
@@ -168,14 +159,14 @@ export function useGenreLogic() {
           setDialogMessage("Khôi phục thể loại thất bại.");
           setIsErrorDialogOpen(true);
         }
-      }
+      },
     );
   };
 
   const handleSubmitGenre = (
     data: GenreFormPayload,
     modeForm: "create" | "edit",
-    original?: Genre
+    original?: Genre,
   ) => {
     const isCreate = modeForm === "create";
     const genreName = data.name || original?.name || "";
@@ -211,7 +202,7 @@ export function useGenreLogic() {
           toast.success(
             isCreate
               ? "Đã thêm thể loại mới."
-              : "Đã cập nhật thông tin thể loại."
+              : "Đã cập nhật thông tin thể loại.",
           );
           setEditGenre(null);
           await fetchGenres();
@@ -223,7 +214,7 @@ export function useGenreLogic() {
         } finally {
           setLoading(false);
         }
-      }
+      },
     );
   };
 
@@ -236,10 +227,9 @@ export function useGenreLogic() {
     totalPages,
     totalItems,
     genre,
-    setGenre, // Để bind vào input
+    setGenre,
     canClearFilters,
 
-    // Modal states
     open,
     setOpen,
     editGenre,
@@ -251,7 +241,6 @@ export function useGenreLogic() {
     dialogMessage,
     onConfirm,
 
-    // Actions
     handleRefresh,
     clearFilters,
     handleAddOpen,

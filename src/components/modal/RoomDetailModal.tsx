@@ -16,9 +16,9 @@ import { roomService, type Room } from "@/services";
 
 type RoomDetailModalProps = {
   open: boolean;
-  room: Room | null; // room từ list (thiếu vipPrice / couplePrice)
+  room: Room | null;
   onClose: () => void;
-  onOpenLayout?: (room: Room) => void; // optional: mở layout builder
+  onOpenLayout?: (room: Room) => void;
 };
 
 export function RoomDetailModal({
@@ -30,7 +30,6 @@ export function RoomDetailModal({
   const [fullRoom, setFullRoom] = useState<Room | null>(room);
   const [loading, setLoading] = useState(false);
 
-  // Khi mở modal + có room => gọi API lấy đủ thông tin
   useEffect(() => {
     if (!open || !room) return;
 
@@ -41,12 +40,11 @@ export function RoomDetailModal({
         setLoading(true);
         const res = await roomService.getRoomById(room.id);
         if (!cancelled) {
-          setFullRoom(res); // res: Room có vipPrice, couplePrice, seatLayout...
+          setFullRoom(res);
         }
       } catch (e) {
         console.error("Failed to load full room detail", e);
         if (!cancelled) {
-          // nếu lỗi thì vẫn xài tạm room truyền vào
           setFullRoom(room);
         }
       } finally {
@@ -61,7 +59,6 @@ export function RoomDetailModal({
 
   if (!room) return null;
 
-  // ưu tiên dùng fullRoom (nếu đã load xong)
   const r = fullRoom ?? room;
 
   const createdText = r.createdAt
@@ -74,7 +71,6 @@ export function RoomDetailModal({
       }).format(new Date(r.createdAt))
     : "—";
 
-  // 2 field bên ngoài: vipPrice & couplePrice
   const hasVip = r.VIP != null && !Number.isNaN(Number(r.VIP));
   const hasCouple = r.COUPLE != null && !Number.isNaN(Number(r.COUPLE));
 
@@ -126,14 +122,13 @@ export function RoomDetailModal({
             </div>
           </div>
 
-          {/* VIP & Ghế đôi */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1">
               <Label>Ghế VIP</Label>
               <p className="text-base text-muted-foreground">
                 {hasVip
                   ? `Phụ thu: ${new Intl.NumberFormat("vi-VN").format(
-                      Number(r.VIP)
+                      Number(r.VIP),
                     )} ₫`
                   : "Hiện không có ghế VIP trong phòng này."}
               </p>
@@ -144,7 +139,7 @@ export function RoomDetailModal({
               <p className="text-base text-muted-foreground">
                 {hasCouple
                   ? `Phụ thu: ${new Intl.NumberFormat("vi-VN").format(
-                      Number(r.COUPLE)
+                      Number(r.COUPLE),
                     )} ₫`
                   : "Hiện không có ghế đôi trong phòng này."}
               </p>

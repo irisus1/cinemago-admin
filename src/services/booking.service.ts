@@ -37,7 +37,6 @@ export interface CreateBookingRequest {
   }[];
 }
 
-/** nếu bạn đã có PaginationMeta & Paginated ở file chung thì import từ đó */
 type PaginationMeta = {
   totalItems: number;
   totalPages: number;
@@ -61,7 +60,7 @@ export type MyBookingParams = {
 type ApiErrorBody = { message?: string };
 const getMsg = (e: unknown, fb: string) =>
   axios.isAxiosError<ApiErrorBody>(e)
-    ? e.response?.data?.message ?? e.message ?? fb
+    ? (e.response?.data?.message ?? e.message ?? fb)
     : fb;
 
 class BookingService {
@@ -71,25 +70,9 @@ class BookingService {
         "/bookings/dashboard/get-all",
         {
           params,
-        }
+        },
       );
-      return data; // { pagination, data }
-    } catch (e: unknown) {
-      const msg = getMsg(e, "Không thể lấy danh sách đơn đặt vé.");
-      console.error("Get bookings error:", e);
-      throw new Error(msg);
-    }
-  }
-  /**
-   * GET /bookings?page&limit
-   * Lấy danh sách booking của user đang login (phân trang)
-   */
-  async getMyBookings(params?: MyBookingParams): Promise<Paginated<Booking>> {
-    try {
-      const { data } = await api.get<Paginated<Booking>>("/bookings", {
-        params,
-      });
-      return data; // { pagination, data }
+      return data;
     } catch (e: unknown) {
       const msg = getMsg(e, "Không thể lấy danh sách đơn đặt vé.");
       console.error("Get bookings error:", e);
@@ -97,10 +80,19 @@ class BookingService {
     }
   }
 
-  /**
-   * GET /bookings/:id
-   * Lấy chi tiết 1 booking
-   */
+  async getMyBookings(params?: MyBookingParams): Promise<Paginated<Booking>> {
+    try {
+      const { data } = await api.get<Paginated<Booking>>("/bookings", {
+        params,
+      });
+      return data;
+    } catch (e: unknown) {
+      const msg = getMsg(e, "Không thể lấy danh sách đơn đặt vé.");
+      console.error("Get bookings error:", e);
+      throw new Error(msg);
+    }
+  }
+
   async getBookingById(id: string): Promise<Booking> {
     try {
       const { data } = await api.get<{ data: Booking }>(`/bookings/${id}`);
@@ -112,15 +104,11 @@ class BookingService {
     }
   }
 
-  /**
-   * POST /bookings
-   * Tạo booking (phải gọi sau khi đã hold seat)
-   */
   async createBooking(payload: CreateBookingRequest): Promise<Booking> {
     try {
       const { data } = await api.post<{ data: Booking; message?: string }>(
         "/bookings",
-        payload
+        payload,
       );
       return data.data;
     } catch (e: unknown) {
@@ -130,14 +118,10 @@ class BookingService {
     }
   }
 
-  /**
-   * GET /bookings/public/:showtimeId/booking-seat
-   * Lấy danh sách ghế đã được đặt trong showtime
-   */
   async getBookedSeats(showtimeId: string): Promise<BookingSeat[]> {
     try {
       const { data } = await api.get<{ data: BookingSeat[] }>(
-        `/bookings/public/${showtimeId}/booking-seat`
+        `/bookings/public/${showtimeId}/booking-seat`,
       );
       return data.data;
     } catch (e: unknown) {
@@ -147,16 +131,19 @@ class BookingService {
     }
   }
 
-  /**
-   * PATCH /bookings/:id/status
-   * Cập nhật trạng thái booking
-   */
-  async updateBookingStatus(id: string, status: string, paymentMethod?: string): Promise<Booking> {
+  async updateBookingStatus(
+    id: string,
+    status: string,
+    paymentMethod?: string,
+  ): Promise<Booking> {
     try {
-      const { data } = await api.put<{ data: Booking }>(`/bookings/update-status/${id}`, {
-        status,
-        paymentMethod,
-      });
+      const { data } = await api.put<{ data: Booking }>(
+        `/bookings/update-status/${id}`,
+        {
+          status,
+          paymentMethod,
+        },
+      );
       return data.data;
     } catch (e: unknown) {
       const msg = getMsg(e, "Không thể cập nhật trạng thái đơn hàng.");

@@ -26,13 +26,12 @@ export interface RegisterRequest {
 type ApiErrorBody = { message?: string; error?: string };
 const getMsg = (e: unknown, fb: string) =>
   axios.isAxiosError<ApiErrorBody>(e)
-    ? e.response?.data?.message ?? e.response?.data?.error ?? e.message ?? fb
+    ? (e.response?.data?.message ?? e.response?.data?.error ?? e.message ?? fb)
     : fb;
 
 type JwtPayloadBase = { exp?: number; iat?: number } & Record<string, unknown>;
 
 class AuthService {
-  // === LOGIN ===
   async login(email: string, password: string): Promise<LoginResponse> {
     try {
       const { data } = await api.post<LoginResponse>("/auth/login", {
@@ -57,14 +56,13 @@ class AuthService {
     }
   }
 
-  // === REGISTER ===
   async register(
-    body: RegisterRequest
+    body: RegisterRequest,
   ): Promise<{ data: User; message: string }> {
     try {
       const { data } = await api.post<{ data: User; message: string }>(
         "/auth/signup",
-        body
+        body,
       );
       return data;
     } catch (e) {
@@ -72,7 +70,6 @@ class AuthService {
     }
   }
 
-  // === LOGOUT ===
   async logout(): Promise<void> {
     try {
       await api.post("/auth/logout");
@@ -84,7 +81,6 @@ class AuthService {
     }
   }
 
-  // === CHANGE PASS ===
   async changePassword(payload: {
     oldPassword: string;
     newPassword: string;
@@ -92,7 +88,7 @@ class AuthService {
     try {
       const { data } = await api.post<{ message: string }>(
         "/auth/change-password",
-        payload
+        payload,
       );
       return data.message || "Đổi mật khẩu thành công.";
     } catch (e: unknown) {
@@ -102,7 +98,6 @@ class AuthService {
     }
   }
 
-  // === REFRESH TOKEN ===
   async refreshAccessToken(): Promise<{ accessToken: string }> {
     try {
       const newAccessToken = await refreshAccessTokenAction();
@@ -120,12 +115,10 @@ class AuthService {
       return { accessToken: newAccessToken };
     } catch (e) {
       this.clearLocalAuth();
-      // await deleteRefreshTokenCookie(); // Action đã tự xóa nếu lỗi
       throw e;
     }
   }
 
-  // === Local token helpers ===
   getToken() {
     return localStorage.getItem(ACCESS_TOKEN_KEY);
   }
@@ -150,7 +143,6 @@ class AuthService {
     return !!token && !this.isTokenExpired();
   }
 
-  // === Token expiration ===
   isTokenExpired(): boolean {
     const token = this.getToken();
     if (!token) return true;

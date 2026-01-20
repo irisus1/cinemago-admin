@@ -1,4 +1,3 @@
-// components/ReviewFilters.tsx
 "use client";
 
 import React from "react";
@@ -27,7 +26,6 @@ const ReviewFilters: React.FC<ReviewFiltersProps> = ({
   filters,
   onChange,
   movies,
-  loading,
   canClearFilters,
   onClear,
 }) => {
@@ -91,8 +89,8 @@ const ReviewFilters: React.FC<ReviewFiltersProps> = ({
                 filters.isActive === undefined
                   ? "all"
                   : filters.isActive
-                  ? "active"
-                  : "inactive"
+                    ? "active"
+                    : "inactive"
               }
               onValueChange={(value) => {
                 if (value === "all")
@@ -112,28 +110,6 @@ const ReviewFilters: React.FC<ReviewFiltersProps> = ({
               </SelectContent>
             </Select>
           </div>
-
-          {/* <div className="flex flex-col gap-1 min-w-[160px]">
-            <Select
-              value={filters.type ?? "all"}
-              onValueChange={(value) =>
-                handleChange({
-                  type: value === "all" ? undefined : value,
-                })
-              }
-            >
-              <SelectTrigger className="w-[180px] border border-gray-400">
-                <SelectValue placeholder="Tất cả" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tất cả cảm xúc</SelectItem>
-                <SelectItem value="Tích cực">Tích cực</SelectItem>
-                <SelectItem value="Tiêu cực">Tiêu cực</SelectItem>
-                <SelectItem value="Trung lập">Trung lập</SelectItem>
-                <SelectItem value="Không khả dụng">Không khả dụng</SelectItem>
-              </SelectContent>
-            </Select>
-          </div> */}
 
           <div className="flex flex-col gap-1 min-w-[160px]">
             <Select

@@ -29,7 +29,6 @@ import {
 import { RoomLayoutModal } from "@/components/modal/RoomLayoutModal";
 import LocationPicker from "@/components/LocationPicker";
 
-// Định nghĩa lại Type SeatLayout cho khớp (nếu cần)
 type SeatLayout = SeatCell[];
 
 type CinemaModalProps = {
@@ -40,7 +39,7 @@ type CinemaModalProps = {
   onSubmit?: (
     payload: CinemaFormPayload,
     mode: "create",
-    cinema?: Cinema
+    cinema?: Cinema,
   ) => void | Promise<void>;
 };
 
@@ -51,11 +50,9 @@ export default function CinemaModal({
   cinema,
   onSubmit,
 }: CinemaModalProps) {
-  // --- STATE QUẢN LÝ BƯỚC ---
   const [currentStep, setCurrentStep] = useState(1);
   const TOTAL_STEPS = 3;
 
-  // --- STATE BƯỚC 1: THÔNG TIN RẠP ---
   const [name, setName] = useState("");
   const [city, setCity] = useState("");
   const [cityId, setCityId] = useState<string>("");
@@ -63,21 +60,17 @@ export default function CinemaModal({
   const [longitude, setLongitude] = useState<number | null>(null);
   const [latitude, setLatitude] = useState<number | null>(null);
 
-  // --- STATE BƯỚC 2: DANH SÁCH PHÒNG ---
   const [rooms, setRooms] = useState<RoomCreate[]>([]);
 
-  // [MỚI] State quản lý đóng/mở từng phòng (Dùng index làm key cho Set)
   const [openRoomIndices, setOpenRoomIndices] = useState<Set<number>>(
-    new Set()
+    new Set(),
   );
 
-  // [MỚI] State quản lý Modal cấu hình ghế
   const [layoutModalOpen, setLayoutModalOpen] = useState(false);
   const [selectedRoomIndex, setSelectedRoomIndex] = useState<number | null>(
-    null
+    null,
   );
 
-  // --- RESET KHI MỞ MODAL ---
   useEffect(() => {
     if (!open) return;
     setCurrentStep(1);
@@ -92,7 +85,6 @@ export default function CinemaModal({
     setOpenRoomIndices(new Set());
   }, [open]);
 
-  // --- LOGIC PHÒNG (STEP 2) ---
   const handleAddRoom = () => {
     const newRoom: RoomCreate = {
       name: "",
@@ -103,9 +95,8 @@ export default function CinemaModal({
 
     setRooms((prev) => {
       const newRooms = [...prev, newRoom];
-      // Tự động mở phòng mới nhất (index cuối cùng)
       setOpenRoomIndices((prevOpen) =>
-        new Set(prevOpen).add(newRooms.length - 1)
+        new Set(prevOpen).add(newRooms.length - 1),
       );
       return newRooms;
     });
@@ -114,12 +105,11 @@ export default function CinemaModal({
   const handleRemoveRoom = (indexToRemove: number) => {
     setRooms((prev) => prev.filter((_, index) => index !== indexToRemove));
 
-    // Cập nhật lại danh sách index đang mở vì index các phần tử phía sau sẽ bị thay đổi
     setOpenRoomIndices((prev) => {
       const newSet = new Set<number>();
       prev.forEach((idx) => {
-        if (idx < indexToRemove) newSet.add(idx); // Giữ nguyên index trước đó
-        if (idx > indexToRemove) newSet.add(idx - 1); // Giảm index các phần tử sau đó
+        if (idx < indexToRemove) newSet.add(idx);
+        if (idx > indexToRemove) newSet.add(idx - 1);
       });
       return newSet;
     });
@@ -128,12 +118,12 @@ export default function CinemaModal({
   const handleUpdateRoom = <K extends keyof RoomCreate>(
     indexToUpdate: number,
     field: K,
-    value: RoomCreate[K]
+    value: RoomCreate[K],
   ) => {
     setRooms((prev) =>
       prev.map((r, index) =>
-        index === indexToUpdate ? { ...r, [field]: value } : r
-      )
+        index === indexToUpdate ? { ...r, [field]: value } : r,
+      ),
     );
   };
 
@@ -149,7 +139,6 @@ export default function CinemaModal({
     });
   };
 
-  // --- MODAL LAYOUT ---
   const handleOpenLayoutModal = (index: number) => {
     setSelectedRoomIndex(index);
     setLayoutModalOpen(true);
@@ -176,15 +165,13 @@ export default function CinemaModal({
     }
   };
 
-  // --- VALIDATION ---
   const isStep1Valid = useMemo(
     () => Boolean(name.trim() && city.trim() && address.trim()),
-    [name, city, address]
+    [name, city, address],
   );
 
   const isStep2Valid = useMemo(() => {
     if (rooms.length === 0) return false;
-    // Check trường seatLayout
     return rooms.every((r) => r.name.trim() !== "" && r.seatLayout);
   }, [rooms]);
 
@@ -193,9 +180,6 @@ export default function CinemaModal({
     if (currentStep === 2) return isStep2Valid;
     return true;
   }, [currentStep, isStep1Valid, isStep2Valid]);
-
-  // --- SUBMIT ---
-
 
   async function handleSubmit() {
     if (!onSubmit) return;
@@ -211,7 +195,6 @@ export default function CinemaModal({
     await onSubmit(payload, mode, cinema);
   }
 
-  // --- RENDER ---
   return (
     <Fragment>
       <Transition show={open} as={Fragment}>
@@ -239,7 +222,6 @@ export default function CinemaModal({
               leaveTo="opacity-0 scale-95 translate-y-4"
             >
               <DialogPanel className="w-full max-w-2xl rounded-xl bg-white p-6 shadow-2xl flex flex-col max-h-[90vh]">
-                {/* HEADER */}
                 <div className="mb-6">
                   <DialogTitle className="text-xl font-bold text-gray-900 mb-1">
                     {mode === "create" ? "Tạo rạp mới" : "Chỉnh sửa rạp"}
@@ -250,23 +232,24 @@ export default function CinemaModal({
                     {currentStep === 3 && "Bước 3 / 3: Xem lại và tạo"}
                   </p>
 
-                  {/* STEPPER */}
                   <div className="flex items-center justify-between px-10 relative">
                     <div className="absolute left-10 right-10 top-1/2 h-0.5 bg-gray-200 -z-10" />
                     <div
                       className="absolute left-10 top-1/2 h-0.5 bg-slate-900 -z-10 transition-all duration-300"
                       style={{
-                        width: `calc(${(currentStep - 1) / (TOTAL_STEPS - 1)
-                          } * (100% - 80px))`,
+                        width: `calc(${
+                          (currentStep - 1) / (TOTAL_STEPS - 1)
+                        } * (100% - 80px))`,
                       }}
                     />
                     {[1, 2, 3].map((step) => (
                       <div
                         key={step}
                         className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm border-2 transition-colors duration-300 z-10
-                          ${currentStep >= step
-                            ? "bg-slate-900 border-slate-900 text-white"
-                            : "bg-white border-gray-300 text-gray-400"
+                          ${
+                            currentStep >= step
+                              ? "bg-slate-900 border-slate-900 text-white"
+                              : "bg-white border-gray-300 text-gray-400"
                           }`}
                       >
                         {step}
@@ -275,9 +258,7 @@ export default function CinemaModal({
                   </div>
                 </div>
 
-                {/* BODY */}
                 <div className="flex-1 overflow-y-auto px-1 py-1 min-h-[300px]">
-                  {/* BƯỚC 1: GIỮ NGUYÊN */}
                   {currentStep === 1 && (
                     <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
                       <div className="grid grid-cols-2 gap-4">
@@ -303,7 +284,7 @@ export default function CinemaModal({
                             onChange={(id) => {
                               setCityId(id);
                               const province = VIETNAM_PROVINCES.find(
-                                (p) => p.value === id
+                                (p) => p.value === id,
                               );
                               setCity(province?.label ?? "");
                             }}
@@ -317,7 +298,11 @@ export default function CinemaModal({
                           address={address}
                           latitude={latitude}
                           longitude={longitude}
-                          onLocationChange={({ address, latitude, longitude }) => {
+                          onLocationChange={({
+                            address,
+                            latitude,
+                            longitude,
+                          }) => {
                             setAddress(address);
                             setLatitude(latitude);
                             setLongitude(longitude);
@@ -327,7 +312,6 @@ export default function CinemaModal({
                     </div>
                   )}
 
-                  {/* BƯỚC 2: CẬP NHẬT DÙNG INDEX */}
                   {currentStep === 2 && (
                     <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
                       <div className="flex justify-between items-center">
@@ -350,15 +334,18 @@ export default function CinemaModal({
                         ) : (
                           rooms.map((room, index) => {
                             const isOpen = openRoomIndices.has(index);
-                            const hasVip = !room.seatLayout || room.seatLayout.some(s => s.type === "VIP");
-                            const hasCouple = !room.seatLayout || room.seatLayout.some(s => s.type === "COUPLE");
+                            const hasVip =
+                              !room.seatLayout ||
+                              room.seatLayout.some((s) => s.type === "VIP");
+                            const hasCouple =
+                              !room.seatLayout ||
+                              room.seatLayout.some((s) => s.type === "COUPLE");
 
                             return (
                               <div
                                 key={index}
                                 className="border border-gray-200 rounded-xl bg-white shadow-sm overflow-hidden transition-all duration-200"
                               >
-                                {/* HEADER CARD */}
                                 <div
                                   className="flex justify-between items-center p-3 cursor-pointer hover:bg-gray-50 transition-colors"
                                   onClick={() => toggleRoom(index)}
@@ -398,13 +385,15 @@ export default function CinemaModal({
                                   </div>
                                 </div>
 
-                                {/* BODY */}
                                 {isOpen && (
                                   <div className="p-4 pt-0 border-t border-gray-100 bg-gray-50/50 animate-in slide-in-from-top-2 duration-200">
                                     <div className="space-y-4 mt-4">
                                       <div>
                                         <label className="block text-xs font-medium text-gray-500 mb-1">
-                                          Tên phòng <span className="text-red-500">*</span>
+                                          Tên phòng{" "}
+                                          <span className="text-red-500">
+                                            *
+                                          </span>
                                         </label>
                                         <input
                                           value={room.name}
@@ -412,7 +401,7 @@ export default function CinemaModal({
                                             handleUpdateRoom(
                                               index,
                                               "name",
-                                              e.target.value
+                                              e.target.value,
                                             )
                                           }
                                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-slate-900 outline-none bg-white"
@@ -432,13 +421,14 @@ export default function CinemaModal({
                                               handleUpdateRoom(
                                                 index,
                                                 "vipPrice",
-                                                Number(e.target.value)
+                                                Number(e.target.value),
                                               )
                                             }
-                                            className={`w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-slate-900 outline-none bg-white ${!hasVip
-                                              ? "opacity-50 cursor-not-allowed bg-gray-100"
-                                              : ""
-                                              }`}
+                                            className={`w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-slate-900 outline-none bg-white ${
+                                              !hasVip
+                                                ? "opacity-50 cursor-not-allowed bg-gray-100"
+                                                : ""
+                                            }`}
                                           />
                                         </div>
                                         <div>
@@ -453,27 +443,28 @@ export default function CinemaModal({
                                               handleUpdateRoom(
                                                 index,
                                                 "couplePrice",
-                                                Number(e.target.value)
+                                                Number(e.target.value),
                                               )
                                             }
-                                            className={`w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-slate-900 outline-none bg-white ${!hasCouple
-                                              ? "opacity-50 cursor-not-allowed bg-gray-100"
-                                              : ""
-                                              }`}
+                                            className={`w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-slate-900 outline-none bg-white ${
+                                              !hasCouple
+                                                ? "opacity-50 cursor-not-allowed bg-gray-100"
+                                                : ""
+                                            }`}
                                           />
                                         </div>
                                       </div>
 
-                                      {/* BUTTON CONFIG LAYOUT */}
                                       <button
                                         onClick={() =>
                                           handleOpenLayoutModal(index)
                                         }
                                         className={`w-full py-2.5 border rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors
-                                        ${room.seatLayout
+                                        ${
+                                          room.seatLayout
                                             ? "border-green-200 bg-green-50 text-green-700 hover:bg-green-100"
                                             : "border-gray-300 text-gray-700 hover:bg-white bg-white shadow-sm"
-                                          }`}
+                                        }`}
                                       >
                                         {room.seatLayout ? (
                                           <Edit size={14} />
@@ -495,7 +486,6 @@ export default function CinemaModal({
                     </div>
                   )}
 
-                  {/* BƯỚC 3: CẬP NHẬT HIỂN THỊ */}
                   {currentStep === 3 && (
                     <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                       <div className="border border-gray-200 rounded-xl p-5 bg-white shadow-sm">
@@ -540,20 +530,21 @@ export default function CinemaModal({
                                   <p className="text-xs text-gray-500 mt-1">
                                     VIP:{" "}
                                     {new Intl.NumberFormat("vi-VN").format(
-                                      room.vipPrice
+                                      room.vipPrice,
                                     )}{" "}
                                     đ | Đôi:{" "}
                                     {new Intl.NumberFormat("vi-VN").format(
-                                      room.couplePrice
+                                      room.couplePrice,
                                     )}{" "}
                                     đ
                                   </p>
                                 </div>
                                 <span
-                                  className={`text-xs font-medium ${room.seatLayout
-                                    ? "text-green-600"
-                                    : "text-gray-400"
-                                    }`}
+                                  className={`text-xs font-medium ${
+                                    room.seatLayout
+                                      ? "text-green-600"
+                                      : "text-gray-400"
+                                  }`}
                                 >
                                   {room.seatLayout
                                     ? "Bố cục đã cấu hình"
@@ -568,7 +559,6 @@ export default function CinemaModal({
                   )}
                 </div>
 
-                {/* FOOTER */}
                 <div className=" flex justify-end gap-3 pt-4 border-t border-gray-100">
                   {currentStep === 1 ? (
                     <button
@@ -589,10 +579,11 @@ export default function CinemaModal({
                     <button
                       onClick={() => setCurrentStep((p) => p + 1)}
                       disabled={!canNext}
-                      className={`px-6 py-2.5 rounded-lg text-white font-medium transition-all shadow-sm flex items-center gap-2 ${canNext
-                        ? "bg-slate-900 hover:bg-slate-800"
-                        : "bg-gray-300 cursor-not-allowed"
-                        }`}
+                      className={`px-6 py-2.5 rounded-lg text-white font-medium transition-all shadow-sm flex items-center gap-2 ${
+                        canNext
+                          ? "bg-slate-900 hover:bg-slate-800"
+                          : "bg-gray-300 cursor-not-allowed"
+                      }`}
                     >
                       Tiếp
                     </button>
@@ -611,7 +602,6 @@ export default function CinemaModal({
         </Dialog>
       </Transition>
 
-      {/* MODAL CẤU HÌNH GHẾ */}
       {selectedRoomIndex !== null && (
         <RoomLayoutModal
           open={layoutModalOpen}

@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { LANGUAGE_LABEL_MAP } from "@/constants/showtime";
-import { FiEdit2, FiTrash2, FiEye } from "react-icons/fi";
+import { FiEdit2, FiEye } from "react-icons/fi";
 import { BiRefresh as BiRestore } from "react-icons/bi";
 import { Plus } from "lucide-react";
 
@@ -35,7 +35,6 @@ import { DateTimePickerVN } from "@/components/modal/DateTimePickerVN";
 
 export default function ShowtimesListPage() {
   const {
-    // data
     showtimes,
     filteredShowtimes,
     loadingShow,
@@ -53,17 +52,14 @@ export default function ShowtimesListPage() {
     startTime,
     setStartTime,
 
-    // actions
     handleRefresh,
     handleAddOpen,
     handleEditOpen,
-    handleDelete,
     handleRestore,
 
     clearFilters,
     canClearFilters,
 
-    // modal / dialog
     open,
     setOpen,
     editShowtime,
@@ -83,7 +79,6 @@ export default function ShowtimesListPage() {
   const [viewOpen, setViewOpen] = useState(false);
   const [viewShowtime, setViewShowtime] = useState<ShowTime | null>(null);
 
-  // helper format datetime
   const formatDateTime = (v?: string | null) => {
     if (!v) return "—";
     try {
@@ -115,12 +110,9 @@ export default function ShowtimesListPage() {
     }
     return {
       label: "Đang chiếu",
-      className:
-        "bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border-0",
+      className: "bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border-0",
     };
   };
-
-  const movieTitle = movieOptions.find((m) => m.id === movieId)?.title ?? "—";
 
   const canPrev = page > 1;
   const canNext = page < totalPages;
@@ -188,7 +180,6 @@ export default function ShowtimesListPage() {
               />
             </div>
 
-            {/* Lọc theo rạp */}
             {!isManager && (
               <div className="min-w-0 w-[260px] ">
                 <SearchableCombobox
@@ -205,7 +196,6 @@ export default function ShowtimesListPage() {
               </div>
             )}
 
-            {/* Lọc theo trạng thái active */}
             <div className="min-w-0 w-[200px] border border-gray-400 rounded-lg">
               <Select
                 value={statusFilter}
@@ -229,10 +219,10 @@ export default function ShowtimesListPage() {
             <DateTimePickerVN
               valueISO={startTime}
               onChange={(val) => {
-                setStartTime(val); // val trả về chuỗi "YYYY-MM-DDTHH:mm" chuẩn
+                setStartTime(val);
                 setPage(1);
               }}
-              className="w-full md:w-[250px]" // Chỉnh width tùy ý
+              className="w-full md:w-[250px]"
               placeholder="dd/mm/yyyy --:--"
             />
           </div>
@@ -287,32 +277,27 @@ export default function ShowtimesListPage() {
               </tr>
             ) : (
               Object.entries(groupedShowtimes).map(([movieName, rooms]) => {
-                // 1. Tính tổng rowSpan cho PHIM (tổng tất cả suất chiếu của phim này)
                 const totalRowsForMovie = Object.values(rooms).reduce(
                   (accRoom, formats) => {
                     const rowsInRoom = Object.values(formats).reduce(
                       (accFormat, items) => accFormat + items.length,
-                      0
+                      0,
                     );
                     return accRoom + rowsInRoom;
                   },
-                  0
+                  0,
                 );
 
                 return Object.entries(rooms).map(
                   ([roomName, formats], roomIndex) => {
-                    // 2. Tính tổng rowSpan cho PHÒNG (tổng suất chiếu trong phòng này)
                     const totalRowsForRoom = Object.values(formats).reduce(
                       (acc, items) => acc + items.length,
-                      0
+                      0,
                     );
 
                     return Object.entries(formats).map(
                       ([formatName, items], formatIndex) => {
-                        // items: danh sách suất chiếu cụ thể
-
                         return items.map((showtime, itemIndex) => {
-                          // Logic xác định dòng đầu tiên để render rowSpan
                           const isFirstRowOfMovie =
                             roomIndex === 0 &&
                             formatIndex === 0 &&
@@ -326,7 +311,6 @@ export default function ShowtimesListPage() {
                               key={showtime.id}
                               className="hover:bg-gray-50 bg-white border-b"
                             >
-                              {/* CỘT 1: PHIM */}
                               {isFirstRowOfMovie && (
                                 <td
                                   rowSpan={totalRowsForMovie}
@@ -336,7 +320,6 @@ export default function ShowtimesListPage() {
                                 </td>
                               )}
 
-                              {/* CỘT 2: PHÒNG / RẠP */}
                               {isFirstRowOfRoom && (
                                 <td
                                   rowSpan={totalRowsForRoom}
@@ -351,29 +334,27 @@ export default function ShowtimesListPage() {
                                 </td>
                               )}
 
-                              {/* CỘT 3: ĐỊNH DẠNG (Mới thêm) */}
                               {isFirstRowOfFormat && (
                                 <td
-                                  rowSpan={items.length} // Span theo số lượng item trong format này
+                                  rowSpan={items.length}
                                   className="px-6 py-4 border-r align-top font-semibold text-gray-700"
                                 >
                                   <Badge variant="outline">{formatName}</Badge>
                                 </td>
                               )}
 
-                              {/* CÁC CỘT CHI TIẾT */}
                               <td className="px-6 py-4">
                                 <div className="font-medium">
                                   {
                                     formatDateTime(showtime.startTime).split(
-                                      " "
+                                      " ",
                                     )[0]
                                   }
                                 </div>
                                 <div className="text-gray-500 text-xs">
                                   {
                                     formatDateTime(showtime.startTime).split(
-                                      " "
+                                      " ",
                                     )[1]
                                   }
                                 </div>
@@ -381,7 +362,7 @@ export default function ShowtimesListPage() {
 
                               <td className="px-6 py-4 font-medium text-gray-900">
                                 {new Intl.NumberFormat("vi-VN").format(
-                                  Number(showtime.price)
+                                  Number(showtime.price),
                                 )}{" "}
                                 đ
                               </td>
@@ -403,21 +384,19 @@ export default function ShowtimesListPage() {
                                 </div>
                               </td>
 
-                              {/* Cột Định dạng cũ đã xóa khỏi đây */}
-
                               <td className="px-6 py-4">
                                 <Badge
                                   variant="secondary"
-                                  className={getShowtimeStatus(showtime).className}
+                                  className={
+                                    getShowtimeStatus(showtime).className
+                                  }
                                 >
                                   {getShowtimeStatus(showtime).label}
                                 </Badge>
                               </td>
 
                               <td className="px-6 py-4 text-center">
-                                {/* Actions giữ nguyên */}
                                 <div className="flex items-center justify-center space-x-3">
-                                  {/* ... Code nút bấm của bạn ... */}
                                   {showtime.isActive ? (
                                     <>
                                       <button
@@ -435,12 +414,6 @@ export default function ShowtimesListPage() {
                                       >
                                         <FiEdit2 size={18} />
                                       </button>
-                                      {/* <button
-                                        onClick={() => handleDelete(showtime)}
-                                        className="text-red-600 hover:text-red-800"
-                                      >
-                                        <FiTrash2 size={18} />
-                                      </button> */}
                                     </>
                                   ) : (
                                     <button
@@ -455,9 +428,9 @@ export default function ShowtimesListPage() {
                             </tr>
                           );
                         });
-                      }
+                      },
                     );
-                  }
+                  },
                 );
               })
             )}
@@ -501,8 +474,6 @@ export default function ShowtimesListPage() {
         }}
         confirmText="Xác nhận"
       />
-
-
 
       <Modal
         isOpen={isErrorDialogOpen}
@@ -591,8 +562,8 @@ export default function ShowtimesListPage() {
                   <span>
                     {viewShowtime.price != null
                       ? new Intl.NumberFormat("vi-VN").format(
-                        Number(viewShowtime.price)
-                      ) + " ₫"
+                          Number(viewShowtime.price),
+                        ) + " ₫"
                       : "—"}
                   </span>
                 </div>

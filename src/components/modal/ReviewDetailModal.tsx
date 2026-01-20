@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@/components/ui/dialog"; // Đường dẫn tuỳ project của bạn
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -43,7 +43,6 @@ function formatDateSafe(value?: string | number) {
   });
 }
 
-// Helper để chọn màu Badge theo số sao (tuỳ chọn)
 const getRatingColor = (rating: number) => {
   if (rating >= 4) return "bg-green-500 hover:bg-green-600 border-transparent";
   if (rating >= 2)
@@ -71,7 +70,6 @@ export default function ReviewDetailModal({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden gap-0">
-        {/* Header */}
         <DialogHeader className="px-6 py-4 bg-muted/50 border-b">
           <div className="flex items-center gap-2 text-blue-600">
             <Info className="h-5 w-5" />
@@ -83,7 +81,6 @@ export default function ReviewDetailModal({
 
         {review && (
           <div className="p-6 space-y-6">
-            {/* Thông tin chính: Phim & User */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -109,21 +106,15 @@ export default function ReviewDetailModal({
 
             <Separator />
 
-            {/* Metrics: Sao, Loại, Thời gian */}
             <div className="flex flex-wrap items-center gap-4">
               <Badge
                 className={`${getRatingColor(
-                  review.rating
+                  review.rating,
                 )} text-white px-3 py-1`}
               >
                 <Star className="w-3.5 h-3.5 mr-1 fill-current" />
                 {review.rating.toFixed(1)} / 5
               </Badge>
-
-              {/* <Badge variant="outline" className="px-3 py-1">
-                <Tag className="w-3.5 h-3.5 mr-1" />
-                {review.type}
-              </Badge> */}
 
               {review.status && (
                 <Badge variant="secondary" className="px-3 py-1 capitalize">
@@ -137,7 +128,6 @@ export default function ReviewDetailModal({
               </div>
             </div>
 
-            {/* Nội dung đánh giá */}
             <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
               <div className="p-3 border-b bg-muted/20 text-sm font-medium">
                 Nội dung đánh giá
@@ -155,7 +145,6 @@ export default function ReviewDetailModal({
           </div>
         )}
 
-        {/* Footer */}
         <DialogFooter className="px-6 py-4 bg-muted/50 border-t">
           <Button onClick={onClose} variant="default">
             Đóng

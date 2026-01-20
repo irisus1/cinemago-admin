@@ -4,15 +4,12 @@ import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { roomService, type Room, RoomUpdate, SeatType } from "@/services";
 
-/* ====================== Types ====================== */
 export type SeatTypeKey = "normal" | "vip" | "couple" | "empty";
 export type SeatCell = { type: SeatTypeKey; pairId?: string | null };
 export type LayoutGrid = SeatCell[][];
 export type SeatRecord = { row: string; col: number; type: SeatType };
-// Cho phép input đầu vào là Grid hoặc mảng danh sách ghế
 export type SeatLayoutProp = LayoutGrid | SeatRecord[] | undefined;
 
-/* ====================== Constants ====================== */
 export const LIMIT_MAX = 15;
 export const defaultRows = 10;
 export const defaultCols = 10;
@@ -24,7 +21,6 @@ const TYPE_MAP: Record<SeatType, SeatTypeKey> = {
   EMPTY: "empty",
 };
 
-/* ====================== Helpers (Pure Functions) ====================== */
 export const toLetters = (n: number) => {
   let s = "",
     num = n;
@@ -66,7 +62,6 @@ const isGrid = (v: SeatLayoutProp): v is LayoutGrid =>
   Array.isArray(v) && (v.length === 0 || Array.isArray(v[0]));
 
 const buildGridFromSeatList = (list: SeatRecord[]) => {
-  // [FIX] Thêm fallback xử lý mảng rỗng để tránh lỗi spread ...list.map
   if (!list || list.length === 0) {
     return {
       rows: defaultRows,
@@ -82,7 +77,6 @@ const buildGridFromSeatList = (list: SeatRecord[]) => {
   for (const s of list) {
     const rIdx = lettersToNumber(s.row) - 1;
     const cIdx = (Number(s.col) || 1) - 1;
-    // Kiểm tra an toàn biên
     if (rIdx >= 0 && rIdx < maxR && cIdx >= 0 && cIdx < maxC) {
       const t = TYPE_MAP[s.type] || "normal";
       grid[rIdx][cIdx] = { type: t };
@@ -91,7 +85,6 @@ const buildGridFromSeatList = (list: SeatRecord[]) => {
   return { rows: maxR, cols: maxC, grid };
 };
 
-// UI Helpers
 export function isLeftHalf(grid: LayoutGrid, rIdx: number, cIdx: number) {
   const cell = grid[rIdx]?.[cIdx];
   if (!cell?.pairId) return false;
@@ -106,16 +99,12 @@ export function isRightHalf(grid: LayoutGrid, rIdx: number, cIdx: number) {
   return !!(left && left.pairId === cell.pairId);
 }
 
-/* ====================== Hook Logic ====================== */
 type UseSeatLayoutProps = {
   open: boolean;
   seatLayout?: SeatLayoutProp;
-  room?: Room; // Có thể undefined khi tạo mới
-  onChange?: (seatLayout: SeatRecord[]) => void; // Callback khi API thành công
-
-  // [MỚI] Callback lưu local (không gọi API)
+  room?: Room;
+  onChange?: (seatLayout: SeatRecord[]) => void;
   onCustomSave?: (seatLayout: SeatRecord[]) => void;
-
   notify?: (msg: string) => void;
   onClose: () => void;
 };
@@ -127,7 +116,6 @@ export function useSeatLayoutLogic({
   onCustomSave,
   notify,
 }: UseSeatLayoutProps) {
-  // State
   const [cols, setCols] = useState<number>(defaultCols);
   const [pendingRows, setPendingRows] = useState<string>(String(defaultRows));
   const [pendingCols, setPendingCols] = useState<string>(String(defaultCols));
@@ -140,13 +128,9 @@ export function useSeatLayoutLogic({
   const [vipBonus, setVipBonus] = useState<number | "">(0);
   const [coupleBonus, setCoupleBonus] = useState<number | "">(0);
 
-  // Drag state
   const [isDragging, setIsDragging] = useState(false);
   const dragNotifiedRef = useRef(false);
 
-  // --- Effects ---
-
-  // Drag cleanup
   useEffect(() => {
     const stopDrag = () => {
       setIsDragging(false);
@@ -156,16 +140,13 @@ export function useSeatLayoutLogic({
     return () => window.removeEventListener("mouseup", stopDrag);
   }, []);
 
-  // Fetch Room Detail (Chỉ chạy khi có ID thật, không chạy khi tạo mới)
   useEffect(() => {
-    // Nếu không có room ID hoặc là ID tạm (ví dụ: temp-123) thì không gọi API
     if (
       !open ||
       !room?.id ||
       room.id.toString().startsWith("temp") ||
       String(room.id).length < 5
     ) {
-      // Nếu tạo mới, có thể reset bonus về 0
       if (!room?.id) {
         setVipBonus(0);
         setCoupleBonus(0);
@@ -187,9 +168,8 @@ export function useSeatLayoutLogic({
     })();
   }, [open, room?.id]);
 
-  // Hydrate Layout from Props (Quan trọng: Xử lý cả Grid và List)
   useEffect(() => {
-    if (!open) return; // Chỉ reset khi mở modal
+    if (!open) return;
 
     if (!seatLayout || (Array.isArray(seatLayout) && seatLayout.length === 0)) {
       setLayout(makeEmptyLayout(defaultRows, defaultCols));
@@ -208,7 +188,6 @@ export function useSeatLayoutLogic({
       setPendingRows(String(rr));
       setPendingCols(String(cc));
     } else {
-      // Input là mảng SeatRecord[]
       const { rows: rr, cols: cc, grid } = buildGridFromSeatList(seatLayout);
       setLayout(grid);
       setCols(cc);
@@ -217,15 +196,11 @@ export function useSeatLayoutLogic({
     }
   }, [seatLayout, open]);
 
-  // --- Logic Methods ---
   const bound = (val: string, max = LIMIT_MAX) => {
     const n = parseInt(val || "0", 10);
     const clamped = Math.min(Math.max(n || 1, 1), max);
     return { n: n || 1, clamped, adjusted: clamped !== (n || 1) };
   };
-
-  // ... (Giữ nguyên hàm cleanupDoublePairs, generateLayout, unpairIfNeeded, tryPaircouple, applySeat)
-  // ... (Phần logic xử lý ma trận ghế này bạn giữ nguyên từ code cũ vì nó chuẩn rồi)
 
   const cleanupDoublePairs = (grid: LayoutGrid) => {
     const R = grid.length;
@@ -303,7 +278,6 @@ export function useSeatLayoutLogic({
     const pid = cell.pairId;
     if (!pid) return;
 
-    // Check Left
     if (cIdx > 0) {
       const left = grid[rIdx]?.[cIdx - 1];
       if (left && left.pairId === pid) {
@@ -312,7 +286,6 @@ export function useSeatLayoutLogic({
       }
     }
 
-    // Check Right
     if (cIdx < grid[rIdx].length - 1) {
       const right = grid[rIdx]?.[cIdx + 1];
       if (right && right.pairId === pid) {
@@ -321,7 +294,6 @@ export function useSeatLayoutLogic({
       }
     }
 
-    // Clear self
     cell.pairId = undefined;
     if (cell.type === "couple") cell.type = "normal";
   };
@@ -410,7 +382,6 @@ export function useSeatLayoutLogic({
     if (isDragging) applySeat(r, c);
   };
 
-  // --- SAVE ---
   const toExternalType = (t: SeatTypeKey): SeatType => {
     switch (t) {
       case "vip":

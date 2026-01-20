@@ -48,7 +48,6 @@ export function CinemaDetailModal({
 
         {cinema && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Thông tin bên trái (2 cột) */}
             <div className="md:col-span-2 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -94,7 +93,6 @@ export function CinemaDetailModal({
               )}
             </div>
 
-            {/* Bản đồ bên phải */}
             <div className="space-y-2">
               <Label>Vị trí trên bản đồ</Label>
               <div className="rounded-md border overflow-hidden w-full h-[260px]">

@@ -11,18 +11,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { LayoutTemplate, Edit } from "lucide-react"; // Import icon
+import { LayoutTemplate, Edit } from "lucide-react";
 import { type Room, type SeatCell } from "@/services";
 import type { RoomFormData } from "@/hooks/useRoomCardLogic";
 import { RoomLayoutModal } from "./RoomLayoutModal";
-
-// Cập nhật Type RoomFormData để bao gồm seatLayout (nếu chưa có)
-// export type RoomFormData = {
-//   name: string;
-//   vipPrice: number;
-//   couplePrice: number;
-//   seatLayout?: SeatCell[]; // Thêm dòng này vào file type gốc
-// };
 
 export type RoomModalProps = {
   open: boolean;
@@ -30,7 +22,7 @@ export type RoomModalProps = {
   mode: "create" | "edit";
   room?: Room | null;
   isSubmitting: boolean;
-  onSubmit: (data: RoomFormData & { seatLayout?: SeatCell[] }) => void; // Update type
+  onSubmit: (data: RoomFormData & { seatLayout?: SeatCell[] }) => void;
 };
 
 export default function RoomModal({
@@ -41,29 +33,25 @@ export default function RoomModal({
   isSubmitting,
   onSubmit,
 }: RoomModalProps) {
-  // Local Form State
   const [name, setName] = useState("");
   const [vipBonus, setVipBonus] = useState<number | "">("");
   const [coupleBonus, setCoupleBonus] = useState<number | "">("");
 
-  // [MỚI] State lưu layout ghế
   const [seatLayout, setSeatLayout] = useState<SeatCell[] | undefined>(
-    undefined
+    undefined,
   );
   const [layoutModalOpen, setLayoutModalOpen] = useState(false);
 
-  // UI Helper State
   const [hasVipSeat, setHasVipSeat] = useState(false);
   const [hasCoupleSeat, setHasCoupleSeat] = useState(false);
 
-  // Reset form
   useEffect(() => {
     if (open) {
       if (mode === "create") {
         setName("");
         setVipBonus(0);
         setCoupleBonus(0);
-        setSeatLayout(undefined); // Reset layout
+        setSeatLayout(undefined);
         setHasVipSeat(false);
         setHasCoupleSeat(false);
       } else if (room) {
@@ -71,7 +59,6 @@ export default function RoomModal({
         setVipBonus(Number(room.VIP ?? 0));
         setCoupleBonus(Number(room.COUPLE ?? 0));
 
-        // Load layout cũ
         const currentLayout = room.seatLayout || [];
         setSeatLayout(currentLayout);
 
@@ -79,7 +66,6 @@ export default function RoomModal({
           setHasVipSeat(currentLayout.some((s) => s.type === "VIP"));
           setHasCoupleSeat(currentLayout.some((s) => s.type === "COUPLE"));
         } else {
-          // Fallback nếu không có layout (cho phép sửa giá thoải mái)
           setHasVipSeat(true);
           setHasCoupleSeat(true);
         }
@@ -91,7 +77,6 @@ export default function RoomModal({
     setSeatLayout(newLayout);
     setLayoutModalOpen(false);
 
-    // Cập nhật trạng thái enable/disable input giá dựa trên layout mới
     setHasVipSeat(newLayout.some((s) => s.type === "VIP"));
     setHasCoupleSeat(newLayout.some((s) => s.type === "COUPLE"));
   };
@@ -105,7 +90,7 @@ export default function RoomModal({
       name: name.trim(),
       vipPrice: Number(vipBonus || 0),
       couplePrice: Number(coupleBonus || 0),
-      seatLayout: seatLayout, // Gửi layout kèm theo
+      seatLayout: seatLayout,
     };
 
     onSubmit(formData);
@@ -113,7 +98,6 @@ export default function RoomModal({
 
   const countRealSeats = (layout: SeatCell[] | undefined) => {
     if (!layout) return 0;
-    // Giả sử type của ghế trống là "EMPTY" hoặc "empty"
     return layout.filter((s) => s.type !== "EMPTY").length;
   };
 
@@ -131,7 +115,9 @@ export default function RoomModal({
 
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Tên phòng <span className="text-red-500">*</span></Label>
+              <Label>
+                Tên phòng <span className="text-red-500">*</span>
+              </Label>
               <Input
                 autoFocus
                 placeholder="Ví dụ: Phòng 01"
@@ -148,7 +134,6 @@ export default function RoomModal({
                   step="1000"
                   placeholder="0"
                   value={vipBonus}
-                  // Nếu chưa có layout thì disable, nhưng nếu layout rỗng (chưa config) thì cho nhập
                   disabled={!hasVipSeat && seatLayout && seatLayout.length > 0}
                   className={
                     !hasVipSeat && seatLayout && seatLayout.length > 0
@@ -157,7 +142,7 @@ export default function RoomModal({
                   }
                   onChange={(e) =>
                     setVipBonus(
-                      e.target.value === "" ? "" : Number(e.target.value)
+                      e.target.value === "" ? "" : Number(e.target.value),
                     )
                   }
                 />
@@ -179,14 +164,13 @@ export default function RoomModal({
                   }
                   onChange={(e) =>
                     setCoupleBonus(
-                      e.target.value === "" ? "" : Number(e.target.value)
+                      e.target.value === "" ? "" : Number(e.target.value),
                     )
                   }
                 />
               </div>
             </div>
 
-            {/* [MỚI] Nút Cấu hình bố cục */}
             <div className="space-y-2">
               <Label>Bố cục phòng</Label>
               <Button

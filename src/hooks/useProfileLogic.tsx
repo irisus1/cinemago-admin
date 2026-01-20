@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import { userService, authService } from "@/services";
 import { useAuth } from "@/context/AuthContext";
 
-// ====== Types ======
 export type Me = {
   id: string;
   email: string;
@@ -20,7 +19,6 @@ export type Me = {
 
 export type GenderVN = "Nam" | "Nữ" | "Khác" | "—";
 
-// ====== Helpers ======
 const isGenderVN = (x: string): x is Exclude<GenderVN, "—"> =>
   x === "Nam" || x === "Nữ" || x === "Khác";
 
@@ -50,7 +48,6 @@ export function useProfileLogic() {
   const [loading, setLoading] = useState(false);
   const { refreshUser } = useAuth();
 
-  // --- Form Info State ---
   const [fullName, setFullName] = useState("");
   const [genderVN, setGenderVN] = useState<GenderVN>("—");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -61,7 +58,6 @@ export function useProfileLogic() {
     genderVN: "—",
   });
 
-  // --- Password State ---
   const [curPw, setCurPw] = useState("");
   const [newPw, setNewPw] = useState("");
   const [cfPw, setCfPw] = useState("");
@@ -70,20 +66,18 @@ export function useProfileLogic() {
   const [showCfPw, setShowCfPw] = useState(false);
   const [pwTooLong, setPwTooLong] = useState(false);
 
-  // --- Dialog State ---
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
   const [dialogTitle, setDialogTitle] = useState("");
   const [dialogMessage, setDialogMessage] = useState<React.ReactNode>("");
-  const [onConfirm, setOnConfirm] = useState<() => void>(() => () => {});
+  const [onConfirm, setOnConfirm] = useState<() => void>(() => () => { });
 
-  // --- Fetch Profile ---
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const res = await userService.getMe();
-      const data = res; // Adjust structure if needed based on API response
+      const data = res;
       const user: Me = {
         id: data.id,
         email: data.email,
@@ -124,7 +118,6 @@ export function useProfileLogic() {
     };
   }, [avatarPreview]);
 
-  // --- Validation / Dirty Check ---
   const normalize = (s: string) => s.trim().replace(/\s+/g, " ");
 
   const dirty = useMemo(() => {
@@ -135,7 +128,6 @@ export function useProfileLogic() {
     return nameChanged || genderChanged || avatarChanged;
   }, [fullName, genderVN, avatarFile]);
 
-  // --- Handlers ---
   const onPickAvatar: React.ChangeEventHandler<HTMLInputElement> = (e) => {
     const MAX_MB = 3;
     const ACCEPTED = ["image/jpeg", "image/png", "image/webp"];
@@ -244,7 +236,6 @@ export function useProfileLogic() {
     setIsConfirmDialogOpen(true);
   };
 
-  // Actions exposed to UI
   const onClickChangePassword = () => {
     openConfirm(
       "Xác nhận đổi mật khẩu",
@@ -274,7 +265,6 @@ export function useProfileLogic() {
     dirty,
     normalize,
 
-    // Info Form
     fullName,
     setFullName,
     genderVN,
@@ -282,7 +272,6 @@ export function useProfileLogic() {
     avatarPreview,
     onPickAvatar,
 
-    // Password Form
     curPw,
     setCurPw,
     newPw,
@@ -298,7 +287,6 @@ export function useProfileLogic() {
     pwTooLong,
     setPwTooLong,
 
-    // Dialogs
     isSuccessDialogOpen,
     setIsSuccessDialogOpen,
     isConfirmDialogOpen,
@@ -310,7 +298,6 @@ export function useProfileLogic() {
     dialogMessage,
     onConfirm,
 
-    // Actions
     onClickSave,
     onClickChangePassword,
   };

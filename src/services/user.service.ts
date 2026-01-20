@@ -45,7 +45,7 @@ export type UpdateUserRequest = Partial<Omit<User, "id" | "createdAt">>;
 type ApiErrorBody = { message?: string };
 const getMsg = (e: unknown, fb: string) =>
   axios.isAxiosError<ApiErrorBody>(e)
-    ? e.response?.data?.message ?? e.message ?? fb
+    ? (e.response?.data?.message ?? e.message ?? fb)
     : fb;
 
 class UserService {
@@ -59,7 +59,7 @@ class UserService {
       throw new Error(msg);
     }
   }
-  // Lấy danh sách người dùng (đã gõ kiểu phân trang)
+
   async getAllUsers(params?: UserParams): Promise<Paginated<User>> {
     try {
       const res = await api.get<Paginated<User>>("/users", { params });
@@ -82,12 +82,11 @@ class UserService {
     }
   }
 
-  // Tạo người dùng (trả về user vừa tạo)
   async createUser(payload: CreateUserRequest): Promise<User> {
     try {
       const { data } = await api.post<{ data: User; message: string }>(
         "/users",
-        payload
+        payload,
       );
       return data.data;
     } catch (e: unknown) {
@@ -97,12 +96,11 @@ class UserService {
     }
   }
 
-  // Cập nhật người dùng (trả về user đã cập nhật)
   async updateUser(id: string, payload: UpdateUserRequest): Promise<User> {
     try {
       const { data } = await api.put<{ data: User; message: string }>(
         `/users/${id}`,
-        payload
+        payload,
       );
       return data.data;
     } catch (e: unknown) {
@@ -112,7 +110,6 @@ class UserService {
     }
   }
 
-  // Xóa (archive) người dùng — giả định API trả về User sau khi archive
   async deleteUser(userId: string): Promise<string> {
     try {
       const { data } = await api.put<string>(`/users/${userId}/archive`);
@@ -124,7 +121,6 @@ class UserService {
     }
   }
 
-  // Khôi phục người dùng — giả định API trả về User sau khi restore
   async restoreUser(userId: string): Promise<string> {
     try {
       const { data } = await api.put<string>(`/users/${userId}/restore`);
@@ -142,9 +138,8 @@ class UserService {
         "/users/profile",
         form,
         {
-          // Quan trọng: override JSON default để axios tự gắn boundary
           headers: { "Content-Type": "multipart/form-data" },
-        }
+        },
       );
       return data.data;
     } catch (e: unknown) {

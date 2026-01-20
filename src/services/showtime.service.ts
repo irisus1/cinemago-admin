@@ -1,7 +1,6 @@
 import api from "@/config/api";
 import axios from "axios";
 
-// ===== Types =====
 export interface ShowTime {
   id: string;
   movieId: string;
@@ -9,12 +8,12 @@ export interface ShowTime {
   cinemaName?: string;
   roomId: string;
   roomName?: string;
-  startTime: string; // ISO string
-  endTime: string; // ISO string
+  startTime: string;
+  endTime: string;
   price: number;
   language: string;
   subtitle: boolean;
-  format: string; // e.g. "2D", "3D", "IMAX"
+  format: string;
   isActive: boolean;
   status?: string;
   createdAt?: string;
@@ -48,20 +47,17 @@ export type ServerPaginated<T> = {
 type ApiErrorBody = { message?: string };
 const getMsg = (e: unknown, fb: string) =>
   axios.isAxiosError<ApiErrorBody>(e)
-    ? e.response?.data?.message ?? e.message ?? fb
+    ? (e.response?.data?.message ?? e.message ?? fb)
     : fb;
 
-// Helper: chuyển Date -> ISO cho params
 function toIso(value?: Date | string): string | undefined {
   if (!value) return undefined;
   return value instanceof Date ? value.toISOString() : value;
 }
 
-// ===== Service =====
 class ShowTimeService {
-  // GET /ShowTimes/public -> { pagination, data }
   async getShowTimes(
-    params?: ShowTimeQuery
+    params?: ShowTimeQuery,
   ): Promise<ServerPaginated<ShowTime>> {
     try {
       const { data } = await api.get<ServerPaginated<ShowTime>>(
@@ -72,7 +68,7 @@ class ShowTimeService {
             startTime: toIso(params?.startTime),
             endTime: toIso(params?.endTime),
           },
-        }
+        },
       );
       return data;
     } catch (e: unknown) {
@@ -82,15 +78,14 @@ class ShowTimeService {
     }
   }
 
-  // (tuỳ BE có route này) GET /ShowTimes/by-movie/:movieId -> { pagination, data }
   async getAllShowTimeByMovieId(
     movieId: string,
-    params?: { page?: number; limit?: number }
+    params?: { page?: number; limit?: number },
   ): Promise<ServerPaginated<ShowTime>> {
     try {
       const { data } = await api.get<ServerPaginated<ShowTime>>(
         `/showtimes/by-movie/${movieId}`,
-        { params }
+        { params },
       );
       return data;
     } catch (e: unknown) {
@@ -100,11 +95,10 @@ class ShowTimeService {
     }
   }
 
-  // GET /ShowTimes/:id -> { data }
   async getShowTimeById(id: string): Promise<ShowTime> {
     try {
       const { data } = await api.get<{ data: ShowTime }>(
-        `/showtimes/public/${id}`
+        `/showtimes/public/${id}`,
       );
       return data.data;
     } catch (e: unknown) {
@@ -114,7 +108,6 @@ class ShowTimeService {
     }
   }
 
-  // POST /ShowTimes -> { data }
   async createShowTime(payload: {
     movieId: string;
     roomId: string;
@@ -140,7 +133,6 @@ class ShowTimeService {
     }
   }
 
-  // PUT /ShowTimes/:id -> { data }
   async updateShowTime(
     id: string,
     payload: Partial<{
@@ -153,7 +145,7 @@ class ShowTimeService {
       subtitle: boolean;
       format: string;
       isActive: boolean;
-    }>
+    }>,
   ): Promise<ShowTime> {
     try {
       const body = {
@@ -163,7 +155,7 @@ class ShowTimeService {
       };
       const { data } = await api.put<{ data: ShowTime }>(
         `/showtimes/${id}`,
-        body
+        body,
       );
       return data.data;
     } catch (e: unknown) {
@@ -173,7 +165,6 @@ class ShowTimeService {
     }
   }
 
-  // PUT /ShowTimes/archive/:id -> string
   async deleteShowTime(id: string): Promise<string> {
     try {
       const { data } = await api.put<string>(`/showtimes/archive/${id}`);
@@ -185,7 +176,6 @@ class ShowTimeService {
     }
   }
 
-  // PUT /ShowTimes/restore/:id -> string
   async restoreShowTime(id: string): Promise<string> {
     try {
       const { data } = await api.put<string>(`/showtimes/restore/${id}`);
@@ -197,7 +187,6 @@ class ShowTimeService {
     }
   }
 
-  // GET /ShowTimes/busy-rooms -> { data: string[] }
   async getBusyRoomIds(params: {
     startTime: Date | string;
     endTime: Date | string;
@@ -212,7 +201,7 @@ class ShowTimeService {
             startTime: toIso(params.startTime)!,
             endTime: toIso(params.endTime)!,
           },
-        }
+        },
       );
       return data.data;
     } catch (e: unknown) {

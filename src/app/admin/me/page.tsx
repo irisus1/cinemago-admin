@@ -54,7 +54,6 @@ export default function ProfilePage() {
 
   return (
     <div className="space-y-6">
-      {/* Profile info */}
       <Card className="shadow-sm">
         <CardHeader className="border-b">
           <CardTitle className="text-2xl">Thông tin cá nhân</CardTitle>
@@ -68,7 +67,6 @@ export default function ProfilePage() {
 
           {me && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Left: avatar + static */}
               <div className="lg:col-span-1 space-y-4">
                 <div className="flex items-center gap-4">
                   <label
@@ -95,7 +93,6 @@ export default function ProfilePage() {
                     )}
                   </label>
 
-                  {/* input file ẩn */}
                   <input
                     id="avatar-input"
                     type="file"
@@ -126,7 +123,6 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              {/* Right: editable form */}
               <div className="lg:col-span-2 space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -166,7 +162,6 @@ export default function ProfilePage() {
         </CardContent>
       </Card>
 
-      {/* Change password */}
       <Card className="shadow-sm">
         <CardHeader className="border-b">
           <CardTitle className="text-2xl">Đổi mật khẩu</CardTitle>

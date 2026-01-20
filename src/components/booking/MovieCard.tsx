@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import Image from "next/image";
 import {
   FaTag,
   FaRegClock,
@@ -12,7 +13,6 @@ type MovieCardProps = {
   filmId?: string | number;
   imageUrl?: string;
   name?: string;
-  // nhận sẵn tên thể loại: string[] | string
   type?: string[] | string | null | undefined;
   duration?: number | string;
   ageLimit?: string;
@@ -46,10 +46,9 @@ const MovieCard: React.FC<MovieCardProps> = ({
 
   const formatFlags = useMemo(
     () => (Array.isArray(twoDthreeD) ? twoDthreeD.map(String) : []),
-    [twoDthreeD]
+    [twoDthreeD],
   );
 
-  // typeText: nếu là mảng tên => join, nếu là string => giữ nguyên
   const typeText = useMemo(() => {
     if (!type) return "";
     return Array.isArray(type) ? type.filter(Boolean).join(", ") : String(type);
@@ -66,16 +65,22 @@ const MovieCard: React.FC<MovieCardProps> = ({
 
   return (
     <div className="flex flex-wrap justify-center gap-6 p-2 text-[0.7rem]">
-      <div className="group flex w-full max-w-[300px] flex-col items-start gap-2">
-        {/* Poster */}
+      <div className="group flex w-[300px] flex-col items-start gap-2">
         <div className="relative aspect-[2/3] w-full overflow-hidden rounded-xl border border-gray-300 shadow-md transition duration-300 hover:shadow-lg">
-          <img
+          {/* <img
             src={imageUrl || FALLBACK_POSTER}
             alt={name || "Movie Poster"}
             className="h-full w-full object-cover"
+          /> */}
+          <Image
+            src={imageUrl || FALLBACK_POSTER}
+            alt={name || "Movie Poster"}
+            fill
+            className="object-cover"
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 300px"
+            priority={false}
           />
 
-          {/* Formats (Dynamic) */}
           <div className="absolute left-0 top-0 flex items-center transition-transform duration-300 ease-in-out sm:group-hover:-translate-y-full">
             <div className="flex flex-wrap">
               {formatFlags.map((fmt) => {
@@ -114,7 +119,6 @@ const MovieCard: React.FC<MovieCardProps> = ({
             </div>
           </div>
 
-          {/* Overlay */}
           <div
             onClick={() => setVideoOpen(true)}
             className="absolute inset-0 z-10 hidden items-center justify-center bg-black/70 text-center opacity-0 transition-opacity duration-300 sm:flex sm:group-hover:opacity-100 text-[#F3EA28]"
@@ -151,7 +155,6 @@ const MovieCard: React.FC<MovieCardProps> = ({
           </div>
         </div>
 
-        {/* Info */}
         <div className="w-full">
           <a
             href={onSelect ? undefined : linkDetail}

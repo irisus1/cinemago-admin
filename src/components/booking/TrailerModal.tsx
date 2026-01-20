@@ -1,13 +1,9 @@
-// components/TrailerModal.tsx
 import React, { useEffect, useMemo, useRef } from "react";
 import { IoClose } from "react-icons/io5";
 
 type TrailerModalProps = {
-  /** Có thể là bất kỳ giá trị truthy/falsy; dùng !!videoOpen để hiển thị */
   videoOpen?: unknown;
-  /** Nhận true/false; nếu bạn dùng setState(prev => !prev) vẫn OK */
   setVideoOpen: (open: boolean) => void;
-  /** URL youtube (watch?v=, youtu.be/, hoặc đã là embed/) */
   videoUrl?: string;
 };
 
@@ -18,27 +14,21 @@ const TrailerModal: React.FC<TrailerModalProps> = ({
 }) => {
   const modalRef = useRef<HTMLDivElement | null>(null);
 
-  // Chuẩn hoá URL → embed
   const embedUrl = useMemo(() => {
     const url = String(videoUrl || "");
     if (!url) return "";
 
-    // 1) đã là /embed/
     if (/youtube\.com\/embed\//i.test(url)) return url;
 
-    // 2) dạng watch?v=VIDEO_ID
     const vMatch = url.match(/[?&]v=([^&]+)/);
     if (vMatch?.[1]) return `https://www.youtube.com/embed/${vMatch[1]}`;
 
-    // 3) dạng youtu.be/VIDEO_ID
     const short = url.match(/youtu\.be\/([^?]+)/);
     if (short?.[1]) return `https://www.youtube.com/embed/${short[1]}`;
 
-    // fallback: trả về nguyên URL (đề phòng link nhúng khác)
     return url;
   }, [videoUrl]);
 
-  // Click ngoài modal để đóng + phím ESC để đóng
   useEffect(() => {
     const handleOutsideClick = (ev: MouseEvent) => {
       if (modalRef.current && !modalRef.current.contains(ev.target as Node)) {
@@ -56,10 +46,8 @@ const TrailerModal: React.FC<TrailerModalProps> = ({
     };
   }, [setVideoOpen]);
 
-  // không mở hoặc không có URL → không render
   if (!videoOpen || !embedUrl) return null;
 
-  // autoplay + mute để trình duyệt cho phép tự phát
   const src = `${embedUrl}${
     embedUrl.includes("?") ? "&" : "?"
   }autoplay=1&mute=1`;

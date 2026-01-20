@@ -33,7 +33,7 @@ const ReviewsListPage: React.FC = () => {
     handleView,
 
     replyingReview,
-    handleReplyOpen, // Đổi tên hàm cũ handleReply -> handleReplyOpen cho rõ nghĩa
+    handleReplyOpen,
     handleReplyClose,
     handleSubmitReply,
     isSubmittingReply,
@@ -53,7 +53,6 @@ const ReviewsListPage: React.FC = () => {
     onConfirm,
   } = useReviewLogic();
 
-  // ===== Table columns =====
   const columns: Column<Review>[] = [
     {
       header: "Phim",
@@ -75,12 +74,7 @@ const ReviewsListPage: React.FC = () => {
       render: (_: unknown, row: Review) => row.rating.toFixed(1),
       className: "text-center w-[80px]",
     },
-    // {
-    //   header: "Loại",
-    //   key: "type",
-    //   render: (_: unknown, row: Review) => row.type,
-    //   className: "w-[120px]",
-    // },
+
     {
       header: "Nội dung",
       key: "content",
@@ -100,10 +94,11 @@ const ReviewsListPage: React.FC = () => {
 
         return (
           <span
-            className={`inline-flex px-2 py-1 rounded-full text-xs font-medium border ${isReplied
-              ? "bg-blue-50 text-blue-700 border-blue-200"
-              : "bg-orange-50 text-orange-700 border-orange-200"
-              }`}
+            className={`inline-flex px-2 py-1 rounded-full text-xs font-medium border ${
+              isReplied
+                ? "bg-blue-50 text-blue-700 border-blue-200"
+                : "bg-orange-50 text-orange-700 border-orange-200"
+            }`}
           >
             {row.status}
           </span>
@@ -116,10 +111,11 @@ const ReviewsListPage: React.FC = () => {
       key: "isActive",
       render: (_: unknown, row: Review) => (
         <span
-          className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${row.isActive
-            ? "bg-green-100 text-green-700"
-            : "bg-gray-200 text-gray-600"
-            }`}
+          className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
+            row.isActive
+              ? "bg-green-100 text-green-700"
+              : "bg-gray-200 text-gray-600"
+          }`}
         >
           {row.isActive ? "Đang hiển thị" : "Đã ẩn"}
         </span>
@@ -251,8 +247,6 @@ const ReviewsListPage: React.FC = () => {
         }}
         confirmText="Xác nhận"
       />
-
-
 
       <Modal
         isOpen={isErrorDialogOpen}

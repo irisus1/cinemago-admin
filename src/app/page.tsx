@@ -1,4 +1,3 @@
-// app/page.tsx
 "use client";
 
 import { useEffect } from "react";
@@ -12,11 +11,9 @@ export default function Root() {
   const router = useRouter();
 
   useEffect(() => {
-    // Chờ AuthContext load xong mới quyết định
     if (isLoading) return;
 
     if (isAuthenticated && user) {
-      // Logic redirect theo Role giống hệt Login
       const destination =
         ROLE_REDIRECTS[user.role as keyof typeof ROLE_REDIRECTS] ||
         "/admin/dashboard";
@@ -26,6 +23,5 @@ export default function Root() {
     }
   }, [isLoading, isAuthenticated, user, router]);
 
-  // Luôn hiện loading khi đang check auth hoặc đang redirect
   return <RefreshLoader isOpen={true} />;
 }

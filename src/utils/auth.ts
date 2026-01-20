@@ -1,4 +1,3 @@
-// utils/auth.ts
 export const getAccessToken = () =>
   typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
 

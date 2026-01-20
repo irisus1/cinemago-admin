@@ -1,4 +1,3 @@
-// src/hooks/useCinemaLogic.ts
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
@@ -9,7 +8,6 @@ import {
   roomService,
   type Cinema,
   PaginationMeta,
-  CreateCinemaRequest,
   RoomCreate,
   CinemaFormPayload,
 } from "@/services";
@@ -17,37 +15,29 @@ import {
 export function useCinemaLogic() {
   const router = useRouter();
 
-  // --- STATE ---
   const [cinemas, setCinemas] = useState<Cinema[]>([]);
   const [pagination, setPagination] = useState<PaginationMeta | null>(null);
 
   const [page, setPage] = useState(1);
   const [limit] = useState(5);
 
-  // search theo tên
-  const [temp, setTemp] = useState(""); // input thô
-  const [nameKw, setNameKw] = useState(""); // sau debounce
+  const [temp, setTemp] = useState("");
+  const [nameKw, setNameKw] = useState("");
 
-  // filter theo city (gửi lên BE)
   const [cityKw, setCityKw] = useState("");
 
   const [loading, setLoading] = useState(false);
 
-  // Modal State
   const [open, setOpen] = useState(false);
   const [createCinema, setCreateCinema] = useState(false);
   const [editCinema, setEditCinema] = useState<Cinema | null>(null);
 
-  // Dialog States
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
   const [dialogTitle, setDialogTitle] = useState("");
   const [dialogMessage, setDialogMessage] = useState<React.ReactNode>("");
-  const [onConfirm, setOnConfirm] = useState<() => void>(() => () => { });
+  const [onConfirm, setOnConfirm] = useState<() => void>(() => () => {});
 
-  // --- DATA FETCHING ---
-
-  // Fetch theo trang (server-side) với search + city
   const fetchPage = useCallback(
     async (toPage = page) => {
       setLoading(true);
@@ -56,7 +46,6 @@ export function useCinemaLogic() {
           page: toPage,
           limit,
           search: nameKw.trim() || undefined,
-          // BE mới có param city: gửi cityKw (tên tỉnh/thành phố)
           city: cityKw.trim() || undefined,
         });
 
@@ -77,31 +66,24 @@ export function useCinemaLogic() {
         setLoading(false);
       }
     },
-    [limit, nameKw, cityKw, page]
+    [limit, nameKw, cityKw, page],
   );
 
-  // --- EFFECTS ---
-
-  // Debounce search input theo tên rạp
   useEffect(() => {
     const t = setTimeout(() => setNameKw(temp), 400);
     return () => clearTimeout(t);
   }, [temp]);
 
-  // Reset về trang 1 khi filter (name / city) đổi
   useEffect(() => {
     setPage(1);
   }, [nameKw, cityKw]);
 
-  // Gọi API khi page / nameKw / cityKw thay đổi
   useEffect(() => {
     void fetchPage(page);
   }, [page, nameKw, cityKw, fetchPage]);
 
-  // --- FILTERING LOGIC (giờ không filter client nữa) ---
   const displayRows = useMemo(() => cinemas, [cinemas]);
 
-  // --- HANDLERS ---
   const handleRefresh = async () => {
     await fetchPage(page);
   };
@@ -115,7 +97,7 @@ export function useCinemaLogic() {
 
   const canClearFilters = useMemo(
     () => temp.trim() !== "" || cityKw.trim() !== "",
-    [temp, cityKw]
+    [temp, cityKw],
   );
 
   const handleAddOpen = () => {
@@ -133,7 +115,7 @@ export function useCinemaLogic() {
   const openConfirm = (
     title: string,
     message: React.ReactNode,
-    action: () => void
+    action: () => void,
   ) => {
     setDialogTitle(title);
     setDialogMessage(message);
@@ -159,7 +141,7 @@ export function useCinemaLogic() {
           setIsErrorDialogOpen(true);
           console.error("Delete cinema error:", err);
         }
-      }
+      },
     );
   };
 
@@ -181,21 +163,19 @@ export function useCinemaLogic() {
           setIsErrorDialogOpen(true);
           console.error("Restore cinema error:", err);
         }
-      }
+      },
     );
   };
 
   const handleCinemaAction = async (
     payload: CinemaFormPayload,
     mode: "create" | "edit",
-    original?: Cinema
+    original?: Cinema,
   ): Promise<string | undefined> => {
-    // Tách rooms ra, chỉ lấy info của rạp
     const { rooms, ...cinemaData } = payload;
 
     if (mode === "create") {
       const res = await cinemaService.addCinema(cinemaData);
-      // Xử lý các trường hợp response khác nhau để lấy ID
       return res?.id;
     } else if (mode === "edit" && original) {
       await cinemaService.updateCinema(original.id, cinemaData);
@@ -206,11 +186,10 @@ export function useCinemaLogic() {
 
   const handleRoomBatchAction = async (
     cinemaId: string,
-    rooms: RoomCreate[]
+    rooms: RoomCreate[],
   ) => {
     if (!rooms || rooms.length === 0) return;
 
-    // Sử dụng Promise.all để tạo song song giúp tốc độ nhanh hơn
     const promises = rooms.map((room) => {
       return roomService.createRoom({
         cinemaId: cinemaId,
@@ -227,15 +206,14 @@ export function useCinemaLogic() {
   const handleSubmitCinema = (
     payload: CinemaFormPayload,
     mode: "create" | "edit",
-    original?: Cinema
+    original?: Cinema,
   ) => {
     const isCreate = mode === "create";
     const cinemaName = payload.name || original?.name || "";
 
-    setOpen(false); // Đóng modal form
+    setOpen(false);
     setEditCinema(original ?? null);
 
-    // Mở modal xác nhận
     openConfirm(
       isCreate ? "Xác nhận thêm rạp" : "Xác nhận cập nhật rạp",
       <>
@@ -243,12 +221,10 @@ export function useCinemaLogic() {
         <span className="text-blue-600 font-semibold">{cinemaName}</span> không?
       </>,
       async () => {
-        // --- BẮT ĐẦU XỬ LÝ ---
         setIsConfirmDialogOpen(false);
         setLoading(true);
 
         try {
-          // BƯỚC 1: Xử lý Rạp
           const cinemaId = await handleCinemaAction(payload, mode, original);
 
           if (!cinemaId) {
@@ -259,20 +235,18 @@ export function useCinemaLogic() {
             await handleRoomBatchAction(cinemaId, payload.rooms);
           }
 
-          // --- THÀNH CÔNG ---
           toast.success(
             isCreate
               ? `Đã thêm rạp và ${payload.rooms.length} phòng thành công.`
-              : "Đã cập nhật thông tin rạp thành công."
+              : "Đã cập nhật thông tin rạp thành công.",
           );
 
           setEditCinema(null);
           if (isCreate) {
             setCreateCinema(false);
           }
-          await fetchPage(1); // Load lại bảng dữ liệu
+          await fetchPage(1);
         } catch (e) {
-          // --- THẤT BẠI ---
           console.error(e);
           setDialogTitle("Thất bại");
           setDialogMessage("Đã có lỗi xảy ra trong quá trình xử lý.");
@@ -280,7 +254,7 @@ export function useCinemaLogic() {
         } finally {
           setLoading(false);
         }
-      }
+      },
     );
   };
 
@@ -335,16 +309,13 @@ export function useCinemaLogic() {
   // };
 
   return {
-    // Data & Logic
     displayRows,
     loading,
 
-    // Pagination
     page,
     setPage,
     pagination,
 
-    // Filters
     temp,
     setTemp,
     cityKw,
@@ -352,7 +323,6 @@ export function useCinemaLogic() {
     clearFilters,
     canClearFilters,
 
-    // Actions
     handleRefresh,
     handleAddOpen,
     handleEditOpen,
@@ -361,7 +331,6 @@ export function useCinemaLogic() {
     handleRestore,
     handleSubmitCinema,
 
-    // Modals & Dialogs
     open,
     setOpen,
     createCinema,

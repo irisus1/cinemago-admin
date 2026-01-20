@@ -52,7 +52,6 @@ const CinemasListPage: React.FC = () => {
 
   const [cityId, setCityId] = useState("");
 
-  // ===== STATE XEM CHI TIẾT =====
   const [viewOpen, setViewOpen] = useState(false);
   const [viewCinema, setViewCinema] = useState<Cinema | null>(null);
 
@@ -148,7 +147,7 @@ const CinemasListPage: React.FC = () => {
                 onChange={(id) => {
                   setCityId(id);
                   const province = VIETNAM_PROVINCES.find(
-                    (p) => p.value === id
+                    (p) => p.value === id,
                   );
                   setCityKw(province?.label ?? "");
                 }}
@@ -231,8 +230,6 @@ const CinemasListPage: React.FC = () => {
         }}
         confirmText="Xác nhận"
       />
-
-
 
       <Modal
         isOpen={isErrorDialogOpen}

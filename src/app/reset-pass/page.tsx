@@ -33,10 +33,9 @@ export default function ForgotPasswordPage() {
 
       if (/invalid|expired otp/i.test(msg)) {
         alert("Mã OTP không hợp lệ hoặc đã hết hạn. Vui lòng lấy mã mới.");
-        // dọn state cũ để tránh dùng lại OTP hết hạn
         localStorage.removeItem("resetEmail");
         localStorage.removeItem("resetOtp");
-        router.replace("/forgot-pass"); // quay lại trang lấy OTP mới
+        router.replace("/forgot-pass");
         return;
       }
 
@@ -48,7 +47,7 @@ export default function ForgotPasswordPage() {
     <div
       style={{
         backgroundColor: "rgb(245,245,245)",
-        backgroundImage: `url("/loginBG.png")`, // ảnh để trong public/
+        backgroundImage: `url("/loginBG.png")`,
         backgroundSize: "cover",
       }}
       className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8"
