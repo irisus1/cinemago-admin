@@ -44,7 +44,6 @@ const GenresListPage: React.FC = () => {
     handleSubmitGenre,
   } = useGenreLogic();
 
-  // Định nghĩa cột hiển thị
   const columns: Column<Genre>[] = [
     { header: "Tên thể loại", key: "name" },
     { header: "Mô tả", key: "description" },
@@ -175,8 +174,6 @@ const GenresListPage: React.FC = () => {
         }}
         confirmText="Xác nhận"
       />
-
-
 
       <Modal
         isOpen={isErrorDialogOpen}

@@ -2,7 +2,6 @@ import api from "@/config/api";
 import axios from "axios";
 import { is } from "date-fns/locale";
 
-// ==== Types ====
 export interface Genre {
   id: string;
   name: string;
@@ -33,12 +32,10 @@ export type ServerPaginated<T> = {
 type ApiErrorBody = { message?: string };
 const getMsg = (e: unknown, fb: string) =>
   axios.isAxiosError<ApiErrorBody>(e)
-    ? e.response?.data?.message ?? e.message ?? fb
+    ? (e.response?.data?.message ?? e.message ?? fb)
     : fb;
 
-// ==== Service ====
 class GenreService {
-  // GET /genres/public -> { pagination, data }
   async getAllGenres(params?: PageParams): Promise<ServerPaginated<Genre>> {
     try {
       const { data } = await api.get<ServerPaginated<Genre>>("/genres/public", {
@@ -52,7 +49,6 @@ class GenreService {
     }
   }
 
-  // POST /genres -> { data: Genre }
   async addGenre(payload: {
     name: string;
     description: string;
@@ -67,10 +63,9 @@ class GenreService {
     }
   }
 
-  // PUT /genres/:id -> { data: Genre }
   async updateGenre(
     id: string,
-    payload: { name: string; description: string }
+    payload: { name: string; description: string },
   ): Promise<Genre> {
     try {
       const { data } = await api.put<{ data: Genre }>(`/genres/${id}`, payload);
@@ -82,7 +77,6 @@ class GenreService {
     }
   }
 
-  // PUT /genres/archive/:id -> string
   async deleteGenre(id: string): Promise<string> {
     try {
       const { data } = await api.put<string>(`/genres/archive/${id}`);
@@ -94,7 +88,6 @@ class GenreService {
     }
   }
 
-  // PUT /genres/restore/:id -> string
   async restoreGenre(id: string): Promise<string> {
     try {
       const { data } = await api.put<string>(`/genres/restore/${id}`);

@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import { type Room, SeatType } from "@/services";
+import { type Room } from "@/services";
 
 import {
   useSeatLayoutLogic,
@@ -20,7 +20,6 @@ import {
   SeatTypeKey,
 } from "@/hooks/useSeatLayoutLogic";
 
-/* ====================== Constants UI ====================== */
 const SEAT_TYPES = [
   {
     key: "normal",
@@ -60,7 +59,6 @@ type Props = {
 export default function SeatLayoutBuilder(props: Props) {
   const { open, onClose } = props;
 
-  // Gọi Hook Logic
   const {
     cols,
     pendingRows,
@@ -84,7 +82,7 @@ export default function SeatLayoutBuilder(props: Props) {
 
   const colHeaders = useMemo(
     () => Array.from({ length: cols }, (_, i) => i + 1),
-    [cols]
+    [cols],
   );
 
   if (!open) return null;
@@ -95,9 +93,7 @@ export default function SeatLayoutBuilder(props: Props) {
         <div className="h-full w-full animate-pulse rounded-xl bg-muted/40" />
       ) : (
         <>
-          {/* Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* 1) Chọn loại ghế */}
             <Card className="shadow-sm">
               <CardContent>
                 <div className="flex flex-wrap gap-2">
@@ -110,7 +106,7 @@ export default function SeatLayoutBuilder(props: Props) {
                         t.className,
                         selectedType === (t.key as SeatTypeKey)
                           ? `${t.ring} ring-2 scale-[1.02]`
-                          : "opacity-80 hover:opacity-100"
+                          : "opacity-80 hover:opacity-100",
                       )}
                       title={`Đang gán: ${t.label}`}
                     >
@@ -125,7 +121,6 @@ export default function SeatLayoutBuilder(props: Props) {
               </CardContent>
             </Card>
 
-            {/* 2) Nhập kích thước */}
             <Card className="shadow-sm">
               <CardContent>
                 <div className="grid grid-cols-2 gap-3">
@@ -160,7 +155,6 @@ export default function SeatLayoutBuilder(props: Props) {
               </CardContent>
             </Card>
 
-            {/* 3) Lưu / Hủy */}
             <Card className="shadow-sm">
               <CardContent className="space-y-4">
                 <div className="space-y-1">
@@ -193,14 +187,13 @@ export default function SeatLayoutBuilder(props: Props) {
             </Card>
           </div>
 
-          {/* Legend */}
           <div className="flex items-center gap-4 text-sm flex-wrap justify-center">
             {SEAT_TYPES.map((t) => (
               <div key={t.key} className="flex items-center gap-2">
                 <span
                   className={cn(
                     "inline-block w-4 h-4 rounded",
-                    t.className.split(" ")[0]
+                    t.className.split(" ")[0],
                   )}
                 />
                 {t.label}
@@ -208,7 +201,6 @@ export default function SeatLayoutBuilder(props: Props) {
             ))}
           </div>
 
-          {/* Screen */}
           <div className="w-full flex justify-center">
             <div className="w-1/2 max-w-xl h-2 bg-gray-300 rounded-full" />
           </div>
@@ -216,7 +208,6 @@ export default function SeatLayoutBuilder(props: Props) {
             Màn hình
           </div>
 
-          {/* Grid */}
           <div className="w-full flex justify-center">
             <div
               className="overflow-auto border rounded-2xl p-4 bg-white shadow-sm"
@@ -226,7 +217,6 @@ export default function SeatLayoutBuilder(props: Props) {
               }}
             >
               <div className="inline-block">
-                {/* Column headers */}
                 <div
                   className="grid gap-2"
                   style={{
@@ -244,7 +234,6 @@ export default function SeatLayoutBuilder(props: Props) {
                   ))}
                 </div>
 
-                {/* Rows */}
                 <div className="space-y-2 mt-1">
                   {layout.map((row, rIdx) => (
                     <div
@@ -288,7 +277,7 @@ export default function SeatLayoutBuilder(props: Props) {
                               t.type === "couple" &&
                                 !isLeftHalf(layout, rIdx, cIdx) &&
                                 !isRightHalf(layout, rIdx, cIdx) &&
-                                "rounded-lg"
+                                "rounded-lg",
                             )}
                             title={`Ghế ${label} - ${t.type}${
                               t.pairId ? " (couple)" : ""

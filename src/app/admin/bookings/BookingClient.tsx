@@ -28,6 +28,12 @@ import { bookingService } from "@/services/booking.service";
 import { toast } from "sonner";
 import { useState } from "react";
 
+type StatusFilterType =
+  | "__ALL__"
+  | "Chưa thanh toán"
+  | "Đã thanh toán"
+  | "Thanh toán thất bại";
+
 export default function BookingsListPage() {
   const {
     bookings,
@@ -49,7 +55,6 @@ export default function BookingsListPage() {
     selectedBooking,
     handleViewDetail,
 
-    // filters
     showtimeFilter,
     setShowtimeFilter,
     typeFilter,
@@ -59,27 +64,28 @@ export default function BookingsListPage() {
     statusFilter,
     setStatusFilter,
     refresh,
-    // Two-step filters
+
     filterMovies,
     filterShowtimes,
     selectedMovieFilter,
     setSelectedMovieFilter,
   } = useBookingLogic();
 
-  // Selected for Bulk Update
   const [isUpdating, setIsUpdating] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  // Eligible bookings for bulk selection (COD & Pending)
   const eligibleBookings = useMemo(() => {
-    return bookings.filter(b => b.paymentMethod === "COD" && b.status === "Chưa thanh toán");
+    return bookings.filter(
+      (b) => b.paymentMethod === "COD" && b.status === "Chưa thanh toán",
+    );
   }, [bookings]);
 
-  // Check state for "Select All"
-  const isAllSelected = eligibleBookings.length > 0 && eligibleBookings.every(b => selectedIds.has(b.id));
-  const isIndeterminate = !isAllSelected && eligibleBookings.some(b => selectedIds.has(b.id));
+  const isAllSelected =
+    eligibleBookings.length > 0 &&
+    eligibleBookings.every((b) => selectedIds.has(b.id));
+  const isIndeterminate =
+    !isAllSelected && eligibleBookings.some((b) => selectedIds.has(b.id));
 
-  // Toggle selection
   const handleToggleSelect = (id: string, checked: boolean) => {
     const next = new Set(selectedIds);
     if (checked) next.add(id);
@@ -90,23 +96,23 @@ export default function BookingsListPage() {
   const handleSelectAll = (checked: boolean) => {
     const next = new Set(selectedIds);
     if (checked) {
-      eligibleBookings.forEach(b => next.add(b.id));
+      eligibleBookings.forEach((b) => next.add(b.id));
     } else {
-      eligibleBookings.forEach(b => next.delete(b.id));
+      eligibleBookings.forEach((b) => next.delete(b.id));
     }
     setSelectedIds(next);
   };
 
-  // Bulk update
   const handleBulkUpdate = async (targetStatus: string) => {
     if (selectedIds.size === 0) return;
     setIsUpdating(true);
     try {
-      // Loop update (simple version)
       for (const id of Array.from(selectedIds)) {
         await bookingService.updateBookingStatus(id, targetStatus);
       }
-      toast.success(`Đã cập nhật ${selectedIds.size} đơn hàng sang "${targetStatus}"`);
+      toast.success(
+        `Đã cập nhật ${selectedIds.size} đơn hàng sang "${targetStatus}"`,
+      );
       await refresh();
       setSelectedIds(new Set());
     } catch (e) {
@@ -116,8 +122,6 @@ export default function BookingsListPage() {
       setIsUpdating(false);
     }
   };
-
-
 
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat("vi-VN", {
@@ -152,7 +156,6 @@ export default function BookingsListPage() {
     });
   }, [filterShowtimes, roomMap]);
 
-
   const { user: currentUser } = useAuth();
 
   const columns: Column<Booking>[] = [
@@ -160,7 +163,9 @@ export default function BookingsListPage() {
       header: (
         <div className="flex items-center justify-center">
           <Checkbox
-            checked={isAllSelected || (isIndeterminate ? "indeterminate" : false)}
+            checked={
+              isAllSelected || (isIndeterminate ? "indeterminate" : false)
+            }
             onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
             disabled={eligibleBookings.length === 0}
           />
@@ -170,19 +175,25 @@ export default function BookingsListPage() {
       headerClassName: "w-[50px] px-2",
       className: "px-2",
       render: (_, r) => {
-        // Check if eligible
-        const isEligible = r.paymentMethod === "COD" && (r.status === "Chờ thanh toán" || r.status === "Chưa thanh toán");
+        const isEligible =
+          r.paymentMethod === "COD" &&
+          (r.status === "Chờ thanh toán" || r.status === "Chưa thanh toán");
         return (
-          <div className="flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="flex items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+          >
             {isEligible && (
               <Checkbox
                 checked={selectedIds.has(r.id)}
-                onCheckedChange={(checked) => handleToggleSelect(r.id, checked as boolean)}
+                onCheckedChange={(checked) =>
+                  handleToggleSelect(r.id, checked as boolean)
+                }
               />
             )}
           </div>
-        )
-      }
+        );
+      },
     },
     {
       header: "Mã đơn",
@@ -201,11 +212,15 @@ export default function BookingsListPage() {
           return <span className="text-gray-400 italic">Khách vãng lai</span>;
 
         const bookingUser = userMap[r.userId];
-        if (!bookingUser) return <span className="text-xs animate-pulse">Đang tải...</span>;
+        if (!bookingUser)
+          return <span className="text-xs animate-pulse">Đang tải...</span>;
 
-        // Logic check offline booking (NV/Manager đặt hộ)
         if (currentUser && bookingUser.email === currentUser.email) {
-          return <span className="text-gray-500 italic">Khách vãng lai (Tại quầy)</span>;
+          return (
+            <span className="text-gray-500 italic">
+              Khách vãng lai (Tại quầy)
+            </span>
+          );
         }
 
         return (
@@ -226,7 +241,6 @@ export default function BookingsListPage() {
             <span className="text-xs animate-pulse">Checking info...</span>
           );
 
-        // Tra cứu tên phim từ movieMap dựa vào st.movieId
         const movie = movieMap[st.movieId];
         const room = roomMap[st.roomId];
         console.log("showtime ở page: ", st);
@@ -263,12 +277,10 @@ export default function BookingsListPage() {
             <span className="text-xs animate-pulse">Checking info...</span>
           );
 
-        // Tra cứu tên phim từ movieMap dựa vào st.movieId
         const cinema = cinemaMap[st.cinemaId];
 
         return (
           <div className="max-w-[220px]">
-            {/* Tên Rạp (Hiển thị nổi bật vì đa rạp) */}
             <div className="text-sm font-bold text-gray-500 mb-1">
               {cinema ? cinema.name : "Rạp ?"}
             </div>
@@ -283,8 +295,8 @@ export default function BookingsListPage() {
     {
       header: "Tổng tiền",
       key: "totalPrice",
-      render: (v) => (
-        <b className="text-green-600">{formatCurrency(v as number)}</b>
+      render: (_, r) => (
+        <b className="text-green-600">{formatCurrency(r.totalPrice)}</b>
       ),
     },
     {
@@ -308,7 +320,7 @@ export default function BookingsListPage() {
         <Badge variant="outline" className="whitespace-nowrap">
           {r.paymentMethod || "UNKNOWN"}
         </Badge>
-      )
+      ),
     },
     {
       header: "Trạng thái",
@@ -323,18 +335,20 @@ export default function BookingsListPage() {
           color = "bg-red-100 text-red-800 border-red-200";
         }
         return (
-          <span className={`px-2 py-1 rounded-full text-xs font-semibold border ${color} whitespace-nowrap`}>
+          <span
+            className={`px-2 py-1 rounded-full text-xs font-semibold border ${color} whitespace-nowrap`}
+          >
             {r.status || "Chưa thanh toán"}
           </span>
-        )
-      }
+        );
+      },
     },
     {
       header: "Ngày đặt",
       key: "createdAt",
-      render: (v) => (
+      render: (_, r) => (
         <span className="text-sm">
-          {new Date(v as string).toLocaleTimeString("vi-VN", {
+          {new Date(r.createdAt).toLocaleTimeString("vi-VN", {
             hour: "2-digit",
             minute: "2-digit",
             day: "2-digit",
@@ -380,13 +394,22 @@ export default function BookingsListPage() {
             disabled={!selectedMovieFilter}
           >
             <SelectTrigger className="h-10 w-[220px] rounded-lg border border-gray-300 bg-gray-50">
-              <SelectValue placeholder={!selectedMovieFilter ? "Chọn phim trước..." : "Chọn suất chiếu"} />
+              <SelectValue
+                placeholder={
+                  !selectedMovieFilter
+                    ? "Chọn phim trước..."
+                    : "Chọn suất chiếu"
+                }
+              />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="__ALL__">Tất cả suất chiếu</SelectItem>
               {filteredShowtimeOptions.map((opt) => (
                 <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label} <span className="text-xs text-gray-400 ml-2">({opt.meta})</span>
+                  {opt.label}{" "}
+                  <span className="text-xs text-gray-400 ml-2">
+                    ({opt.meta})
+                  </span>
                 </SelectItem>
               ))}
             </SelectContent>
@@ -410,7 +433,7 @@ export default function BookingsListPage() {
           {/* Status Filter */}
           <Select
             value={statusFilter}
-            onValueChange={(val) => setStatusFilter(val as any)}
+            onValueChange={(val) => setStatusFilter(val as StatusFilterType)}
           >
             <SelectTrigger className="h-10 w-[180px] rounded-lg border border-gray-300 bg-gray-50">
               <SelectValue placeholder="Trạng thái" />
@@ -419,29 +442,43 @@ export default function BookingsListPage() {
               <SelectItem value="__ALL__">Tất cả trạng thái</SelectItem>
               <SelectItem value="Chưa thanh toán">Chưa thanh toán</SelectItem>
               <SelectItem value="Đã thanh toán">Đã thanh toán</SelectItem>
-              <SelectItem value="Thanh toán thất bại">Thanh toán thất bại</SelectItem>
+              <SelectItem value="Thanh toán thất bại">
+                Thanh toán thất bại
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
 
-        {/* Bulk Action Bar */}
         {selectedIds.size > 0 && (
           <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-white shadow-xl border border-gray-200 p-4 rounded-xl flex items-center gap-4 animate-in slide-in-from-bottom-4 fade-in">
-            <span className="text-sm font-semibold">{selectedIds.size} đơn hàng đã chọn</span>
+            <span className="text-sm font-semibold">
+              {selectedIds.size} đơn hàng đã chọn
+            </span>
             <div className="h-4 w-px bg-gray-300"></div>
             <Button
-              size="sm" variant="default" className="bg-green-600 hover:bg-green-700 cursor-pointer"
+              size="sm"
+              variant="default"
+              className="bg-green-600 hover:bg-green-700 cursor-pointer"
               onClick={() => handleBulkUpdate("Đã thanh toán")}
             >
-              "Đã thanh toán"
+              Đã thanh toán
             </Button>
             <Button
-              size="sm" variant="destructive" className="cursor-pointer hover:bg-red-800"
+              size="sm"
+              variant="destructive"
+              className="cursor-pointer hover:bg-red-800"
               onClick={() => handleBulkUpdate("Thanh toán thất bại")}
             >
-              "Thất bại"
+              Thất bại
             </Button>
-            <Button size="sm" variant="ghost" className="cursor-pointer hover:bg-gray-200" onClick={() => setSelectedIds(new Set())}>Hủy</Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="cursor-pointer hover:bg-gray-200"
+              onClick={() => setSelectedIds(new Set())}
+            >
+              Hủy
+            </Button>
           </div>
         )}
 

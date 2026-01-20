@@ -26,7 +26,6 @@ import RefreshLoader from "@/components/Loading";
 
 export default function RoomCard() {
   const {
-    // Data & State
     displayRows,
     pagination,
     loading,
@@ -54,7 +53,6 @@ export default function RoomCard() {
     dialogMessage,
     onConfirm,
 
-    // Actions
     clearFilters,
 
     handleAddOpen,
@@ -62,13 +60,11 @@ export default function RoomCard() {
     handleDelete,
     handleRestore,
 
-    // New Submit Logic
     isSubmitting,
     handleSubmitRoom,
     isManager,
   } = useRoomLogic();
 
-  // ===== columns =====
   const columns: Column<Room>[] = [
     { header: "Tên phòng", key: "name" },
     {
@@ -82,12 +78,12 @@ export default function RoomCard() {
       render: (v) =>
         v
           ? Intl.DateTimeFormat("vi-VN", {
-            hour: "2-digit",
-            minute: "2-digit",
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-          }).format(new Date(v as string))
+              hour: "2-digit",
+              minute: "2-digit",
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+            }).format(new Date(v as string))
           : "—",
     },
     {
@@ -107,7 +103,6 @@ export default function RoomCard() {
         <div className="flex w-full items-center justify-center space-x-3">
           {row.isActive ? (
             <>
-              {/* Sửa */}
               <button
                 className="text-blue-600 hover:text-blue-800"
                 onClick={() => handleEditOpen(row)}
@@ -116,7 +111,6 @@ export default function RoomCard() {
                 <FiEdit2 className="w-4 h-4" />
               </button>
 
-              {/* Xóa */}
               <button
                 className="text-red-600 hover:text-red-800"
                 onClick={() => handleDelete(row)}
@@ -161,7 +155,6 @@ export default function RoomCard() {
                   onChange={(id) => {
                     setCinemaId(id);
                     setPage(1);
-                    // fetchRooms(1);
                   }}
                   placeholder="Chọn rạp"
                   searchPlaceholder="Tìm rạp theo tên / thành phố..."
@@ -202,7 +195,6 @@ export default function RoomCard() {
             </div>
           </div>
 
-          {/* RIGHT: actions */}
           <div className="flex items-center gap-3 justify-self-end self-start">
             <button
               className={
@@ -224,7 +216,6 @@ export default function RoomCard() {
         </div>
       </div>
 
-      {/* ===== TABLE + LOADING + PAGINATION (style như showtimes) ===== */}
       <div className="bg-white rounded-lg shadow-sm overflow-x-auto">
         <Table<Room>
           columns={columns}
@@ -288,8 +279,6 @@ export default function RoomCard() {
         }}
         confirmText="Xác nhận"
       />
-
-
 
       <Modal
         isOpen={isErrorDialogOpen}

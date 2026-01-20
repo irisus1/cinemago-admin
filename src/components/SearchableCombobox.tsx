@@ -26,13 +26,13 @@ export type SelectOption = {
 
 type Props = {
   options: SelectOption[];
-  value: string; // value đang chọn
+  value: string;
   onChange: (value: string) => void;
   placeholder?: string;
   searchPlaceholder?: string;
-  className?: string; // class cho trigger
+  className?: string;
   disabled?: boolean;
-  widthClass?: string; // width, ví dụ "w-[260px]"
+  widthClass?: string;
 };
 
 export function SearchableCombobox({
@@ -49,7 +49,7 @@ export function SearchableCombobox({
 
   const selected = React.useMemo(
     () => options.find((o) => o.value === value),
-    [options, value]
+    [options, value],
   );
 
   const displayLabel = selected
@@ -70,7 +70,7 @@ export function SearchableCombobox({
             "h-10 justify-between border border-gray-400 rounded-lg",
             "bg-gray-100 hover:bg-gray-100",
             widthClass,
-            className
+            className,
           )}
         >
           {displayLabel ? (
@@ -107,7 +107,7 @@ export function SearchableCombobox({
                     <Check
                       className={cn(
                         "mr-2 h-4 w-4",
-                        opt.value === value ? "opacity-100" : "opacity-0"
+                        opt.value === value ? "opacity-100" : "opacity-0",
                       )}
                     />
                     <span className="truncate">{rowLabel}</span>

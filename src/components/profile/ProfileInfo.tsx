@@ -3,30 +3,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { ShieldCheck, CheckCircle2, AlertCircle, X } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-} from "@/components/ui/dialog";
+import { CheckCircle2, AlertCircle, X } from "lucide-react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import RefreshLoader from "@/components/Loading";
 import Image from "next/image";
 
-// ====== Services ======
 import { userService } from "@/services";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 
-type Me = {
-  id: string;
-  email: string;
-  fullname: string;
-  gender: "MALE" | "FEMALE" | "OTHER" | string | null;
-  role: string;
-  avatarUrl?: string;
-  isActive: boolean;
-};
-
-// ====== Helpers ======
 type GenderVN = "Nam" | "Nữ" | "Khác" | "—";
 const isGenderVN = (x: string): x is Exclude<GenderVN, "—"> =>
   x === "Nam" || x === "Nữ" || x === "Khác";
@@ -43,15 +28,10 @@ const mapGender = (v: unknown): GenderVN => {
   return "Khác";
 };
 
-export default function ProfileInfo({
-  onClose,
-}: {
-  onClose: () => void;
-}) {
+export default function ProfileInfo({ onClose }: { onClose: () => void }) {
   const [loading, setLoading] = useState(false);
   const { refreshUser, user } = useAuth();
 
-  // form info
   const [fullName, setFullName] = useState("");
   const [genderVN, setGenderVN] = useState<GenderVN>("—");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -62,16 +42,12 @@ export default function ProfileInfo({
     genderVN: "—",
   });
 
-  // dialogs state
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [dialogTitle, setDialogTitle] = useState("");
   const [dialogMessage, setDialogMessage] = useState<React.ReactNode>("");
 
-
-  // fetch profile
   const load = useCallback(async () => {
-    // Không set loading ở đây để tránh nháy giao diện khi user data đã có
     if (!user) return;
 
     const baseName = (user.fullname ?? "").trim().replace(/\s+/g, " ");
@@ -98,7 +74,6 @@ export default function ProfileInfo({
     };
   }, [avatarPreview]);
 
-  // check form changed
   const normalize = (s: string) => s.trim().replace(/\s+/g, " ");
 
   const dirty = useMemo(() => {
@@ -152,7 +127,6 @@ export default function ProfileInfo({
 
       await refreshUser();
 
-      // Mở dialog success -> ProfileModal vẫn ẩn
       setDialogTitle("Lưu thay đổi thành công");
       setDialogMessage("Thông tin cá nhân đã được cập nhật.");
       setIsSuccessDialogOpen(true);
@@ -166,11 +140,11 @@ export default function ProfileInfo({
   };
 
   const onClickSave = (e: React.MouseEvent) => {
-    e.preventDefault(); // Chặn hành vi mặc định
+    e.preventDefault();
     if (!dirty) return;
     setDialogTitle("Xác nhận lưu thay đổi");
     setDialogMessage(<>Bạn có chắc muốn lưu các thay đổi chứ?</>);
-    setIsConfirmDialogOpen(true); // Modal Confirm sẽ hiện đè lên ProfileModal
+    setIsConfirmDialogOpen(true);
   };
 
   const onConfirmAction = async () => {
@@ -178,10 +152,8 @@ export default function ProfileInfo({
     await executeSave();
   };
 
-  // Xử lý khi bấm nút "Hủy" trong Modal Confirm
   const onCancelConfirm = () => {
     setIsConfirmDialogOpen(false);
-    // -> State thay đổi -> useEffect chạy -> onChildModalChange(false) -> ProfileModal hiện lại.
   };
 
   return (
@@ -189,7 +161,6 @@ export default function ProfileInfo({
       <Card className="shadow-none border-none">
         <CardContent className="space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {/* AVATAR COLUMN */}
             <div>
               <h2 className="text-lg font-semibold mb-4">Ảnh đại diện</h2>
               <div className="relative w-40 h-40">
@@ -198,11 +169,29 @@ export default function ProfileInfo({
                   className="block w-full h-full rounded-full overflow-hidden border bg-gray-100 cursor-pointer ring-1 ring-gray-300 hover:ring-2 hover:ring-primary transition"
                 >
                   {avatarPreview ? (
-                    <Image src={avatarPreview} alt="Preview" width={160} height={160} className="w-full h-full object-cover" />
+                    <Image
+                      src={avatarPreview}
+                      alt="Preview"
+                      width={160}
+                      height={160}
+                      className="w-full h-full object-cover"
+                    />
                   ) : user?.avatarUrl ? (
-                    <Image src={user.avatarUrl} alt="Avatar" width={160} height={160} className="w-full h-full object-cover" />
+                    <Image
+                      src={user.avatarUrl}
+                      alt="Avatar"
+                      width={160}
+                      height={160}
+                      className="w-full h-full object-cover"
+                    />
                   ) : (
-                    <Image src="/default-avt.png" alt="Default Avatar" width={160} height={160} className="w-full h-full object-cover" />
+                    <Image
+                      src="/default-avt.png"
+                      alt="Default Avatar"
+                      width={160}
+                      height={160}
+                      className="w-full h-full object-cover"
+                    />
                   )}
                 </label>
                 <input
@@ -215,7 +204,6 @@ export default function ProfileInfo({
               </div>
             </div>
 
-            {/* INFO COLUMN */}
             <div>
               <h2 className="text-lg font-semibold mb-4">Thông tin cá nhân</h2>
               <div className="space-y-4">
@@ -229,7 +217,11 @@ export default function ProfileInfo({
                 </div>
                 <div className="space-y-2">
                   <Label>Email</Label>
-                  <Input value={user?.email || ""} disabled className="bg-gray-100" />
+                  <Input
+                    value={user?.email || ""}
+                    disabled
+                    className="bg-gray-100"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Giới tính</Label>
@@ -251,7 +243,7 @@ export default function ProfileInfo({
                   Hủy
                 </Button>
                 <Button
-                  type="button" // QUAN TRỌNG: Ngăn chặn reload form
+                  type="button"
                   onClick={onClickSave}
                   disabled={loading || !dirty || fullName.trim() === ""}
                 >
@@ -263,8 +255,6 @@ export default function ProfileInfo({
         </CardContent>
       </Card>
 
-
-      {/* CONFIRM DIALOG */}
       <Dialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
         <DialogContent className="sm:max-w-md p-0 overflow-hidden bg-white rounded-3xl shadow-2xl">
           <div className="p-8 text-center relative">
@@ -277,7 +267,9 @@ export default function ProfileInfo({
             <div className="w-20 h-20 bg-blue-50 border-4 border-blue-200 rounded-full flex items-center justify-center mx-auto mb-6">
               <AlertCircle className="w-10 h-10 text-blue-500" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-3">Xác nhận lưu thay đổi</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-3">
+              Xác nhận lưu thay đổi
+            </h2>
             <div className="text-gray-600 mb-6 leading-relaxed">
               {dialogMessage}
             </div>
@@ -299,7 +291,6 @@ export default function ProfileInfo({
         </DialogContent>
       </Dialog>
 
-      {/* SUCCESS DIALOG */}
       <Dialog open={isSuccessDialogOpen} onOpenChange={setIsSuccessDialogOpen}>
         <DialogContent className="sm:max-w-md p-0 overflow-hidden bg-white rounded-3xl shadow-2xl">
           <div className="p-8 text-center relative">
@@ -320,7 +311,9 @@ export default function ProfileInfo({
               </div>
             )}
 
-            <h2 className="text-2xl font-bold text-gray-900 mb-3">{dialogTitle}</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-3">
+              {dialogTitle}
+            </h2>
             <div className="text-gray-600 mb-6 leading-relaxed">
               {dialogMessage}
             </div>

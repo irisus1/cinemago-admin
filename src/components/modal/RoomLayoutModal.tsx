@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-// Import Hook và Type chuẩn
 import {
   useSeatLayoutLogic,
   toLetters,
@@ -21,7 +20,6 @@ import {
   LIMIT_MAX,
   SeatTypeKey,
 } from "@/hooks/useSeatLayoutLogic";
-// Import Type từ Service
 import { SeatCell } from "@/services";
 
 const SEAT_TYPES = [
@@ -55,7 +53,7 @@ type RoomLayoutModalProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   roomName: string;
-  initialLayout?: SeatCell[]; // Sử dụng SeatCell[] chuẩn
+  initialLayout?: SeatCell[];
   onSave: (layout: SeatCell[]) => void;
 };
 
@@ -77,7 +75,6 @@ export function RoomLayoutModal({
     selectedType,
     setSelectedType,
     layout,
-    countRealSeats,
 
     loading,
     generateLayout,
@@ -89,19 +86,13 @@ export function RoomLayoutModal({
   } = useSeatLayoutLogic({
     open,
     onClose: handleClose,
-    seatLayout: initialLayout, // Truyền đúng props
-    onCustomSave: onSave, // Callback lưu
+    seatLayout: initialLayout,
+    onCustomSave: onSave,
   });
-
-  const colHeaders = useMemo(
-    () => Array.from({ length: cols }, (_, i) => i + 1),
-    [cols]
-  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="min-w-[95vw] w-[95vw] h-[95vh] flex flex-col p-0 gap-0 focus:outline-none">
-        {/* HEADER */}
         <DialogHeader className="px-6 py-4 border-b bg-white flex-none">
           <DialogTitle>Cấu hình ghế - {roomName}</DialogTitle>
           <DialogDescription>
@@ -109,7 +100,6 @@ export function RoomLayoutModal({
           </DialogDescription>
         </DialogHeader>
 
-        {/* TOOLBAR */}
         <div className="px-6 py-2 border-b bg-slate-50 flex flex-wrap items-center justify-between gap-4 flex-none z-10">
           <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0 pr-3">
             <span className="text-sm font-semibold text-muted-foreground whitespace-nowrap py-4">
@@ -124,7 +114,7 @@ export function RoomLayoutModal({
                   t.className,
                   selectedType === (t.key as SeatTypeKey)
                     ? `${t.ring} ring-2 ring-offset-1 font-bold shadow-sm scale-105`
-                    : "opacity-70 hover:opacity-100"
+                    : "opacity-70 hover:opacity-100",
                 )}
               >
                 {t.label}
@@ -169,7 +159,6 @@ export function RoomLayoutModal({
           </div>
         </div>
 
-        {/* BODY */}
         <div className="flex-1 overflow-hidden bg-slate-100 relative">
           <div className="w-full h-full overflow-auto p-8 flex flex-col items-center">
             <div className="mb-12 w-[60%] max-w-3xl flex flex-col items-center opacity-80 shrink-0 select-none">
@@ -257,7 +246,7 @@ export function RoomLayoutModal({
                                 typeConfig.className,
                                 seat.type === "empty"
                                   ? "opacity-20 border-dashed shadow-none bg-transparent hover:bg-slate-100 hover:opacity-100"
-                                  : "hover:scale-110 hover:shadow-md hover:z-20 hover:brightness-105"
+                                  : "hover:scale-110 hover:shadow-md hover:z-20 hover:brightness-105",
                               )}
                             >
                               {seat.type !== "empty" && label}
@@ -273,7 +262,6 @@ export function RoomLayoutModal({
           </div>
         </div>
 
-        {/* FOOTER */}
         <div className="px-6 py-4 bg-white border-t flex-none flex items-center justify-between">
           <div className="flex gap-6 text-sm">
             <div className="flex flex-col">

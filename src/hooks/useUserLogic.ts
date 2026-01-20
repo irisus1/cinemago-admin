@@ -35,13 +35,11 @@ export function useUsersLogic() {
 
   const [onConfirm, setOnConfirm] = useState<() => void>(() => () => { });
 
-  // debounce search input
   useEffect(() => {
     const t = setTimeout(() => setSearch(searchInput), 300);
     return () => clearTimeout(t);
   }, [searchInput]);
 
-  // đổi filter => về page 1
   useEffect(() => {
     setPage(1);
   }, [search, role, status]);

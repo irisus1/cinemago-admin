@@ -23,7 +23,7 @@ export type GenreOption = { id: string; name: string; description: string };
 
 type Props = {
   options: GenreOption[];
-  value: string[]; // mảng id đã chọn
+  value: string[];
   onChange: (ids: string[]) => void;
   placeholder?: string;
   className?: string;
@@ -49,16 +49,15 @@ export default function GenreMultiSelect({
   const remove = (id: string) => onChange(value.filter((v) => v !== id));
   const clearAll = () => onChange([]);
 
-  // Lấy nhãn đã chọn để hiển thị gọn trong trigger
   const labels = React.useMemo(
     () =>
       value
         .map((id) => options.find((o) => o.id === id)?.name)
         .filter((x): x is string => Boolean(x)),
-    [value, options]
+    [value, options],
   );
 
-  const MAX_SHOW = 2; // số chip hiển thị trong trigger
+  const MAX_SHOW = 2;
   const shown = labels.slice(0, MAX_SHOW);
   const extra = labels.length - shown.length;
 
@@ -84,21 +83,7 @@ export default function GenreMultiSelect({
                     title={name}
                   >
                     <span className="truncate ">{name}</span>
-                    {/* Chặn mở popover khi bấm ✕ */}
-                    {/* <button
-                      className="ml-1 "
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        const id = value.find(
-                          (v) => options.find((o) => o.id === v)?.name === name
-                        );
-                        if (id) remove(id);
-                      }}
-                      title="Bỏ"
-                    >
-                      <X className="h-3 w-3 opacity-70 hover:opacity-100" />
-                    </button> */}
+
                     <div
                       role="button"
                       tabIndex={0}
@@ -107,7 +92,7 @@ export default function GenreMultiSelect({
                         e.stopPropagation();
                         e.preventDefault();
                         const id = value.find(
-                          (v) => options.find((o) => o.id === v)?.name === name
+                          (v) => options.find((o) => o.id === v)?.name === name,
                         );
                         if (id) remove(id);
                       }}
@@ -143,7 +128,7 @@ export default function GenreMultiSelect({
                     <Check
                       className={cn(
                         "mr-2 h-4 w-4",
-                        selected.has(opt.id) ? "opacity-100" : "opacity-0"
+                        selected.has(opt.id) ? "opacity-100" : "opacity-0",
                       )}
                     />
                     {opt.name}

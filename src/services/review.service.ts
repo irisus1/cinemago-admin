@@ -1,12 +1,5 @@
-// src/services/review.service.ts
-
-import api from "@/config/api"; // hoặc import axios from "axios";
-// nếu không có api instance thì thay api = axios.create(...)
-
-const GRAPHQL_PATH = "/reviews"; // sửa lại nếu BE dùng đường khác
-
-// ===== Types khớp với schema GraphQL =====
-
+import api from "@/config/api";
+const GRAPHQL_PATH = "/reviews";
 export interface Pagination {
   totalItems: number;
   totalPages: number;
@@ -54,8 +47,6 @@ export interface ReviewOverview {
   ratingDistribution: number[];
 }
 
-// ===== Input params =====
-
 export interface GetReviewsParams {
   page?: number;
   limit?: number;
@@ -68,7 +59,7 @@ export interface GetReviewsParams {
 }
 
 export interface ReviewFilterValues {
-  movieId: string; // bắt buộc có phim
+  movieId: string;
   rating?: number;
   status?: string;
   type?: string;
@@ -92,8 +83,6 @@ export interface UpdateReviewInput {
   rating?: number;
 }
 
-// ===== Helper gọi GraphQL chung =====
-
 type GraphQLError = {
   message: string;
 };
@@ -105,7 +94,7 @@ type GraphQLRawResponse<T> = {
 
 async function graphqlRequest<T, V extends object = object>(
   query: string,
-  variables?: V
+  variables?: V,
 ): Promise<T> {
   const res = await api.post<GraphQLRawResponse<T>>(GRAPHQL_PATH, {
     query,
@@ -122,10 +111,8 @@ async function graphqlRequest<T, V extends object = object>(
 
   return res.data.data;
 }
-// ===== Service chính =====
 
 class ReviewService {
-  // Query: getReviews
   async getReviews(params: GetReviewsParams): Promise<PaginatedReviews> {
     const query = `
       query GetReviews(
@@ -183,13 +170,12 @@ class ReviewService {
 
     const data = await graphqlRequest<{ getReviews: PaginatedReviews }>(
       query,
-      params
+      params,
     );
 
     return data.getReviews;
   }
 
-  // Query: getReviewById
   async getReviewById(reviewId: string): Promise<Review> {
     const query = `
       query GetReviewById($reviewId: String!) {
@@ -224,7 +210,6 @@ class ReviewService {
     return data.getReviewById;
   }
 
-  // Query: getReviewOverview
   async getReviewOverview(movieId: string): Promise<ReviewOverview> {
     const query = `
       query GetReviewOverview($movieId: String!) {
@@ -238,13 +223,12 @@ class ReviewService {
 
     const data = await graphqlRequest<{ getReviewOverview: ReviewOverview }>(
       query,
-      { movieId }
+      { movieId },
     );
 
     return data.getReviewOverview;
   }
 
-  // Mutation: createReview
   async createReview(input: CreateReviewInput): Promise<Review> {
     const query = `
       mutation CreateReview(
@@ -284,7 +268,6 @@ class ReviewService {
     return data.createReview;
   }
 
-  // Mutation: replyToReview
   async replyToReview(input: ReplyToReviewInput): Promise<Review> {
     const query = `
       mutation ReplyToReview(
@@ -322,7 +305,6 @@ class ReviewService {
     return data.replyToReview;
   }
 
-  // Mutation: updateReviewById
   async updateReview(input: UpdateReviewInput): Promise<Review> {
     const query = `
       mutation UpdateReviewById(
@@ -360,12 +342,11 @@ class ReviewService {
 
     const data = await graphqlRequest<{ updateReviewById: Review }>(
       query,
-      input
+      input,
     );
     return data.updateReviewById;
   }
 
-  // Mutation: hideReviewById
   async hideReview(reviewId: string): Promise<Review> {
     const query = `
       mutation HideReviewById($reviewId: String!) {
@@ -399,7 +380,6 @@ class ReviewService {
     return data.hideReviewById;
   }
 
-  // Mutation: unhideReviewById
   async unhideReview(reviewId: string): Promise<Review> {
     const query = `
       mutation UnhideReviewById($reviewId: String!) {

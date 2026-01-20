@@ -12,9 +12,8 @@ import {
 } from "@headlessui/react";
 import { Search } from "lucide-react";
 
-// --- CẤU HÌNH KEY CỦA GOONG ---
-const GOONG_MAP_KEY = "vWzybQJmMT6Yn988JBpsM6Wqlhkjs7amXTonI1uH"; // Key hiển thị bản đồ (Map Tiles)
-const GOONG_API_KEY = "890XAVnVoyi0Ghl8TviAJQr8azO82tc6cz3sYKVr"; // Key tìm kiếm/Geocoding
+const GOONG_MAP_KEY = "vWzybQJmMT6Yn988JBpsM6Wqlhkjs7amXTonI1uH";
+const GOONG_API_KEY = "890XAVnVoyi0Ghl8TviAJQr8azO82tc6cz3sYKVr";
 
 type LocationPickerProps = {
   address: string;
@@ -27,7 +26,6 @@ type LocationPickerProps = {
   }) => void;
 };
 
-// --- INTERFACES ---
 interface GoongSuggestion {
   place_id: string;
   description: string;
@@ -49,12 +47,15 @@ interface GoongGeocodeResult {
   name: string;
 }
 
-// Minimal interface for Map/Marker interactions since we lack full types
 interface GoongMap {
   addControl: (control: unknown) => void;
   on: (event: string, callback: (e: GoongMapEvent) => void) => void;
   remove: () => void;
-  flyTo: (options: { center: [number, number]; zoom: number; essential: boolean }) => void;
+  flyTo: (options: {
+    center: [number, number];
+    zoom: number;
+    essential: boolean;
+  }) => void;
 }
 
 interface GoongMarker {
@@ -86,7 +87,6 @@ export default function LocationPickerGoong({
   const mapRef = useRef<GoongMap | null>(null);
   const markerRef = useRef<GoongMarker | null>(null);
 
-  // Initialize Map
   useEffect(() => {
     if (mapRef.current) return;
 
@@ -102,12 +102,10 @@ export default function LocationPickerGoong({
       zoom: 12,
     }) as GoongMap;
 
-    // Add navigation controls
     map.addControl(new goongjs.NavigationControl());
 
     mapRef.current = map;
 
-    // Add Marker if coordinates exist
     if (longitude && latitude) {
       const marker = new goongjs.Marker({ draggable: true })
         .setLngLat([longitude, latitude])
@@ -117,14 +115,12 @@ export default function LocationPickerGoong({
       markerRef.current = marker;
     }
 
-    // Handle Map Click
     map.on("click", (e: GoongMapEvent) => {
       const { lng, lat } = e.lngLat;
       updateMarker(lng, lat);
       handleMapAction(lat, lng);
     });
 
-    // Cleanup
     return () => {
       if (mapRef.current) {
         mapRef.current.remove();
@@ -134,12 +130,10 @@ export default function LocationPickerGoong({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Sync address prop
   useEffect(() => {
     setQuery(address);
   }, [address]);
 
-  // Update marker position when clicking or dragging
   const updateMarker = (lng: number, lat: number) => {
     if (!mapRef.current) return;
 
@@ -161,7 +155,6 @@ export default function LocationPickerGoong({
     }
   };
 
-  // --- 1. HÀM TÌM KIẾM (AUTOCOMPLETE) ---
   const searchAddress = useCallback(async (q: string) => {
     if (!q || q.length < 2) {
       setSuggestions([]);
@@ -172,8 +165,8 @@ export default function LocationPickerGoong({
     try {
       const res = await fetch(
         `https://rsapi.goong.io/Place/AutoComplete?api_key=${GOONG_API_KEY}&input=${encodeURIComponent(
-          q
-        )}`
+          q,
+        )}`,
       );
       const data = await res.json();
       if (data.status === "OK") {
@@ -195,7 +188,6 @@ export default function LocationPickerGoong({
     debounceTimer.current = setTimeout(() => searchAddress(val), 400);
   };
 
-  // --- 2. HÀM LẤY CHI TIẾT TỪ GỢI Ý (PLACE DETAIL) ---
   const handleSelect = async (suggestion: GoongSuggestion | null) => {
     if (!suggestion) return;
     setQuery(suggestion.description);
@@ -204,7 +196,7 @@ export default function LocationPickerGoong({
 
     try {
       const res = await fetch(
-        `https://rsapi.goong.io/Place/Detail?place_id=${suggestion.place_id}&api_key=${GOONG_API_KEY}`
+        `https://rsapi.goong.io/Place/Detail?place_id=${suggestion.place_id}&api_key=${GOONG_API_KEY}`,
       );
       const data = await res.json();
 
@@ -219,7 +211,6 @@ export default function LocationPickerGoong({
           longitude: lng,
         });
 
-        // Fly to location
         if (mapRef.current) {
           mapRef.current.flyTo({
             center: [lng, lat],
@@ -236,7 +227,6 @@ export default function LocationPickerGoong({
     }
   };
 
-  // --- 3. HÀM REVERSE GEOCODING ---
   const handleMapAction = useCallback(
     async (lat: number, lng: number) => {
       onLocationChange({
@@ -247,7 +237,7 @@ export default function LocationPickerGoong({
 
       try {
         const res = await fetch(
-          `https://rsapi.goong.io/Geocode?latlng=${lat},${lng}&api_key=${GOONG_API_KEY}`
+          `https://rsapi.goong.io/Geocode?latlng=${lat},${lng}&api_key=${GOONG_API_KEY}`,
         );
         const data = await res.json();
 
@@ -270,17 +260,19 @@ export default function LocationPickerGoong({
         console.error("Lỗi reverse geocoding Goong:", error);
       }
     },
-    [onLocationChange]
+    [onLocationChange],
   );
 
   return (
     <div className="space-y-4">
-      {/* INPUT TÌM KIẾM */}
       <div className="relative z-[1001]">
         <label className="block text-sm font-semibold mb-1.5 text-gray-800">
           Địa chỉ <span className="text-red-500">*</span>
         </label>
-        <Combobox value={null as GoongSuggestion | null} onChange={handleSelect}>
+        <Combobox
+          value={null as GoongSuggestion | null}
+          onChange={handleSelect}
+        >
           <div className="relative">
             <div className="relative w-full overflow-hidden rounded-lg border border-gray-300 bg-white flex items-center">
               <Search className="ml-3 h-4 w-4 text-gray-400" />
@@ -304,7 +296,8 @@ export default function LocationPickerGoong({
                     key={item.place_id}
                     value={item}
                     className={({ active }) =>
-                      `cursor-pointer select-none py-2 pl-4 pr-4 ${active ? "bg-slate-100" : ""
+                      `cursor-pointer select-none py-2 pl-4 pr-4 ${
+                        active ? "bg-slate-100" : ""
                       }`
                     }
                   >
@@ -319,12 +312,10 @@ export default function LocationPickerGoong({
         </Combobox>
       </div>
 
-      {/* BẢN ĐỒ */}
       <div className="w-full h-[300px] rounded-xl overflow-hidden border border-gray-200 shadow-sm relative z-0">
         <div ref={mapContainerRef} className="w-full h-full" />
       </div>
 
-      {/* Read-only Coords */}
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-semibold mb-1">Kinh độ</label>

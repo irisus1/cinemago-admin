@@ -7,7 +7,6 @@ import {
   type FoodDrink,
   PaginationMeta,
   cinemaService,
-  Cinema,
 } from "@/services";
 import { useAuth } from "@/context/AuthContext";
 import { SelectOption } from "@/components/SearchableCombobox";
@@ -15,7 +14,6 @@ import { SelectOption } from "@/components/SearchableCombobox";
 const limit = 7;
 
 export function useFoodDrinkLogic() {
-  // --- STATE ---
   const [rows, setRows] = useState<FoodDrink[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -38,17 +36,15 @@ export function useFoodDrinkLogic() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<FoodDrink | null>(null);
 
-  // Dialog states
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const [errorOpen, setErrorOpen] = useState(false);
   const [dialogTitle, setDialogTitle] = useState("");
   const [dialogMsg, setDialogMsg] = useState<React.ReactNode>("");
-  const [onConfirm, setOnConfirm] = useState<() => void>(() => { });
+  const [onConfirm, setOnConfirm] = useState<() => void>(() => {});
 
-  // --- CACHE ---
   const pageCache = useRef(
-    new Map<number, { data: FoodDrink[]; pagination: PaginationMeta }>()
+    new Map<number, { data: FoodDrink[]; pagination: PaginationMeta }>(),
   );
   const allCache = useRef<FoodDrink[] | null>(null);
 
@@ -57,18 +53,11 @@ export function useFoodDrinkLogic() {
     allCache.current = null;
   };
 
-  // --- CINEMA LOADING ---
-  // --- CINEMA LOADING ---
   useEffect(() => {
     const initCinemaData = async () => {
-
       if (isManager && user?.cinemaId) {
         setCinemaId(user.cinemaId);
-        // setCinemaOptions([{
-        //   value: user.cinemaId,
-        //   label: (user as any).cinemaName || "Rạp hiện tại",
-        //   meta: ""
-        // }]);
+
         return;
       }
 
@@ -93,12 +82,8 @@ export function useFoodDrinkLogic() {
           meta: c.city,
         }));
 
-        // Removed "All" option
-        // opts.unshift({ value: "", label: "Tất cả rạp", meta: "" });
-
         setCinemaOptions(opts);
 
-        // Logic chọn rạp mặc định cho Admin nếu chưa chọn
         if (!cinemaId && opts.length > 0) {
           setCinemaId(opts[0].value);
         }
@@ -111,10 +96,8 @@ export function useFoodDrinkLogic() {
     initCinemaData();
   }, [isManager, user?.cinemaId]);
 
-  // --- DATA FETCHING ---
   const fetchPage = useCallback(
     async (p: number) => {
-      // Backend requires cinemaId. If not set (e.g. loading), return empty.
       if (!cinemaId) {
         return {
           data: [],
@@ -148,7 +131,7 @@ export function useFoodDrinkLogic() {
       pageCache.current.set(p, res);
       return res;
     },
-    [search, isAvailable, cinemaId, isManager]
+    [search, isAvailable, cinemaId, isManager],
   );
 
   const ensureAllDataLoaded = useCallback(async () => {
@@ -158,7 +141,7 @@ export function useFoodDrinkLogic() {
     const totalPages = first.pagination.totalPages;
 
     const allResults = await Promise.all(
-      Array.from({ length: totalPages }, (_, i) => fetchPage(i + 1))
+      Array.from({ length: totalPages }, (_, i) => fetchPage(i + 1)),
     );
 
     const allData = allResults.flatMap((r) => r.data);
@@ -178,7 +161,7 @@ export function useFoodDrinkLogic() {
         filtered = filtered.filter(
           (item) =>
             item.name.toLowerCase().includes(keyword) ||
-            item.description.toLowerCase().includes(keyword)
+            item.description.toLowerCase().includes(keyword),
         );
       }
 
@@ -202,7 +185,6 @@ export function useFoodDrinkLogic() {
     }
   }, [ensureAllDataLoaded, search, type, isAvailable, page, cinemaId]);
 
-  // Effects
   useEffect(() => {
     const t = setTimeout(() => setSearch(q), 400);
     return () => clearTimeout(t);
@@ -210,7 +192,7 @@ export function useFoodDrinkLogic() {
 
   useEffect(() => {
     setPage(1);
-    clearCache(); // Filter changed -> clear cache to force refetch
+    clearCache();
   }, [search, type, isAvailable, cinemaId]);
 
   useEffect(() => {
@@ -218,22 +200,21 @@ export function useFoodDrinkLogic() {
   }, [page, search, type, isAvailable, loadPage]);
 
   const handleCinemaChange = useCallback((id: string) => {
-    if (!id) return; // Prevent clearing cinema
+    if (!id) return;
     setCinemaId(id);
     setPage(1);
     clearCache();
   }, []);
-  // --- HELPERS ---
   const updateCacheItem = (id: string, patch: Partial<FoodDrink>) => {
     if (allCache.current) {
       allCache.current = allCache.current.map((item) =>
-        item.id === id ? { ...item, ...patch } : item
+        item.id === id ? { ...item, ...patch } : item,
       );
     }
 
     for (const [pageNum, entry] of pageCache.current.entries()) {
       const updated = entry.data.map((item) =>
-        item.id === id ? { ...item, ...patch } : item
+        item.id === id ? { ...item, ...patch } : item,
       );
       pageCache.current.set(pageNum, { ...entry, data: updated });
     }
@@ -242,7 +223,7 @@ export function useFoodDrinkLogic() {
   const openConfirm = (
     title: string,
     message: React.ReactNode,
-    action: () => void
+    action: () => void,
   ) => {
     setDialogTitle(title);
     setDialogMsg(message);
@@ -250,7 +231,6 @@ export function useFoodDrinkLogic() {
     setConfirmOpen(true);
   };
 
-  // --- HANDLERS ---
   const handleRefresh = async () => {
     clearCache();
     await loadPage();
@@ -283,13 +263,15 @@ export function useFoodDrinkLogic() {
           await foodDrinkService.toggleFoodDrinkAvailability(fd.id);
           setDialogTitle("Thành công");
           setDialogTitle("Thành công");
-          toast.success(`Món ${fd.name} đã được ${successText.toLowerCase()} thành công.`);
+          toast.success(
+            `Món ${fd.name} đã được ${successText.toLowerCase()} thành công.`,
+          );
           updateCacheItem(fd.id, { isAvailable: !fd.isAvailable });
           await loadPage();
         } catch (e) {
           toast.error("Thao tác thất bại: " + String(e));
         }
-      }
+      },
     );
   };
 
@@ -303,7 +285,7 @@ export function useFoodDrinkLogic() {
       cinemaId?: string;
     },
     mode: "create" | "edit",
-    original?: FoodDrink | null
+    original?: FoodDrink | null,
   ) => {
     const isCreate = mode === "create";
     const itemName = data.name || original?.name || "";
@@ -332,9 +314,6 @@ export function useFoodDrinkLogic() {
           if (isCreate) {
             const created = await foodDrinkService.addFoodDrink(fd);
 
-            // Logic OPTIMISTIC UPDATE: 
-            // Chỉ thêm vào cache hiển thị nếu đang view đúng rạp mà món này vừa được thêm vào.
-            // "Tất cả" không còn tồn tại.
             const isVisibleInCurrentFilter = cinemaId === data.cinemaId;
 
             if (isVisibleInCurrentFilter) {
@@ -345,8 +324,6 @@ export function useFoodDrinkLogic() {
               }
               pageCache.current.delete(1);
             }
-            // Nếu không match filter thì không cần update cache client, 
-            // người dùng sẽ không thấy nó ngay lập tức (đúng logic).
 
             setDialogTitle("Thành công");
             setDialogTitle("Thành công");
@@ -354,7 +331,7 @@ export function useFoodDrinkLogic() {
           } else if (original) {
             const updated = await foodDrinkService.updateFoodDrinkById(
               original.id,
-              fd
+              fd,
             );
             updateCacheItem(updated.id, updated);
             setDialogTitle("Thành công");
@@ -368,11 +345,10 @@ export function useFoodDrinkLogic() {
         } finally {
           setLoading(false);
         }
-      }
+      },
     );
   };
 
-  // --- SELECTION LOGIC ---
   const toggleOne = (id: string, checked: boolean) => {
     setSelectedIds((prev) => {
       const next = new Set<string>(prev);
@@ -413,7 +389,7 @@ export function useFoodDrinkLogic() {
           setLoading(true);
           const allItems = allCache.current ?? [];
           await Promise.all(
-            ids.map((id) => foodDrinkService.toggleFoodDrinkAvailability(id))
+            ids.map((id) => foodDrinkService.toggleFoodDrinkAvailability(id)),
           );
           ids.forEach((id) => {
             const current = allItems.find((x) => x.id === id);
@@ -423,37 +399,33 @@ export function useFoodDrinkLogic() {
           loadPage();
           setDialogTitle("Thành công");
           setDialogTitle("Thành công");
-          toast.success(`Đã cập nhật trạng thái cho ${ids.length} món thành công.`);
+          toast.success(
+            `Đã cập nhật trạng thái cho ${ids.length} món thành công.`,
+          );
           clearSelection();
         } catch (e) {
           toast.error("Không thể cập nhật: " + String(e));
         } finally {
           setLoading(false);
         }
-      }
+      },
     );
   };
 
-  // --- FILTERS CONTROL ---
   const clearFilters = () => {
     setQ("");
     setSearch("");
     setType("");
     setIsAvailable("");
-    // Do not clear cinemaId
     setPage(1);
   };
 
   const canClearFilters = useMemo(
-    () =>
-      q.trim() !== "" ||
-      type.trim() !== "" ||
-      isAvailable.trim() !== "",
-    [q, type, isAvailable]
+    () => q.trim() !== "" || type.trim() !== "" || isAvailable.trim() !== "",
+    [q, type, isAvailable],
   );
 
   return {
-    // Data
     rows,
     loading,
     page,
@@ -462,7 +434,6 @@ export function useFoodDrinkLogic() {
     hasPrev,
     hasNext,
 
-    // Filters
     q,
     setQ,
     type,
@@ -472,14 +443,12 @@ export function useFoodDrinkLogic() {
     clearFilters,
     canClearFilters,
 
-    // Selection
     selectedIds,
     toggleOne,
     toggleAllOnPage,
     clearSelection,
     handleBulkToggle,
 
-    // Actions & Modal
     showForm,
     setShowForm,
     editing,
@@ -490,7 +459,6 @@ export function useFoodDrinkLogic() {
     handleRefresh,
     handleSubmitFoodDrink,
 
-    // Dialogs
     confirmOpen,
     setConfirmOpen,
 
@@ -500,7 +468,6 @@ export function useFoodDrinkLogic() {
     dialogMsg,
     onConfirm,
 
-    // Cinema
     cinemaId,
     setCinemaId: handleCinemaChange,
     cinemaOptions,

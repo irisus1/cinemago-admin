@@ -1,4 +1,9 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import ProfileInfo from "./ProfileInfo";
 import ProfilePassword from "./ProfilePassword";
@@ -43,7 +48,6 @@ export default function ProfileModal({
           </div>
 
           <TabsContent value="info">
-            {/* Không cần truyền onChildModalChange nữa */}
             <ProfileInfo onClose={onClose} />
           </TabsContent>
 

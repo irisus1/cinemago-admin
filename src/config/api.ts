@@ -1,4 +1,3 @@
-// config/api.ts
 import axios, {
   AxiosError,
   AxiosInstance,
@@ -35,7 +34,6 @@ const processQueue = (error: unknown, token: string | null = null) => {
   failedQueue = [];
 };
 
-// Request Interceptor
 api.interceptors.request.use((config) => {
   const token =
     typeof window !== "undefined"
@@ -47,7 +45,6 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Response Interceptor
 api.interceptors.response.use(
   (response: AxiosResponse) => response,
   async (error: AxiosError) => {
@@ -87,7 +84,6 @@ api.interceptors.response.use(
           throw new Error("Failed to refresh token");
         }
 
-        // Lưu Access Token mới vào LocalStorage
         localStorage.setItem(ACCESS_TOKEN_KEY, newAccessToken);
         api.defaults.headers.common.Authorization = `Bearer ${newAccessToken}`;
 
@@ -125,7 +121,7 @@ api.interceptors.response.use(
     }
 
     return Promise.reject(error);
-  }
+  },
 );
 
 export default api;

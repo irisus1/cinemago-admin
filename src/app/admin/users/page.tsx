@@ -24,7 +24,7 @@ const VI_ROLE: Record<string, string> = {
   ADMIN: "Quản trị viên",
   MANAGER: "Quản lý rạp",
   EMPLOYEE: "Nhân viên",
-  USER: "Người dùng", // Keep for legacy if needed
+  USER: "Người dùng",
 };
 
 const UsersListPage: React.FC = () => {
@@ -118,12 +118,12 @@ const UsersListPage: React.FC = () => {
       render: (v) =>
         v
           ? Intl.DateTimeFormat("vi-VN", {
-            hour: "2-digit",
-            minute: "2-digit",
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-          }).format(new Date(v as string))
+              hour: "2-digit",
+              minute: "2-digit",
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+            }).format(new Date(v as string))
           : "—",
     },
     {
@@ -288,8 +288,6 @@ const UsersListPage: React.FC = () => {
         }}
         confirmText="Xác nhận"
       />
-
-
 
       <Modal
         isOpen={isErrorDialogOpen}

@@ -1,4 +1,3 @@
-// Movie domain types
 export type Genre = {
   id: string;
   name: string;
@@ -6,9 +5,9 @@ export type Genre = {
 };
 
 export enum MovieStatus {
-  COMING_SOON, // 0
-  NOW_SHOWING, // 1
-  ENDED, // 2
+  COMING_SOON,
+  NOW_SHOWING,
+  ENDED,
 }
 
 export type Movie = {
@@ -18,14 +17,13 @@ export type Movie = {
   duration: number;
   rating?: number;
   genres: Genre[];
-  trailerUrl?: string; // URL hiện có
-  thumbnail?: string; // URL hiện có
-  releaseDate?: string; // ISO
+  trailerUrl?: string;
+  thumbnail?: string;
+  releaseDate?: string;
   status?: MovieStatus;
   isActive?: boolean;
 };
 
-// Phần chung cho response/pagination (nếu backend trả theo mẫu)
 export type PageMeta = {
   totalItems: number;
   totalPages: number;

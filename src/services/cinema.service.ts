@@ -23,7 +23,7 @@ export type PageParams = {
   page?: number;
   limit?: number;
   search?: string;
-  isActive?: boolean; // BE có hỗ trợ -> thêm vào params
+  isActive?: boolean;
   city?: string;
 };
 
@@ -57,18 +57,17 @@ export type UpdateCinemaRequest = Partial<
 type ApiErrorBody = { message?: string };
 const getMsg = (e: unknown, fb: string) =>
   axios.isAxiosError<ApiErrorBody>(e)
-    ? e.response?.data?.message ?? e.message ?? fb
+    ? (e.response?.data?.message ?? e.message ?? fb)
     : fb;
 
 class CinemaService {
-  // GET /cinemas/public -> { pagination, data }
   async getAllCinemas(
-    params?: PageParams
+    params?: PageParams,
   ): Promise<ServerPaginated<CinemaPublic>> {
     try {
       const { data } = await api.get<ServerPaginated<CinemaPublic>>(
         "/cinemas/public",
-        { params }
+        { params },
       );
       return data;
     } catch (e: unknown) {
@@ -78,11 +77,10 @@ class CinemaService {
     }
   }
 
-  // GET /cinemas/public/:id -> { data: cinema }
   async getCinemaById(id: string): Promise<CinemaPublic> {
     try {
       const { data } = await api.get<{ data: CinemaPublic }>(
-        `/cinemas/public/${id}`
+        `/cinemas/public/${id}`,
       );
       return data.data;
     } catch (e: unknown) {
@@ -92,7 +90,6 @@ class CinemaService {
     }
   }
 
-  // POST /cinemas -> { data: cinema }
   async addCinema(payload: CreateCinemaRequest): Promise<Cinema> {
     try {
       const { data } = await api.post<{ data: Cinema }>("/cinemas", payload);
@@ -104,15 +101,14 @@ class CinemaService {
     }
   }
 
-  // PUT /cinemas/:id -> { data: cinema }
   async updateCinema(
     id: string,
-    payload: UpdateCinemaRequest
+    payload: UpdateCinemaRequest,
   ): Promise<Cinema> {
     try {
       const { data } = await api.put<{ data: Cinema }>(
         `/cinemas/${id}`,
-        payload
+        payload,
       );
       return data.data;
     } catch (e: unknown) {
@@ -122,7 +118,6 @@ class CinemaService {
     }
   }
 
-  // PUT /cinemas/:id/archive -> string
   async deleteCinema(id: string): Promise<string> {
     try {
       const { data } = await api.put<string>(`/cinemas/${id}/archive`);
@@ -134,7 +129,6 @@ class CinemaService {
     }
   }
 
-  // PUT /cinemas/:id/restore -> string
   async restoreCinema(id: string): Promise<string> {
     try {
       const { data } = await api.put<string>(`/cinemas/${id}/restore`);

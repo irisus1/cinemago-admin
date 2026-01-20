@@ -6,13 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Eye, EyeOff, CheckCircle2, AlertCircle, X } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import RefreshLoader from "@/components/Loading";
 
-// ====== Services (điều chỉnh theo project) ======
 import { authService } from "@/services";
 import { toast } from "sonner";
 
@@ -38,7 +34,6 @@ export default function ProfilePassword({
 }) {
   const [loading, setLoading] = useState(false);
 
-  // change password
   const [curPw, setCurPw] = useState("");
   const [newPw, setNewPw] = useState("");
   const [cfPw, setCfPw] = useState("");
@@ -47,18 +42,16 @@ export default function ProfilePassword({
   const [showCfPw, setShowCfPw] = useState(false);
   const pwCheck = validatePassword(newPw);
 
-  // dialogs
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [dialogTitle, setDialogTitle] = useState("");
   const [dialogMessage, setDialogMessage] = useState<React.ReactNode>("");
-  const [onConfirm, setOnConfirm] = useState<() => void>(() => () => { });
+  const [onConfirm, setOnConfirm] = useState<() => void>(() => () => {});
 
   useEffect(() => {
     onChildModalChange?.(isConfirmDialogOpen || isSuccessDialogOpen);
   }, [isConfirmDialogOpen, isSuccessDialogOpen, onChildModalChange]);
 
-  // change password
   const handleChangePassword = async () => {
     setLoading(true);
     try {
@@ -71,7 +64,7 @@ export default function ProfilePassword({
       setCfPw("");
       setDialogTitle("Đổi mật khẩu thành công");
       setDialogMessage(
-        "Bạn đã đổi mật khẩu. Hãy dùng mật khẩu mới cho lần đăng nhập tiếp theo."
+        "Bạn đã đổi mật khẩu. Hãy dùng mật khẩu mới cho lần đăng nhập tiếp theo.",
       );
       setIsSuccessDialogOpen(true);
     } catch (e) {
@@ -85,7 +78,7 @@ export default function ProfilePassword({
   const openConfirm = (
     title: string,
     message: React.ReactNode,
-    action: () => void
+    action: () => void,
   ) => {
     setDialogTitle(title);
     setDialogMessage(message);
@@ -100,7 +93,7 @@ export default function ProfilePassword({
       async () => {
         setIsConfirmDialogOpen(false);
         await handleChangePassword();
-      }
+      },
     );
   };
 
@@ -108,7 +101,6 @@ export default function ProfilePassword({
     <div className="w-full">
       <Card className="shadow-none border-none">
         <CardContent className=" space-y-8">
-          {/* --- MẬT KHẨU HIỆN TẠI --- */}
           <div className="space-y-1">
             <Label>Mật khẩu hiện tại</Label>
             <div className="relative">
@@ -133,7 +125,6 @@ export default function ProfilePassword({
             </div>
           </div>
 
-          {/* --- MẬT KHẨU MỚI --- */}
           <div className="space-y-2">
             <Label>Mật khẩu mới</Label>
             <div className="relative">
@@ -158,7 +149,6 @@ export default function ProfilePassword({
             </div>
           </div>
 
-          {/* --- XÁC NHẬN --- */}
           <div className="space-y-2">
             <Label>Xác nhận mật khẩu mới</Label>
             <div className="relative">
@@ -183,7 +173,6 @@ export default function ProfilePassword({
             </div>
           </div>
 
-          {/* --- YÊU CẦU MẬT KHẨU (THEO MẪU) --- */}
           <div className="bg-gray-100 text-gray-700 text-sm p-4 rounded-lg space-y-2">
             <p className="font-semibold">Yêu cầu mật khẩu:</p>
             <ul className="space-y-1">
@@ -212,7 +201,6 @@ export default function ProfilePassword({
             </ul>
           </div>
 
-          {/* --- BUTTONS --- */}
           <div className="flex justify-end gap-3 ">
             <Button variant="outline" onClick={onClose}>
               Hủy
@@ -230,8 +218,6 @@ export default function ProfilePassword({
         </CardContent>
       </Card>
 
-
-      {/* CONFIRM DIALOG - PASSWORD */}
       <Dialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
         <DialogContent className="sm:max-w-md p-0 overflow-hidden bg-white rounded-3xl shadow-2xl">
           <div className="p-8 text-center relative">
@@ -244,7 +230,9 @@ export default function ProfilePassword({
             <div className="w-20 h-20 bg-blue-50 border-4 border-blue-200 rounded-full flex items-center justify-center mx-auto mb-6">
               <AlertCircle className="w-10 h-10 text-blue-500" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-3">Xác nhận đổi mật khẩu</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-3">
+              Xác nhận đổi mật khẩu
+            </h2>
             <div className="text-gray-600 mb-6 leading-relaxed">
               {dialogMessage}
             </div>
@@ -269,7 +257,6 @@ export default function ProfilePassword({
         </DialogContent>
       </Dialog>
 
-      {/* SUCCESS DIALOG - PASSWORD */}
       <Dialog open={isSuccessDialogOpen} onOpenChange={setIsSuccessDialogOpen}>
         <DialogContent className="sm:max-w-md p-0 overflow-hidden bg-white rounded-3xl shadow-2xl">
           <div className="p-8 text-center relative">
@@ -280,7 +267,7 @@ export default function ProfilePassword({
               <X className="w-5 h-5 text-gray-400" />
             </button>
 
-            {dialogTitle.includes("thất bại") ? ( // Although usually success for pw change
+            {dialogTitle.includes("thất bại") ? (
               <div className="w-20 h-20 bg-red-50 border-4 border-red-200 rounded-full flex items-center justify-center mx-auto mb-6">
                 <AlertCircle className="w-10 h-10 text-red-500" />
               </div>
@@ -290,7 +277,9 @@ export default function ProfilePassword({
               </div>
             )}
 
-            <h2 className="text-2xl font-bold text-gray-900 mb-3">{dialogTitle}</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-3">
+              {dialogTitle}
+            </h2>
             <div className="text-gray-600 mb-6 leading-relaxed">
               {dialogMessage}
             </div>

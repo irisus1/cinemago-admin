@@ -6,8 +6,8 @@ import { groupSeatsByRow, getSeatStyle } from "./seat-helper";
 import { Lock } from "lucide-react";
 
 interface SeatMapProps {
-  seatLayout: SeatCell[]; // Vẽ
-  seatList: SeatModal[]; // Tra cứu ID
+  seatLayout: SeatCell[];
+  seatList: SeatModal[];
   selectedSeats: string[];
   loading: boolean;
   isSeatDisabled: (seatType: string, isSelected: boolean) => boolean;
@@ -28,78 +28,10 @@ export default function SeatMap({
 }: SeatMapProps) {
   const seatsByRow = useMemo(() => groupSeatsByRow(seatLayout), [seatLayout]);
 
-  // Hàm mapping quan trọng: Layout -> Entity
   const findSeatEntity = (row: string, col: number) => {
-    const seatLabel = `${row}${col}`; // Ví dụ "A1"
+    const seatLabel = `${row}${col}`;
     return seatList.find((s) => s.seatNumber === seatLabel);
   };
-
-  // const renderRowSeats = (rowLabel: string, seats: SeatCell[]) => {
-  //   const elements = [];
-  //   for (let i = 0; i < seats.length; i++) {
-  //     const cell = seats[i];
-  //     const nextCell = seats[i + 1];
-  //     const seatEntity = findSeatEntity(cell.row, cell.col);
-
-  //     if (!seatEntity || cell.type === "EMPTY") {
-  //       elements.push(
-  //         <div
-  //           key={`${cell.row}-${cell.col}`}
-  //           className={getSeatStyle("EMPTY", false, true, false)}
-  //         ></div>
-  //       );
-  //       continue;
-  //     }
-
-  //     const isSelected = selectedSeats.includes(seatEntity.id);
-  //     const isProcessing = processingSeats.includes(seatEntity.id);
-
-  //     // [NEW] Kiểm tra ghế có bị người khác giữ không
-  //     const isHeld = heldSeats.includes(seatEntity.id);
-
-  //     // Nếu bị giữ thì coi như disable luôn
-  //     const disabled = isSeatDisabled(cell.type, isSelected) || isHeld;
-
-  //     if (cell.type === "COUPLE" && nextCell && nextCell.type === "COUPLE") {
-  //       const nextSeatEntity = findSeatEntity(nextCell.row, nextCell.col);
-  //       if (nextSeatEntity) {
-  //         elements.push(
-  //           <div
-  //             key={seatEntity.id} // Dùng UUID làm key
-  //             className={`${getSeatStyle(
-  //               cell.type,
-  //               isSelected,
-  //               disabled,
-  //               isHeld
-  //             )} relative`}
-  //             onClick={() =>
-  //               !disabled && onSeatClick(seatEntity, nextSeatEntity)
-  //             }
-  //           >
-  //             {cell.col}-{nextCell.col}
-  //           </div>
-  //         );
-  //         i++; // Bỏ qua ghế tiếp theo
-  //       }
-  //     } else {
-  //       elements.push(
-  //         <div
-  //           key={seatEntity.id}
-  //           className={`${getSeatStyle(
-  //             cell.type,
-  //             isSelected,
-  //             disabled,
-  //             isHeld
-  //           )} relative`}
-  //           onClick={() => !disabled && onSeatClick(seatEntity, null)}
-  //         >
-  //           {cell.col}
-  //         </div>
-  //       );
-  //     }
-  //   }
-  //   return elements;
-  // };
 
   const renderRowSeats = (rowLabel: string, seats: SeatCell[]) => {
     const elements = [];
@@ -113,27 +45,23 @@ export default function SeatMap({
           <div
             key={`${cell.row}-${cell.col}`}
             className={getSeatStyle("EMPTY", false, true, false)}
-          ></div>
+          ></div>,
         );
         continue;
       }
 
-      // --- XỬ LÝ GHẾ ĐÔI ---
       if (cell.type === "COUPLE" && nextCell && nextCell.type === "COUPLE") {
         const nextSeatEntity = findSeatEntity(nextCell.row, nextCell.col);
 
         if (nextSeatEntity) {
-          // 1. Kiểm tra trạng thái cho CẢ CẶP (Sửa ở đây)
           const isSelected =
             selectedSeats.includes(seatEntity.id) ||
             selectedSeats.includes(nextSeatEntity.id);
 
-          // Logic đúng: Ghế trái HOẶC ghế phải bị giữ -> Cả cặp bị giữ
           const isHeld =
             heldSeats.includes(seatEntity.id) ||
             heldSeats.includes(nextSeatEntity.id);
 
-          // Tương tự cho processing
           const isProcessing =
             processingSeats.includes(seatEntity.id) ||
             processingSeats.includes(nextSeatEntity.id);
@@ -147,28 +75,25 @@ export default function SeatMap({
                 cell.type,
                 isSelected,
                 disabled,
-                isHeld // Truyền trạng thái đã tính toán đúng
+                isHeld,
               )} relative`}
               onClick={() =>
                 !disabled && onSeatClick(seatEntity, nextSeatEntity)
               }
             >
               {cell.col}-{nextCell.col}
-              {/* Hiển thị icon khóa nếu bị giữ */}
               {(isHeld || isProcessing) && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/20">
                   <Lock className="w-3 h-3 text-white/70" />
                 </div>
               )}
-            </div>
+            </div>,
           );
-          i++; // Bỏ qua ghế tiếp theo
-          continue; // Chuyển sang vòng lặp kế
+          i++;
+          continue;
         }
       }
 
-      // --- XỬ LÝ GHẾ ĐƠN ---
-      // Logic cũ của bạn cho ghế đơn vẫn đúng
       const isSelected = selectedSeats.includes(seatEntity.id);
       const isHeld = heldSeats.includes(seatEntity.id);
       const isProcessing = processingSeats.includes(seatEntity.id);
@@ -181,7 +106,7 @@ export default function SeatMap({
             cell.type,
             isSelected,
             disabled,
-            isHeld
+            isHeld,
           )} relative`}
           onClick={() => !disabled && onSeatClick(seatEntity, null)}
         >
@@ -191,7 +116,7 @@ export default function SeatMap({
               <Lock className="w-3 h-3 text-white/70" />
             </div>
           )}
-        </div>
+        </div>,
       );
     }
     return elements;
@@ -221,7 +146,6 @@ export default function SeatMap({
           </div>
         ))}
       </div>
-      {/* Legend */}
       <div className="flex flex-wrap justify-center gap-6 mt-10 text-sm text-gray-600">
         <div className="flex items-center gap-2">
           <div className="w-5 h-5 border rounded bg-white"></div>

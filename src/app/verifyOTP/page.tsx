@@ -47,7 +47,7 @@ export default function VerifyOTPAndResetPage() {
 
     if (!email) {
       toast.error(
-        "Không tìm thấy email. Vui lòng quay lại trang quên mật khẩu."
+        "Không tìm thấy email. Vui lòng quay lại trang quên mật khẩu.",
       );
       router.push("/forgot-password");
       return;
@@ -118,7 +118,6 @@ export default function VerifyOTPAndResetPage() {
         </h2>
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Khu vực OTP và Timer */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Mã OTP
@@ -133,10 +132,11 @@ export default function VerifyOTPAndResetPage() {
                 className="flex-1 px-4 py-2 border rounded-md border-gray-300 focus:ring-indigo-500 focus:border-indigo-500"
               />
               <div
-                className={`flex items-center justify-center px-4 py-2 rounded-md font-mono font-bold border ${timeLeft > 0
+                className={`flex items-center justify-center px-4 py-2 rounded-md font-mono font-bold border ${
+                  timeLeft > 0
                     ? "bg-gray-100 text-indigo-600 border-gray-300"
                     : "bg-red-50 text-red-600 border-red-200"
-                  }`}
+                }`}
                 style={{ minWidth: "80px" }}
               >
                 {timeLeft > 0 ? formatTime(timeLeft) : "00:00"}
@@ -151,7 +151,6 @@ export default function VerifyOTPAndResetPage() {
 
           <div className="border-t border-gray-200 my-4"></div>
 
-          {/* Mật khẩu mới */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Mật khẩu mới
@@ -166,7 +165,6 @@ export default function VerifyOTPAndResetPage() {
             />
           </div>
 
-          {/* Xác nhận mật khẩu */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Xác nhận mật khẩu
@@ -177,14 +175,14 @@ export default function VerifyOTPAndResetPage() {
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
-              className={`w-full px-4 py-2 border rounded-md focus:ring-indigo-500 focus:border-indigo-500 ${confirmPassword && password !== confirmPassword
+              className={`w-full px-4 py-2 border rounded-md focus:ring-indigo-500 focus:border-indigo-500 ${
+                confirmPassword && password !== confirmPassword
                   ? "border-red-500 focus:border-red-500"
                   : "border-gray-300"
-                }`}
+              }`}
             />
           </div>
 
-          {/* Nút Submit */}
           <button
             type="submit"
             disabled={loading || timeLeft === 0}
@@ -194,16 +192,16 @@ export default function VerifyOTPAndResetPage() {
           </button>
         </form>
 
-        {/* Nút Gửi lại mã OTP */}
         <div className="mt-4 text-center">
           <button
-            type="button" // Quan trọng: type button để không kích hoạt submit form
+            type="button"
             onClick={handleResendOtp}
             disabled={isResending}
-            className={`text-sm underline ${isResending
+            className={`text-sm underline ${
+              isResending
                 ? "text-gray-400 cursor-wait"
                 : "text-gray-500 hover:text-indigo-600 cursor-pointer"
-              }`}
+            }`}
           >
             {isResending
               ? "Đang gửi lại..."

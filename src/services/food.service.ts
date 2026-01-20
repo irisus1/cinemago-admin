@@ -52,18 +52,17 @@ export type UpdateFoodDrinkRequest = Partial<
 type ApiErrorBody = { message?: string };
 const getMsg = (e: unknown, fb: string) =>
   axios.isAxiosError<ApiErrorBody>(e)
-    ? e.response?.data?.message ?? e.message ?? fb
+    ? (e.response?.data?.message ?? e.message ?? fb)
     : fb;
 
 class FoodDrinkService {
-  // GET /fooddrinks -> { pagination, data }
   async getFoodDrinks(
-    params?: FoodParams
+    params?: FoodParams,
   ): Promise<ServerPaginated<FoodDrinkPublic>> {
     try {
       const { data } = await api.get<ServerPaginated<FoodDrinkPublic>>(
         "/food-drinks/public",
-        { params }
+        { params },
       );
       return data;
     } catch (e: unknown) {
@@ -73,11 +72,10 @@ class FoodDrinkService {
     }
   }
 
-  // GET /fooddrinks/:id -> { data: foodDrink }
   async getFoodDrinkById(id: string): Promise<FoodDrinkPublic> {
     try {
       const { data } = await api.get<{ data: FoodDrinkPublic }>(
-        `/food-drinks/public/${id}`
+        `/food-drinks/public/${id}`,
       );
       return data.data;
     } catch (e: unknown) {
@@ -87,13 +85,12 @@ class FoodDrinkService {
     }
   }
 
-  // POST /fooddrinks -> { data: foodDrink }
   async addFoodDrink(formData: FormData): Promise<FoodDrink> {
     try {
       const { data } = await api.post<{ data: FoodDrink }>(
         "/food-drinks",
         formData,
-        { headers: { "Content-Type": "multipart/form-data" } }
+        { headers: { "Content-Type": "multipart/form-data" } },
       );
       return data.data;
     } catch (e: unknown) {
@@ -103,16 +100,15 @@ class FoodDrinkService {
     }
   }
 
-  // PUT /fooddrinks/:id -> { data: foodDrink }
   async updateFoodDrinkById(
     id: string,
-    formData: FormData
+    formData: FormData,
   ): Promise<FoodDrink> {
     try {
       const { data } = await api.put<{ data: FoodDrink }>(
         `/food-drinks/${id}`,
         formData,
-        { headers: { "Content-Type": "multipart/form-data" } }
+        { headers: { "Content-Type": "multipart/form-data" } },
       );
       return data.data;
     } catch (e: unknown) {
@@ -122,11 +118,10 @@ class FoodDrinkService {
     }
   }
 
-  // PUT /fooddrinks/:id/toggle -> { data: foodDrink }
   async toggleFoodDrinkAvailability(id: string): Promise<FoodDrink> {
     try {
       const { data } = await api.put<{ data: FoodDrink }>(
-        `/food-drinks/${id}/toggle-availability`
+        `/food-drinks/${id}/toggle-availability`,
       );
       return data.data;
     } catch (e: unknown) {
@@ -136,12 +131,11 @@ class FoodDrinkService {
     }
   }
 
-  // POST /fooddrinks/ids -> { data: foodDrinks[] }
   async getFoodDrinkByIds(ids: string[]): Promise<FoodDrinkPublic[]> {
     try {
       const { data } = await api.post<{ data: FoodDrinkPublic[] }>(
         "/food-drinks/public/by-ids",
-        { ids }
+        { ids },
       );
       return data.data;
     } catch (e: unknown) {
