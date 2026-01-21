@@ -121,42 +121,44 @@ export default function EditCinemaModal({
             leaveFrom="opacity-100 scale-100"
             leaveTo="opacity-0 scale-95"
           >
-            <DialogPanel className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl max-h-[90vh] overflow-y-auto">
+            <DialogPanel className="w-full max-w-2xl rounded-2xl bg-white p-5 shadow-xl max-h-[90vh] overflow-y-auto">
               <DialogTitle className="text-lg font-semibold mb-3">
                 {mode === "create" ? "Thêm rạp" : "Chỉnh sửa rạp"}
               </DialogTitle>
 
               <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Tên rạp <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-lg"
-                    placeholder="VD: Cinestar Sinh Viên"
-                  />
-                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Tên rạp <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="w-full px-3 py-2 border rounded-lg"
+                      placeholder="VD: Cinestar Sinh Viên"
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Thành phố <span className="text-red-500">*</span>
-                  </label>
-                  <SearchableCombobox
-                    options={VIETNAM_PROVINCES}
-                    value={cityId}
-                    onChange={(id) => {
-                      setCityId(id);
-                      const province = VIETNAM_PROVINCES.find(
-                        (p) => p.value === id,
-                      );
-                      setCity(province?.label ?? "");
-                    }}
-                    placeholder="Chọn tỉnh / thành phố"
-                    searchPlaceholder="Tìm theo tên tỉnh / thành phố..."
-                    widthClass="w-full"
-                  />
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Thành phố <span className="text-red-500">*</span>
+                    </label>
+                    <SearchableCombobox
+                      options={VIETNAM_PROVINCES}
+                      value={cityId}
+                      onChange={(id) => {
+                        setCityId(id);
+                        const province = VIETNAM_PROVINCES.find(
+                          (p) => p.value === id,
+                        );
+                        setCity(province?.label ?? "");
+                      }}
+                      placeholder="Chọn tỉnh / thành phố"
+                      searchPlaceholder="Tìm theo tên tỉnh / thành phố..."
+                      widthClass="w-full"
+                    />
+                  </div>
                 </div>
 
                 <div>
@@ -183,9 +185,8 @@ export default function EditCinemaModal({
                 <button
                   disabled={!valid}
                   onClick={handleSubmit}
-                  className={`px-4 py-2 rounded-lg text-white ${
-                    valid ? "bg-blue-600 hover:bg-blue-700" : "bg-gray-400"
-                  }`}
+                  className={`px-4 py-2 rounded-lg text-white ${valid ? "bg-blue-600 hover:bg-blue-700" : "bg-gray-400"
+                    }`}
                 >
                   {mode === "create" ? "Thêm" : "Lưu"}
                 </button>
