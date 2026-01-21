@@ -4,6 +4,7 @@ import React, { useEffect, useState, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { formatVND } from "@/components/ticket/seat-helper";
+import QRCode from "react-qr-code";
 import {
   bookingService,
   showTimeService,
@@ -38,6 +39,8 @@ interface OrderDetail {
   tickets: TicketItem[];
   foodDrinks: FoodDrinkItem[];
   totalAmount: number;
+  bookingId: string;
+  showtimeId: string;
 }
 
 interface PaymentDataState {
@@ -164,6 +167,8 @@ function PaymentResultContent() {
           tickets,
           foodDrinks,
           totalAmount: booking.totalPrice,
+          bookingId: booking.id,
+          showtimeId: booking.showtimeId,
         });
 
         setPaymentData((prev) => ({
@@ -181,9 +186,9 @@ function PaymentResultContent() {
         setPaymentData((prev) =>
           prev
             ? {
-                ...prev,
-                message: `Lỗi xử lý dữ liệu vé: ${err?.message}`,
-              }
+              ...prev,
+              message: `Lỗi xử lý dữ liệu vé: ${err?.message}`,
+            }
             : null,
         );
       }
@@ -345,9 +350,9 @@ function PaymentResultContent() {
           setPaymentData((prev) =>
             prev
               ? {
-                  ...prev,
-                  message: "Giao dịch chưa hoàn tất hoặc đang xử lý.",
-                }
+                ...prev,
+                message: "Giao dịch chưa hoàn tất hoặc đang xử lý.",
+              }
               : null,
           );
         }
@@ -499,6 +504,22 @@ function PaymentResultContent() {
           </div>
 
           <div className="border-t border-dashed border-black my-4" />
+
+          {/* QR Code */}
+          <div className="flex flex-col items-center justify-center mb-4">
+            <QRCode
+              value={JSON.stringify({
+                id: orderDetail.bookingId,
+                showtimeId: orderDetail.showtimeId,
+              })}
+              size={100}
+              style={{ height: "auto", maxWidth: "100%", width: "80%" }}
+              viewBox={`0 0 256 256`}
+            />
+            <p className="text-[10px] font-mono mt-1">
+              {orderDetail.bookingId.slice(0, 8).toUpperCase()}
+            </p>
+          </div>
 
           <div className="text-center text-[10px]">
             <p className="font-semibold">Cảm ơn quý khách!</p>

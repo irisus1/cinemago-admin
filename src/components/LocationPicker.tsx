@@ -56,6 +56,7 @@ interface GoongMap {
     zoom: number;
     essential: boolean;
   }) => void;
+  resize: () => void;
 }
 
 interface GoongMarker {
@@ -128,6 +129,17 @@ export default function LocationPickerGoong({
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!mapContainerRef.current) return;
+    const resizeObserver = new ResizeObserver(() => {
+      if (mapRef.current) {
+        mapRef.current.resize();
+      }
+    });
+    resizeObserver.observe(mapContainerRef.current);
+    return () => resizeObserver.disconnect();
   }, []);
 
   useEffect(() => {
@@ -296,8 +308,7 @@ export default function LocationPickerGoong({
                     key={item.place_id}
                     value={item}
                     className={({ active }) =>
-                      `cursor-pointer select-none py-2 pl-4 pr-4 ${
-                        active ? "bg-slate-100" : ""
+                      `cursor-pointer select-none py-2 pl-4 pr-4 ${active ? "bg-slate-100" : ""
                       }`
                     }
                   >
