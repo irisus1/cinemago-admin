@@ -88,11 +88,31 @@ export function useBookingLogic() {
     }
     const fetchShowtimes = async () => {
       try {
+        setFilterShowtimes([]);
         const res = await showTimeService.getShowTimes({
           movieId: selectedMovieFilter,
           limit: 100,
         });
-        setFilterShowtimes(res.data);
+        const showtimes = res.data;
+
+        // Load missing rooms for these showtimes
+        const roomIds = Array.from(new Set(showtimes.map((st) => st.roomId)));
+        const missingRoomIds = roomIds.filter((id) => !cache.current.rooms[id]);
+
+        if (missingRoomIds.length > 0) {
+          const newRooms = await Promise.all(
+            missingRoomIds.map((id) =>
+              roomService.getRoomById(id).catch(() => null),
+            ),
+          );
+
+          newRooms.forEach((r) => {
+            if (r) cache.current.rooms[r.id] = r;
+          });
+          setRoomMap({ ...cache.current.rooms });
+        }
+
+        setFilterShowtimes(showtimes);
         setShowtimeFilter("__ALL__");
       } catch (error) {
         console.error("Failed to fetch filter showtimes", error);
