@@ -233,23 +233,21 @@ export default function CinemaModal({
                   </p>
 
                   <div className="flex items-center justify-between px-10 relative">
-                    <div className="absolute left-10 right-10 top-1/2 h-0.5 bg-gray-200 -z-10" />
+                    <div className="absolute left-10 right-10 top-1/2 h-0.5 bg-gray-200" />
                     <div
-                      className="absolute left-10 top-1/2 h-0.5 bg-slate-900 -z-10 transition-all duration-300"
+                      className="absolute left-10 top-1/2 h-0.5 bg-slate-900 transition-all duration-300"
                       style={{
-                        width: `calc(${
-                          (currentStep - 1) / (TOTAL_STEPS - 1)
-                        } * (100% - 80px))`,
+                        width: `calc(${(currentStep - 1) / (TOTAL_STEPS - 1)
+                          } * (100% - 80px))`,
                       }}
                     />
                     {[1, 2, 3].map((step) => (
                       <div
                         key={step}
                         className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm border-2 transition-colors duration-300 z-10
-                          ${
-                            currentStep >= step
-                              ? "bg-slate-900 border-slate-900 text-white"
-                              : "bg-white border-gray-300 text-gray-400"
+                          ${currentStep >= step
+                            ? "bg-slate-900 border-slate-900 text-white"
+                            : "bg-white border-gray-300 text-gray-400"
                           }`}
                       >
                         {step}
@@ -424,11 +422,10 @@ export default function CinemaModal({
                                                 Number(e.target.value),
                                               )
                                             }
-                                            className={`w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-slate-900 outline-none bg-white ${
-                                              !hasVip
+                                            className={`w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-slate-900 outline-none bg-white ${!hasVip
                                                 ? "opacity-50 cursor-not-allowed bg-gray-100"
                                                 : ""
-                                            }`}
+                                              }`}
                                           />
                                         </div>
                                         <div>
@@ -446,11 +443,10 @@ export default function CinemaModal({
                                                 Number(e.target.value),
                                               )
                                             }
-                                            className={`w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-slate-900 outline-none bg-white ${
-                                              !hasCouple
+                                            className={`w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-slate-900 outline-none bg-white ${!hasCouple
                                                 ? "opacity-50 cursor-not-allowed bg-gray-100"
                                                 : ""
-                                            }`}
+                                              }`}
                                           />
                                         </div>
                                       </div>
@@ -460,11 +456,10 @@ export default function CinemaModal({
                                           handleOpenLayoutModal(index)
                                         }
                                         className={`w-full py-2.5 border rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors
-                                        ${
-                                          room.seatLayout
+                                        ${room.seatLayout
                                             ? "border-green-200 bg-green-50 text-green-700 hover:bg-green-100"
                                             : "border-gray-300 text-gray-700 hover:bg-white bg-white shadow-sm"
-                                        }`}
+                                          }`}
                                       >
                                         {room.seatLayout ? (
                                           <Edit size={14} />
@@ -540,11 +535,10 @@ export default function CinemaModal({
                                   </p>
                                 </div>
                                 <span
-                                  className={`text-xs font-medium ${
-                                    room.seatLayout
+                                  className={`text-xs font-medium ${room.seatLayout
                                       ? "text-green-600"
                                       : "text-gray-400"
-                                  }`}
+                                    }`}
                                 >
                                   {room.seatLayout
                                     ? "Bố cục đã cấu hình"
@@ -579,11 +573,10 @@ export default function CinemaModal({
                     <button
                       onClick={() => setCurrentStep((p) => p + 1)}
                       disabled={!canNext}
-                      className={`px-6 py-2.5 rounded-lg text-white font-medium transition-all shadow-sm flex items-center gap-2 ${
-                        canNext
+                      className={`px-6 py-2.5 rounded-lg text-white font-medium transition-all shadow-sm flex items-center gap-2 ${canNext
                           ? "bg-slate-900 hover:bg-slate-800"
                           : "bg-gray-300 cursor-not-allowed"
-                      }`}
+                        }`}
                     >
                       Tiếp
                     </button>
