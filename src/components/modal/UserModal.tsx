@@ -109,7 +109,7 @@ export default function UserModal({
       const r = user.role as Role;
       setRole(
         fixedRole ??
-          (["ADMIN", "MANAGER", "EMPLOYEE"].includes(r) ? r : "EMPLOYEE"),
+        (["ADMIN", "MANAGER", "EMPLOYEE"].includes(r) ? r : "EMPLOYEE"),
       );
       setPassword("");
       setSelectedCinemaId(user.cinemaId || "");
@@ -210,11 +210,10 @@ export default function UserModal({
                   <input
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
-                      showEmailError
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 ${showEmailError
                         ? "border-red-500 focus:ring-red-500"
                         : "focus:ring-blue-500"
-                    }`}
+                      }`}
                     placeholder="Nhập email"
                     type="email"
                   />
@@ -235,11 +234,10 @@ export default function UserModal({
                   <input
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
-                      password.length > 0 && !pwCheck.valid
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 ${password.length > 0 && !pwCheck.valid
                         ? "border-red-500 focus:ring-red-500"
                         : "focus:ring-blue-500"
-                    }`}
+                      }`}
                     type="password"
                     placeholder={
                       mode === "create"
@@ -247,29 +245,27 @@ export default function UserModal({
                         : "Để trống nếu không đổi mật khẩu"
                     }
                   />
-                  {(mode === "create" || password.length > 0) && (
-                    <div className="bg-gray-50 text-gray-700 text-xs p-3 rounded-lg space-y-1 mt-2 border border-gray-100">
-                      <p className="font-semibold mb-1">Yêu cầu:</p>
-                      <div
-                        className={`flex items-center gap-2 ${pwCheck.minLength ? "text-green-600" : "text-gray-500"}`}
-                      >
-                        <span>{pwCheck.minLength ? "✔" : "•"}</span> Ít nhất 8
-                        ký tự
-                      </div>
-                      <div
-                        className={`flex items-center gap-2 ${pwCheck.hasNumber ? "text-green-600" : "text-gray-500"}`}
-                      >
-                        <span>{pwCheck.hasNumber ? "✔" : "•"}</span> Chứa ít
-                        nhất một số
-                      </div>
-                      <div
-                        className={`flex items-center gap-2 ${pwCheck.hasSpecial ? "text-green-600" : "text-gray-500"}`}
-                      >
-                        <span>{pwCheck.hasSpecial ? "✔" : "•"}</span> Chứa ký tự
-                        đặc biệt (@#$%^&*)
-                      </div>
+                  <div className="bg-gray-50 text-gray-700 text-xs p-3 rounded-lg space-y-1 mt-2 border border-gray-100">
+                    <p className="font-semibold mb-1">Yêu cầu:</p>
+                    <div
+                      className={`flex items-center gap-2 ${pwCheck.minLength ? "text-green-600" : "text-gray-500"}`}
+                    >
+                      <span>{pwCheck.minLength ? "✔" : "•"}</span> Ít nhất 8
+                      ký tự
                     </div>
-                  )}
+                    <div
+                      className={`flex items-center gap-2 ${pwCheck.hasNumber ? "text-green-600" : "text-gray-500"}`}
+                    >
+                      <span>{pwCheck.hasNumber ? "✔" : "•"}</span> Chứa ít
+                      nhất một số
+                    </div>
+                    <div
+                      className={`flex items-center gap-2 ${pwCheck.hasSpecial ? "text-green-600" : "text-gray-500"}`}
+                    >
+                      <span>{pwCheck.hasSpecial ? "✔" : "•"}</span> Chứa ký tự
+                      đặc biệt (@#$%^&*)
+                    </div>
+                  </div>
                 </div>
 
                 <div className="flex gap-3">
@@ -296,14 +292,13 @@ export default function UserModal({
                       value={role}
                       onChange={(e) => setRole(e.target.value as Role)}
                       disabled={!!fixedRole}
-                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                        fixedRole ? "bg-gray-100 cursor-not-allowed" : ""
-                      }`}
+                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${fixedRole ? "bg-gray-100 cursor-not-allowed" : ""
+                        }`}
                     >
                       {(currentUser?.role === "ADMIN" ||
                         currentUser?.role !== "MANAGER") && (
-                        <option value="ADMIN">Quản trị viên</option>
-                      )}
+                          <option value="ADMIN">Quản trị viên</option>
+                        )}
 
                       <option value="MANAGER">Quản lý rạp</option>
                       <option value="EMPLOYEE">Nhân viên bán vé</option>
@@ -342,11 +337,10 @@ export default function UserModal({
                 <button
                   disabled={!valid || loading}
                   onClick={handleSubmit}
-                  className={`px-4 py-2 rounded-lg text-white transition-colors ${
-                    valid && !loading
+                  className={`px-4 py-2 rounded-lg text-white transition-colors ${valid && !loading
                       ? "bg-blue-600 hover:bg-blue-700"
                       : "bg-gray-400 cursor-not-allowed"
-                  }`}
+                    }`}
                 >
                   {mode === "create"
                     ? loading
