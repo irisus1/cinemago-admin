@@ -402,10 +402,10 @@ export const useBookingLogic = ({
 
         let foundShowtimeToRestore:
           | (SelectedShowtimeInfo & {
-              price: number;
-              vipPrice: number;
-              couplePrice: number;
-            })
+            price: number;
+            vipPrice: number;
+            couplePrice: number;
+          })
           | null = null;
 
         const requiredShowtimeId = searchParams.get("showtimeId");
@@ -423,13 +423,12 @@ export const useBookingLogic = ({
             groups[rId] = { roomId: rId, roomName: rInfo.name, formats: {} };
           if (!groups[rId].formats[fmt]) groups[rId].formats[fmt] = [];
 
-          const cleanTime = item.startTime.replace("Z", "");
-          const showtimeDate = new Date(cleanTime);
-          const isPast = showtimeDate < now;
+          const showtimeDate = new Date(item.startTime);
+          const isPast = showtimeDate.getTime() < now.getTime();
 
           const stItem = {
             id: item.id,
-            startTime: cleanTime,
+            startTime: item.startTime,
             price: Number(item.price) || 0,
             vipPrice: Number(rInfo.VIP) || 0,
             couplePrice: Number(rInfo.COUPLE) || 0,
@@ -851,9 +850,9 @@ export const useBookingLogic = ({
     const ticketPrice =
       quantities.standard * selectedShowtime.basePrice +
       quantities.vip *
-        (selectedShowtime.basePrice + selectedShowtime.vipSurcharge) +
+      (selectedShowtime.basePrice + selectedShowtime.vipSurcharge) +
       quantities.couple *
-        (selectedShowtime.basePrice * 2 + selectedShowtime.coupleSurcharge * 2);
+      (selectedShowtime.basePrice * 2 + selectedShowtime.coupleSurcharge * 2);
 
     let foodPrice = 0;
     const foodItemsStr: string[] = [];
