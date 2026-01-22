@@ -101,7 +101,7 @@ export default function AdminWalkupBookingPage() {
     (async () => {
       try {
         const res = await cinemaService.getAllCinemas();
-        const list = res?.data || [];
+        const list = (res?.data || []).filter((c) => c.isActive);
         setCinemas(list);
 
         const urlCinemaId = searchParams.get("cinemaId");
@@ -185,7 +185,7 @@ export default function AdminWalkupBookingPage() {
           if (s.startTime) {
             curr.earliestStart =
               curr.earliestStart === null ||
-              new Date(s.startTime) < new Date(curr.earliestStart)
+                new Date(s.startTime) < new Date(curr.earliestStart)
                 ? s.startTime
                 : curr.earliestStart;
           }
