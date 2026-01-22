@@ -192,8 +192,12 @@ export default function MovieForm({
     // media
     if (thumbFile) fd.append("thumbnail", thumbFile);
     else if (thumbUrl) fd.append("thumbnailUrl", thumbUrl);
-    if (trailerFile) fd.append("trailer", trailerFile);
-    else if (trailerUrl) fd.append("trailerPath", trailerUrl);
+    if (trailerFile) {
+      fd.append("trailer", trailerFile);
+      fd.append("trailerPath", "");
+    } else if (trailerUrl) {
+      fd.append("trailerPath", trailerUrl);
+    }
     fd.append("status", status);
 
     try {
